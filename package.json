@@ -2,12 +2,12 @@
   "name": "woa-talk",
   "version": "1.0.0",
   "description": "WOA Talk Backend MVP",
-  "main": "dist/server.js",
   "type": "module",
+  "main": "dist/server.js",
   "scripts": {
+    "dev": "node --watch src/local.ts",
     "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/server.js"
+    "start": "node dist/local.js"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +21,8 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^25.3.0",
+    "@types/node": "^20.11.30",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
