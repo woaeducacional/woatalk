@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { communityService } from "../services/community.service.js";
+import { communityService } from "../services/community.service";
 
 class CommunityController {
   async createPost(req: Request, res: Response) {

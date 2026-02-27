@@ -1,17 +1,13 @@
 {
   "name": "woa-talk",
   "version": "1.0.0",
-  "description": "WOA Talk Backend MVP",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "node --watch src/local.ts",
     "build": "tsc",
+    "dev": "ts-node src/local.ts",
     "start": "node dist/local.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",
     "cors": "^2.8.6",

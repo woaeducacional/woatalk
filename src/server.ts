@@ -1,6 +1,6 @@
-import 'dotenv/config'
+import "dotenv/config"
 import express from "express"
-import communityRoutes from "./routes/community.routes.js"
+import communityRoutes from "./routes/community.routes"
 
 const app = express()
 
