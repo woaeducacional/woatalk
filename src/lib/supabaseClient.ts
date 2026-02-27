@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase'
 
 console.log("ENV URL:", process.env.SUPABASE_URL)
 console.log("ENV KEY:", process.env.SUPABASE_ANON_KEY)

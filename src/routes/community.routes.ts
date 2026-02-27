@@ -1,5 +1,5 @@
 import express from "express";
-import { communityController } from "../controllers/community.controller.js";
+import { communityController } from "../controllers/community.controller";
 
 const router = express.Router();
 
