@@ -2,8 +2,10 @@
   "name": "woa-talk",
   "version": "1.0.0",
   "description": "WOA Talk Backend",
-  "main": "dist/server.js",
+  "private": true,
+  "type": "module",
   "scripts": {
+    "dev": "node --watch dist/server.js",
     "build": "tsc",
     "start": "node dist/server.js"
   },
