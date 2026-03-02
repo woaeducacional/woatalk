@@ -1,75 +1,71 @@
-import { Request, Response } from "express";
+import { NextRequest, NextResponse } from "next/server";
 import { communityService } from "../services/community.service";
 
-class CommunityController {
-  async createPost(req: Request, res: Response) {
-    const { userId, content } = req.body;
+export async function createPost(request: NextRequest) {
+  const { userId, content } = await request.json();
 
-    const { data, error } = await communityService.createPost(
-      userId,
-      content
-    );
+  const { data, error } = await communityService.createPost(
+    userId,
+    content
+  );
 
-    return res.status(200).json({ data, error });
-  }
-
-  async likePost(req: Request, res: Response) {
-    const postId = req.params.postId as string;
-    const { userId } = req.body;
-
-    const { data, error } = await communityService.likePost(
-      postId,
-      userId
-    );
-
-    return res.status(200).json({ data, error });
-  }
-
-  async commentOnPost(req: Request, res: Response) {
-    const postId = req.params.postId as string;
-    const { userId, comment } = req.body;
-
-    const { data, error } = await communityService.commentOnPost(
-      postId,
-      userId,
-      comment
-    );
-
-    return res.status(200).json({ data, error });
-  }
-
-  async followUser(req: Request, res: Response) {
-    const { followerId, followingId } = req.body;
-
-    const { data, error } = await communityService.followUser(
-      followerId,
-      followingId
-    );
-
-    return res.status(200).json({ data, error });
-  }
-
-  async getFeed(req: Request, res: Response) {
-    const { data, error } = await communityService.getFeed();
-
-    return res.status(200).json({ data, error });
-  }
-
-  async getFollowers(req: Request, res: Response) {
-    const userId = req.params.userId as string;
-
-    const { data, error } = await communityService.getFollowers(userId);
-
-    return res.status(200).json({ data, error });
-  }
-
-  async getFollowing(req: Request, res: Response) {
-    const userId = req.params.userId as string;
-
-    const { data, error } = await communityService.getFollowing(userId);
-
-    return res.status(200).json({ data, error });
-  }
+  return NextResponse.json({ data, error }, { status: 200 });
 }
 
-export const communityController = new CommunityController();
+export async function likePost(request: NextRequest, { params }: { params: { postId: string } }) {
+  const { userId } = await request.json();
+  const postId = params.postId;
+
+  const { data, error } = await communityService.likePost(
+    postId,
+    userId
+  );
+
+  return NextResponse.json({ data, error }, { status: 200 });
+}
+
+export async function commentOnPost(request: NextRequest, { params }: { params: { postId: string } }) {
+  const { userId, comment } = await request.json();
+  const postId = params.postId;
+
+  const { data, error } = await communityService.commentOnPost(
+    postId,
+    userId,
+    comment
+  );
+
+  return NextResponse.json({ data, error }, { status: 200 });
+}
+
+export async function followUser(request: NextRequest) {
+  const { followerId, followingId } = await request.json();
+
+  const { data, error } = await communityService.followUser(
+    followerId,
+    followingId
+  );
+
+  return NextResponse.json({ data, error }, { status: 200 });
+}
+
+export async function getFeed(request: NextRequest) {
+  const { data, error } = await communityService.getFeed();
+
+  return NextResponse.json({ data, error }, { status: 200 });
+}
+
+export async function getFollowers(request: NextRequest, { params }: { params: { userId: string } }) {
+  const userId = params.userId;
+
+  const { data, error } = await communityService.getFollowers(userId);
+
+  return NextResponse.json({ data, error }, { status: 200 });
+}
+
+export async function getFollowing(request: NextRequest, { params }: { params: { userId: string } }) {
+  const userId = params.userId;
+
+  const { data, error } = await communityService.getFollowing(userId);
+
+  return NextResponse.json({ data, error }, { status: 200 });
+}
