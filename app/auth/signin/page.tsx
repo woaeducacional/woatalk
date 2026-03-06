@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -23,6 +23,20 @@ export default function SignInPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dbStatus, setDbStatus] = useState<'supabase' | 'fallback' | 'unknown'>('unknown')
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const response = await fetch('/api/health')
+        const data = await response.json()
+        setDbStatus(data.database === 'supabase' ? 'supabase' : 'fallback')
+      } catch (err) {
+        setDbStatus('unknown')
+      }
+    }
+    checkHealth()
+  }, [])
 
   const form = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
@@ -57,11 +71,11 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-gradient-to-b from-blue-950 to-blue-900">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-ocean-100">🌊 WOA Talk</h1>
-          <p className="text-ocean-300">Bem-vindo de volta</p>
+          <h1 className="text-4xl font-bold text-blue-100">🌊 WOA Talk</h1>
+          <p className="text-blue-300">Bem-vindo de volta</p>
         </div>
 
         <Card>
@@ -70,6 +84,12 @@ export default function SignInPage() {
             <CardDescription>Acesse sua conta para continuar aprendendo</CardDescription>
           </CardHeader>
           <CardContent>
+            {dbStatus === 'fallback' && (
+              <div className="mb-4 p-3 rounded-md bg-yellow-500 bg-opacity-10 border border-yellow-500 text-yellow-400 text-sm">
+                ⚠️ Usando banco de dados em memória. Configure Supabase em .env.local para persistência.
+              </div>
+            )}
+
             <Form form={form} onSubmit={form.handleSubmit(onSubmit)}>
               {error && (
                 <div className="p-3 rounded-md bg-red-500 bg-opacity-10 border border-red-500 text-red-400 text-sm">
@@ -117,9 +137,9 @@ export default function SignInPage() {
                 Entrar
               </Button>
 
-              <p className="text-center text-sm text-ocean-300">
+              <p className="text-center text-sm text-blue-300">
                 Não tem uma conta?{' '}
-                <a href="/auth/signup" className="text-ocean-400 hover:text-ocean-300">
+                <a href="/auth/signup" className="text-orange-500 hover:text-orange-400 font-semibold">
                   Cadastrar-se
                 </a>
               </p>

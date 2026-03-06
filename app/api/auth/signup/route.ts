@@ -19,34 +19,48 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new user
-    const user = await createUser(
-      validatedData.email,
-      validatedData.name,
-      validatedData.password
-    )
+    try {
+      const user = await createUser(
+        validatedData.email,
+        validatedData.name,
+        validatedData.password
+      )
 
-    return NextResponse.json(
-      {
-        message: 'User created successfully',
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
+      return NextResponse.json(
+        {
+          message: 'User created successfully',
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          },
         },
-      },
-      { status: 201 }
-    )
+        { status: 201 }
+      )
+    } catch (dbError: any) {
+      console.error('Database error:', dbError)
+      return NextResponse.json(
+        { 
+          error: 'Erro ao criar usuário. Verifique as variáveis de ambiente.',
+          isUsingFallback: true 
+        },
+        { status: 500 }
+      )
+    }
   } catch (error: any) {
     if (error.name === 'ZodError') {
       return NextResponse.json(
-        { error: 'Invalid input data' },
+        { error: 'Dados inválidos' },
         { status: 400 }
       )
     }
 
     console.error('Signup error:', error)
     return NextResponse.json(
-      { error: 'Failed to create user' },
+      { 
+        error: 'Erro ao processar cadastro',
+        message: error.message 
+      },
       { status: 500 }
     )
   }

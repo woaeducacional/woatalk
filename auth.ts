@@ -1,8 +1,19 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { signInSchema } from '@/lib/validation'
-import { getUserByEmail, createUser } from '@/lib/db'
-import { comparePasswords, hashPassword } from '@/lib/password'
+import { getUserByEmail } from '@/lib/db'
+import { comparePasswords } from '@/lib/password'
+
+declare module 'next-auth' {
+  interface User {
+    id?: string
+  }
+  interface Session {
+    user: User & {
+      id?: string
+    }
+  }
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [

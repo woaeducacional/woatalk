@@ -1,7 +1,1 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  @apply bg-gradient-to-br from-ocean-950 to-ocean-900 text-ocean-50;
-}
+@import "tailwindcss";

@@ -1,4 +1,4 @@
-// File: C:\Users\ADMIN\Documents\woa-talk\app\layout.js
+// File: C:\Users\Avell\woatalk\app\layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
