@@ -1,6 +1,4 @@
 {
-  "/api/health/route": "app/api/health/route.js",
-  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/auth/signin/page": "app/auth/signin/page.js",
   "/dashboard/page": "app/dashboard/page.js"
 }
