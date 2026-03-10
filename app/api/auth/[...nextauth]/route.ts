@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { signInSchema } from '@/lib/validation'
-import { getUserByEmail } from '@/lib/db'
+import { apiService } from '@/lib/api.service'
 import { comparePasswords } from '@/lib/password'
 
 declare module 'next-auth' {
@@ -27,15 +27,7 @@ const handler = NextAuth({
         try {
           const { email, password } = await signInSchema.parseAsync(credentials)
 
-          const user = await getUserByEmail(email)
-          if (!user) {
-            return null
-          }
-
-          const passwordMatch = await comparePasswords(password, user.password_hash)
-          if (!passwordMatch) {
-            return null
-          }
+          const user = await apiService.validateCredentials(email, password)
 
           return {
             id: user.id,
