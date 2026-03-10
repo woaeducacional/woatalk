@@ -92,8 +92,9 @@ export default function SignInPage() {
 
             <Form form={form} onSubmit={form.handleSubmit(onSubmit)}>
               {error && (
-                <div className="p-3 rounded-md bg-red-500 bg-opacity-10 border border-red-500 text-red-400 text-sm">
-                  {error}
+                <div className="mb-4 p-4 rounded-lg bg-red-500 bg-opacity-20 border-2 border-red-400 text-red-300 font-medium text-base">
+                  <div>⚠️ {error}</div>
+                  <div className="text-sm text-red-200 mt-1">Verifique seus dados e tente novamente</div>
                 </div>
               )}
 
