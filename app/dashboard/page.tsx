@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/Card'
 
@@ -28,7 +29,14 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-gradient-to-br from-blue-950 to-blue-900">
       <header className="border-b border-blue-700 bg-blue-950 bg-opacity-50 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-100">🌊 WOA Talk</h1>
+          <div className="flex items-center gap-3">
+            <Image 
+              src="/images/logo.png" 
+              alt="WOA Talk Logo" 
+              width={60} 
+              height={60}
+            />
+          </div>
           <Button
             onClick={() => signOut({ redirect: true }) as any}
             variant="outline"

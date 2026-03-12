@@ -3,8 +3,11 @@ import { Providers } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'WOA Talk',
+  title: 'WOA Talk - Aprenda inglês em uma jornada épica',
   description: 'Aprenda inglês em uma jornada épica',
+  icons: {
+    icon: '/images/logo.png',
+  },
 }
 
 export default function RootLayout({
