@@ -7,7 +7,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { phaseId: string } }
+  { params }: { params: Promise<{ phaseId: string }> }
 ) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token?.id || !supabaseUrl || !supabaseKey) {
@@ -16,7 +16,7 @@ export async function GET(
 
   const supabase = createClient(supabaseUrl, supabaseKey)
   const userId = token.id as string
-  const phaseId = parseInt(params.phaseId)
+  const phaseId = parseInt((await params).phaseId)
 
   try {
     const { data, error } = await supabase
@@ -35,7 +35,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { phaseId: string } }
+  { params }: { params: Promise<{ phaseId: string }> }
 ) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -43,7 +43,7 @@ export async function POST(
 
   const supabase = createClient(supabaseUrl, supabaseKey)
   const userId = token.id as string
-  const phaseId = parseInt(params.phaseId)
+  const phaseId = parseInt((await params).phaseId)
 
   const { checkpoint, missions_completed, xp_earned, coins_earned } = await request.json()
 

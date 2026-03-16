@@ -13,9 +13,10 @@ export interface PhraseSentence {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { phaseId: string } }
+  { params }: { params: Promise<{ phaseId: string }> }
 ) {
-  const phaseId = parseInt(params.phaseId)
+  const { phaseId: phaseIdStr } = await params
+  const phaseId = parseInt(phaseIdStr)
 
   if (isNaN(phaseId)) {
     return NextResponse.json({ error: 'phaseId inválido' }, { status: 400 })
