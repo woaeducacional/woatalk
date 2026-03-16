@@ -72,6 +72,58 @@ INSERT INTO levels (id, name, type, order_number) VALUES
 (4, 'Arctic Ocean', 'Ocean', 4),
 (5, 'Antarctic Ocean', 'Ocean', 5);
 
+-- ============================================================
+-- TABELA DE CHECKPOINTS DE FASE (100-missão Atlantic Ocean)
+-- Guarda progresso do usuário por checkpoint (a cada 10 missões)
+-- ============================================================
+CREATE TABLE phase_checkpoints (
+  id                 UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id            UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  phase_id           INTEGER     NOT NULL,
+  checkpoint         INTEGER     NOT NULL DEFAULT 0,  -- 0-10
+  missions_completed INTEGER     NOT NULL DEFAULT 0,  -- 0-100
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, phase_id)
+);
+
+CREATE INDEX idx_phase_checkpoints_user_phase ON phase_checkpoints(user_id, phase_id);
+
 -- Inserir fases para o Nível 1 (Atlantic Ocean)
 INSERT INTO phases (id, level_id, name, order_number, curiosity, depth) VALUES
 (1, 2, 'Introduce Yourself', 1, 'O Oceano Atlântico separa dois grandes mundos: América e Europa.', 3200);
+
+-- ============================================================
+-- TABELA DE FRASES PARA EXERCÍCIOS DE ORDENAÇÃO DE SENTENÇA
+-- Escalável: cada fase/aula terá suas frases armazenadas aqui.
+-- phase_id referencia phases.id (lição dentro de um oceano).
+-- ============================================================
+CREATE TABLE phase_sentences (
+  id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  phase_id     INTEGER     NOT NULL REFERENCES phases(id) ON DELETE CASCADE,
+  sentence     TEXT        NOT NULL,        -- Frase correta em inglês
+  translation  TEXT,                        -- Tradução em português (opcional)
+  hint         TEXT,                        -- Dica opcional para o aluno
+  difficulty   SMALLINT    NOT NULL DEFAULT 1 CHECK (difficulty BETWEEN 1 AND 3),
+  xp_reward    INTEGER     NOT NULL DEFAULT 30,
+  active       BOOLEAN     NOT NULL DEFAULT true,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_phase_sentences_phase_id ON phase_sentences(phase_id);
+CREATE INDEX idx_phase_sentences_active   ON phase_sentences(phase_id, active);
+
+-- ============================================================
+-- SEED — Fase 1 (phase_id=1): Atlantic Ocean — Introduce Yourself
+-- 10 frases de apresentação pessoal, dificuldade crescente
+-- ============================================================
+INSERT INTO phase_sentences (phase_id, sentence, translation, hint, difficulty, xp_reward) VALUES
+(1, 'My name is Oliver',           'Meu nome é Oliver',                    'Apresentação básica — nome',         1, 20),
+(1, 'I am from Brazil',            'Eu sou do Brasil',                     'De onde você é',                    1, 20),
+(1, 'Nice to meet you',            'Muito prazer',                         'Expressão social essencial',         1, 20),
+(1, 'My last name is Smith',       'Meu sobrenome é Smith',                'last name = sobrenome',              1, 25),
+(1, 'I live in New York',          'Eu moro em Nova York',                 'live in = morar em',                 1, 25),
+(1, 'What is your name',           'Qual é o seu nome',                    'Pergunta básica de apresentação',    2, 30),
+(1, 'Where are you from',          'De onde você é',                       'Pergunta sobre origem',              2, 30),
+(1, 'I am a teacher',              'Eu sou professor',                     'Profissão com to be',                2, 30),
+(1, 'How old are you',             'Quantos anos você tem',                'Pergunta sobre idade',               2, 35),
+(1, 'It is nice to meet you',      'É um prazer te conhecer',              'Versão formal de nice to meet you',  3, 40);
