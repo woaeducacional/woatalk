@@ -452,6 +452,7 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null)
   const resultReceivedRef = useRef(false)
+  const transcriptPartsRef = useRef<string[]>([])
   const circleRef = useRef<SVGCircleElement | null>(null)
 
   const hasExpected = !!exercise.correctAnswer
@@ -533,18 +534,20 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
       return
     }
     resultReceivedRef.current = false
+    transcriptPartsRef.current = []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rec = new SpeechRecognitionAPI() as any
     rec.lang = 'en-US'
     rec.interimResults = false
-    rec.continuous = false
+    rec.continuous = true
     rec.maxAlternatives = 1
     rec.onresult = (event: any) => {
       resultReceivedRef.current = true
-      const text: string = event.results[0][0].transcript
-      setStage('processing')
-      // slight delay so the processing spinner is visible
-      setTimeout(() => processTranscript(text), 300)
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcriptPartsRef.current.push(event.results[i][0].transcript)
+        }
+      }
     }
     rec.onerror = (event: any) => {
       if (event.error === 'no-speech') {
@@ -557,9 +560,13 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
       setStage('idle')
     }
     rec.onend = () => {
-      if (!resultReceivedRef.current) {
+      if (!resultReceivedRef.current || transcriptPartsRef.current.length === 0) {
         setError('Nenhuma fala detectada. Tente novamente.')
         setStage('idle')
+      } else {
+        const text = transcriptPartsRef.current.join(' ')
+        setStage('processing')
+        setTimeout(() => processTranscript(text), 300)
       }
     }
     recognitionRef.current = rec

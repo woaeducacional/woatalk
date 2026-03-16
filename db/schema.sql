@@ -72,6 +72,22 @@ INSERT INTO levels (id, name, type, order_number) VALUES
 (4, 'Arctic Ocean', 'Ocean', 4),
 (5, 'Antarctic Ocean', 'Ocean', 5);
 
+-- ============================================================
+-- TABELA DE CHECKPOINTS DE FASE (100-missão Atlantic Ocean)
+-- Guarda progresso do usuário por checkpoint (a cada 10 missões)
+-- ============================================================
+CREATE TABLE phase_checkpoints (
+  id                 UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id            UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  phase_id           INTEGER     NOT NULL,
+  checkpoint         INTEGER     NOT NULL DEFAULT 0,  -- 0-10
+  missions_completed INTEGER     NOT NULL DEFAULT 0,  -- 0-100
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, phase_id)
+);
+
+CREATE INDEX idx_phase_checkpoints_user_phase ON phase_checkpoints(user_id, phase_id);
+
 -- Inserir fases para o Nível 1 (Atlantic Ocean)
 INSERT INTO phases (id, level_id, name, order_number, curiosity, depth) VALUES
 (1, 2, 'Introduce Yourself', 1, 'O Oceano Atlântico separa dois grandes mundos: América e Europa.', 3200);

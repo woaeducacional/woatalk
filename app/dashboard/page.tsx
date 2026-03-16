@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
@@ -10,6 +10,23 @@ import Link from 'next/link'
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [atlanticCheckpoint, setAtlanticCheckpoint] = useState(0)
+  const [xpTotal, setXpTotal] = useState(0)
+  const [coinsBalance, setCoinsBalance] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/progress/2')
+      .then(r => r.ok ? r.json() : { checkpoint: 0 })
+      .then(d => setAtlanticCheckpoint(d.checkpoint ?? 0))
+      .catch(() => {})
+    fetch('/api/user/stats')
+      .then(r => r.ok ? r.json() : { xp_total: 0, coins_balance: 0 })
+      .then(d => {
+        setXpTotal(d.xp_total ?? 0)
+        setCoinsBalance(d.coins_balance ?? 0)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -60,8 +77,8 @@ export default function DashboardPage() {
             {/* XP */}
             <div className="bg-white border-2 border-blue-200 rounded-lg p-6 hover:shadow-lg transition-all">
               <p className="text-sm font-semibold text-blue-600 mb-2">XP TOTAL</p>
-              <p className="text-4xl font-bold text-blue-600">0</p>
-              <p className="text-xs text-gray-600 mt-2">Próximo nível em 250 XP</p>
+              <p className="text-4xl font-bold text-blue-600">{xpTotal.toLocaleString('pt-BR')}</p>
+              <p className="text-xs text-gray-600 mt-2">Próximo nível em {Math.max(0, 250 - (xpTotal % 250))} XP</p>
             </div>
 
             {/* Streaks */}
@@ -79,10 +96,17 @@ export default function DashboardPage() {
             </div>
 
             {/* WOA Coins */}
-            <div className="bg-white border-2 border-yellow-200 rounded-lg p-6 hover:shadow-lg transition-all">
-              <p className="text-sm font-semibold text-yellow-600 mb-2">WOA COINS</p>
-              <p className="text-4xl font-bold text-yellow-600">0</p>
-              <p className="text-xs text-gray-600 mt-2">Gastos em 0 itens</p>
+            <div className="bg-white border-2 border-yellow-200 rounded-lg p-6 hover:shadow-lg transition-all flex items-center gap-0">
+              {/* Left half */}
+              <div className="flex-1 flex flex-col justify-center">
+                <p className="text-sm font-semibold text-yellow-600 mb-2">WOA COINS</p>
+                <p className="text-4xl font-bold text-yellow-600">{coinsBalance}</p>
+                <p className="text-xs text-gray-600 mt-2">Ganhe 1 coin a cada checkpoint</p>
+              </div>
+              {/* Right half */}
+              <div className="flex-1 flex items-center justify-center">
+                <Image src="/images/woa_coin.png" alt="WOA Coin" width={72} height={72} className="object-contain drop-shadow-md" />
+              </div>
             </div>
           </div>
         </div>
@@ -120,7 +144,7 @@ export default function DashboardPage() {
             {/* Lesson Card - Pacific Ocean — BLOQUEADO */}
             <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden opacity-60">
               <div className="h-32 bg-gradient-to-r from-gray-400 to-gray-300 flex items-center justify-center">
-                <span className="text-4xl">🔒</span>
+                <Image src="/images/icon_pacifico.png" alt="Pacific Ocean" width={80} height={80} className="object-contain" />
               </div>
               <div className="p-6">
                 <h4 className="font-bold text-gray-900 mb-2">Pacific Ocean</h4>
@@ -138,14 +162,37 @@ export default function DashboardPage() {
             {/* Lesson Card - Atlantic Ocean — ATUAL */}
             <div className="bg-white border-2 border-blue-600 rounded-lg overflow-hidden hover:shadow-lg transition-all ring-2 ring-blue-300">
               <div className="h-32 bg-gradient-to-r from-blue-800 to-blue-600 flex items-center justify-center">
-                <span className="text-4xl">🌊</span>
+                <Image src="/images/icon_atlantico.png" alt="Atlantic Ocean" width={80} height={80} className="object-contain" />
               </div>
               <div className="p-6">
-                <h4 className="font-bold text-gray-900 mb-2">Atlantic Ocean</h4>
-                <p className="text-sm text-gray-600 mb-4">3.339m de profundidade</p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                  <div className="h-2 rounded-full" style={{ width: '50%', backgroundColor: '#0043BB' }}></div>
+                <h4 className="font-bold text-gray-900 mb-1">Atlantic Ocean</h4>
+                <p className="text-sm text-gray-600 mb-1">3.339m de profundidade</p>
+
+                {/* Checkpoint & depth info */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold" style={{ color: '#0043BB' }}>
+                    Checkpoint {atlanticCheckpoint}/10
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    🌊 {Math.round(3339 * (1 - atlanticCheckpoint / 10))}m
+                  </span>
                 </div>
+
+                {/* Segmented 10-part progress bar */}
+                <div className="flex gap-0.5 mb-3">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="flex-1 h-2 bg-gray-200 rounded-sm overflow-hidden">
+                      <div
+                        className="h-full transition-all duration-500"
+                        style={{
+                          width: i < atlanticCheckpoint ? '100%' : '0%',
+                          backgroundColor: '#0043BB',
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
                 <p className="text-xs text-gray-600 mb-4">Fase Atual</p>
                 <Link
                   href="/challenge/2"
@@ -160,7 +207,7 @@ export default function DashboardPage() {
             {/* Lesson Card - Indian Ocean — BLOQUEADO */}
             <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden opacity-60">
               <div className="h-32 bg-gradient-to-r from-gray-400 to-gray-300 flex items-center justify-center">
-                <span className="text-4xl">🔒</span>
+                <Image src="/images/icon_indico.png" alt="Indian Ocean" width={80} height={80} className="object-contain" />
               </div>
               <div className="p-6">
                 <h4 className="font-bold text-gray-900 mb-2">Indian Ocean</h4>

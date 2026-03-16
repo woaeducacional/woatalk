@@ -2,7 +2,8 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { CheckpointCelebration } from '@/src/components/CheckpointCelebration'
 import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import {
@@ -52,6 +53,9 @@ export default function ChallengePage() {
   const [totalXp, setTotalXp] = useState(0)
   const [isCompleted, setIsCompleted] = useState(false)
   const [sentences, setSentences] = useState<PhraseSentence[]>([])
+  const [dbCheckpoint, setDbCheckpoint] = useState(0)
+  const [celebrationData, setCelebrationData] = useState<{ checkpoint: number; xpEarned: number } | null>(null)
+  const checkpointXpRef = useRef(0)  // accumulates XP within the current 10-mission block
 
   // Busca frases do banco assim que a fase é conhecida
   useEffect(() => {
@@ -71,6 +75,15 @@ export default function ChallengePage() {
       const saved = parseInt(match.split('=')[1])
       if (!isNaN(saved) && saved > 0) setCurrentMissionIdx(saved)
     }
+  }, [phaseId])
+
+  // Carrega checkpoint salvo no banco
+  useEffect(() => {
+    if (!phaseId) return
+    fetch(`/api/progress/${phaseId}`)
+      .then(r => r.ok ? r.json() : { checkpoint: 0 })
+      .then(d => setDbCheckpoint(d.checkpoint ?? 0))
+      .catch(() => {})
   }, [phaseId])
 
   useEffect(() => {
@@ -115,17 +128,48 @@ export default function ChallengePage() {
   const handleMissionComplete = (xp: number) => {
     const newTotal = totalXp + xp
     setTotalXp(newTotal)
+    checkpointXpRef.current += xp
 
     if (currentMissionIdx < missionsWithWords.length - 1) {
       const nextIdx = currentMissionIdx + 1
-      setCurrentMissionIdx(nextIdx)
       // Salva progresso em cookie (expira em 24h)
       document.cookie = `woa_phase_${phaseId}_mission=${nextIdx}; path=/; max-age=86400`
+      // Salva checkpoint no banco e mostra celebração a cada 10 missões concluídas
+      if (nextIdx % 10 === 0) {
+        const cp = nextIdx / 10
+        const xpEarned = checkpointXpRef.current
+        checkpointXpRef.current = 0
+        setDbCheckpoint(cp)
+        fetch(`/api/progress/${phaseId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkpoint: cp, missions_completed: nextIdx, xp_earned: xpEarned, coins_earned: 1 }),
+        }).catch(() => {})
+        // Show celebration — advances to nextIdx after user dismisses
+        setCelebrationData({ checkpoint: cp, xpEarned })
+      } else {
+        setCurrentMissionIdx(nextIdx)
+      }
     } else {
-      // Fase concluída — limpa o cookie de progresso
+      // Fase concluída — limpa o cookie e salva checkpoint final
       document.cookie = `woa_phase_${phaseId}_mission=0; path=/; max-age=0`
+      const totalCp = Math.ceil(missionsWithWords.length / 10)
+      const xpEarned = checkpointXpRef.current
+      checkpointXpRef.current = 0
+      setDbCheckpoint(totalCp)
+      fetch(`/api/progress/${phaseId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkpoint: totalCp, missions_completed: missionsWithWords.length, xp_earned: xpEarned, coins_earned: 1 }),
+      }).catch(() => {})
       setIsCompleted(true)
     }
+  }
+
+  const handleCelebrationContinue = () => {
+    const nextIdx = (celebrationData!.checkpoint) * 10
+    setCelebrationData(null)
+    setCurrentMissionIdx(nextIdx)
   }
 
   if (isCompleted) {
@@ -266,20 +310,54 @@ export default function ChallengePage() {
 
       {/* Progress Bar */}
       <div className="border-b border-gray-200 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
+        <div className="max-w-7xl mx-auto px-4 py-4 space-y-2">
+          <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-gray-700">Progresso da Lição</span>
             <span className="text-sm text-gray-600">{totalXp} XP</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="h-2 rounded-full transition-all duration-300"
-              style={{
-                width: `${((currentMissionIdx) / missions.length) * 100}%`,
-                backgroundColor: '#CC4A00',
-              }}
-            ></div>
-          </div>
+
+          {/* Depth meter — visible only for 100-mission phases */}
+          {missionsWithWords.length >= 20 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">🌊</span>
+                <span className="text-sm font-bold" style={{ color: '#0043BB' }}>
+                  {Math.round(Number(phase.depth.replace(/[^0-9]/g, '')) * (1 - currentMissionIdx / missionsWithWords.length))}m de profundidade
+                </span>
+              </div>
+              <span className="text-xs text-gray-500">
+                Checkpoint {Math.floor(currentMissionIdx / 10)}/{Math.ceil(missionsWithWords.length / 10)}
+              </span>
+            </div>
+          )}
+
+          {/* Segmented bar for large phases, simple bar for small */}
+          {missionsWithWords.length >= 20 ? (
+            <div className="flex gap-0.5">
+              {Array.from({ length: Math.ceil(missionsWithWords.length / 10) }).map((_, i) => {
+                const segStart = i * 10
+                const segEnd = (i + 1) * 10
+                let fill = 0
+                if (currentMissionIdx >= segEnd) fill = 1
+                else if (currentMissionIdx > segStart) fill = (currentMissionIdx - segStart) / 10
+                return (
+                  <div key={i} className="flex-1 h-2.5 bg-gray-200 rounded-sm overflow-hidden" title={`Checkpoint ${i + 1}`}>
+                    <div
+                      className="h-full transition-all duration-300"
+                      style={{ width: `${fill * 100}%`, backgroundColor: '#CC4A00' }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(currentMissionIdx / missions.length) * 100}%`, backgroundColor: '#CC4A00' }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -288,15 +366,17 @@ export default function ChallengePage() {
         {/* Mission Title with Icon */}
         <div className="text-center mb-12">
           <div className="text-5xl mb-4">
-            {currentMissionIdx === 0 && '🎧'}
-            {currentMissionIdx === 1 && '📝'}
-            {currentMissionIdx === 2 && '🔤'}
-            {currentMissionIdx === 3 && '👂'}
-            {currentMissionIdx === 4 && '🏠'}
-            {currentMissionIdx === 5 && '�'}
-            {currentMissionIdx === 6 && '🌍'}
-            {currentMissionIdx === 7 && '👔'}
-            {currentMissionIdx === 8 && '🎤'}
+            {({
+              discover: '🎧',
+              'name-builder': '📝',
+              'order-sentence': '🔤',
+              'listen-select': '👂',
+              address: '🏠',
+              'phone-number': '📱',
+              origin: '🌍',
+              profession: '👔',
+              'speak-mode': '🎤',
+            } as Record<string, string>)[currentMission.type] ?? '⭐'}
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             {currentMission.name}
@@ -314,6 +394,16 @@ export default function ChallengePage() {
           <p>Ganhe <span className="font-bold text-orange-600">+{currentMission.xp} XP</span> ao completar esta missão</p>
         </div>
       </div>
+
+      {/* Checkpoint Celebration Overlay */}
+      {celebrationData && (
+        <CheckpointCelebration
+          checkpoint={celebrationData.checkpoint}
+          xpEarned={celebrationData.xpEarned}
+          missionsCompleted={10}
+          onContinue={handleCelebrationContinue}
+        />
+      )}
     </main>
   )
 }
