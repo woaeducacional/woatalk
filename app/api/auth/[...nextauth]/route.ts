@@ -29,6 +29,8 @@ const handler = NextAuth({
 
           const user = await apiService.validateCredentials(email, password)
 
+          if (!user) return null
+
           return {
             id: user.id,
             email: user.email,
