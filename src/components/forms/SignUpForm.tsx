@@ -67,25 +67,8 @@ export function SignUpForm() {
         return
       }
 
-      // Salvar email e mudar para etapa de verificação
-      setRegisteredEmail(data.email)
-      
-      // Enviar código OTP automaticamente
-      try {
-        const codeResponse = await fetch('/api/auth/send-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: data.email }),
-        })
-
-        if (codeResponse.ok) {
-          setStep('verify')
-        } else {
-          setError('Erro ao enviar código de verificação')
-        }
-      } catch (err) {
-        setError('Erro ao enviar código de verificação')
-      }
+      // Conta criada — ir direto para o login (verificação de email desativada)
+      router.push('/auth/signin?registered=true')
     } catch (err) {
       setError('Erro ao conectar ao servidor')
     } finally {

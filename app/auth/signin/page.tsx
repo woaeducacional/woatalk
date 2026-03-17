@@ -24,9 +24,14 @@ export default function SignInPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [dbStatus, setDbStatus] = useState<'supabase' | 'fallback' | 'unknown'>('unknown')
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('registered') === 'true') {
+      setSuccess('Conta criada com sucesso! Faça login para continuar.')
+    }
     const checkHealth = async () => {
       try {
         const response = await fetch('/api/health')
@@ -38,7 +43,6 @@ export default function SignInPage() {
     }
     checkHealth()
   }, [])
-
   const form = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -99,6 +103,11 @@ export default function SignInPage() {
             )}
 
             <Form form={form} onSubmit={form.handleSubmit(onSubmit)}>
+              {success && (
+                <div className="mb-4 p-4 rounded-lg bg-green-500 bg-opacity-20 border-2 border-green-400 text-green-300 font-medium text-base">
+                  ✅ {success}
+                </div>
+              )}
               {error && (
                 <div className="mb-4 p-4 rounded-lg bg-red-500 bg-opacity-20 border-2 border-red-400 text-red-300 font-medium text-base">
                   <div>⚠️ {error}</div>
