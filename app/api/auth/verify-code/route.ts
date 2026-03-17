@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyEmailSchema } from '@/lib/validation'
 import { verifyOTP } from '@/lib/otp'
-import { getUserByEmail, updateUser } from '@/lib/db'
+import { getUserByEmail } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
