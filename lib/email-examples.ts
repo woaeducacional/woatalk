@@ -106,13 +106,10 @@ export async function sendOTPEmailWithTemplate(email: string, code: string, temp
     const { data, error } = await resend.emails.send({
       from: 'noreply@woa-talk.com',
       to: email,
-      template: templateId,
-      props: {
-        code: code,
-        expiresIn: '10 minutos',
-        appName: 'WOA Talk',
-      },
-    })
+      template: { id: templateId },
+      react: undefined as any,
+      subject: 'Seu código WOA Talk',
+    } as any)
 
     if (error) {
       console.error('Resend template error:', error)
