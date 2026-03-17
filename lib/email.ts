@@ -11,7 +11,7 @@ export async function sendOTPEmail(email: string, code: string) {
     }
 
     const { data, error } = await resend.emails.send({
-      from: 'noreply@resend.dev',
+      from: 'WOA Talk <onboarding@resend.dev>',
       to: email,
       subject: 'Seu código de verificação WOA Talk - 10 minutos',
       html: `
