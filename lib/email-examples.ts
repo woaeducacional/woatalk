@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Exemplo de Integração com Resend para Envio de Email Real
  * 
