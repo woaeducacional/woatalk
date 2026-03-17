@@ -11,6 +11,11 @@ interface OTPStore {
   }
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var otpStorage: OTPStore | undefined
+}
+
 // Usar globalThis para persistir entre hot reloads em desenvolvimento
 const getOTPStorage = () => {
   if (!globalThis.otpStorage) {
