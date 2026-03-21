@@ -55,7 +55,9 @@ CREATE TABLE levels (
   id INTEGER PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   type VARCHAR(50) DEFAULT 'Ocean',
-  order_number INTEGER NOT NULL
+  order_number INTEGER NOT NULL,
+  icon_path VARCHAR(255),
+  lesson_title VARCHAR(255)
 );
 
 -- Criar tabela de fases
@@ -69,12 +71,12 @@ CREATE TABLE phases (
 );
 
 -- Inserir dados iniciais de níveis
-INSERT INTO levels (id, name, type, order_number) VALUES
-(1, 'Pacific Ocean', 'Ocean', 1),
-(2, 'Atlantic Ocean', 'Ocean', 2),
-(3, 'Indian Ocean', 'Ocean', 3),
-(4, 'Arctic Ocean', 'Ocean', 4),
-(5, 'Antarctic Ocean', 'Ocean', 5);
+INSERT INTO levels (id, name, type, order_number, icon_path, lesson_title) VALUES
+(1, 'Pacific Ocean', 'Ocean', 1, '/images/icon_pacifico.png', 'The Alphabet'),
+(2, 'Atlantic Ocean', 'Ocean', 2, '/images/icon_atlantico.png', 'Introduce Yourself'),
+(3, 'Indian Ocean', 'Ocean', 3, '/images/icon_indico.png', 'Talking About Things'),
+(4, 'Arctic Ocean', 'Ocean', 4, '/images/icon_artico.png', 'Counting Up to 20'),
+(5, 'Antarctic Ocean', 'Ocean', 5, '/images/icon_antartico.png', 'Counting from 20 to 1000');
 
 -- ============================================================
 -- TABELA DE CHECKPOINTS DE FASE (100-missão Atlantic Ocean)

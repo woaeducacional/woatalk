@@ -80,7 +80,7 @@ export default function JourneyPage() {
           <div className="flex items-center gap-3">
             {isAdmin && (
               <button
-                onClick={() => { playClick() }}
+                onClick={() => { playClick(); router.push(`/admin/journey/${currentPhase}`) }}
                 className="text-xs font-bold tracking-widest px-4 py-2 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
                 style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', borderColor: 'rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
               >
@@ -125,7 +125,7 @@ export default function JourneyPage() {
                   </button>
                   {isAdmin && (
                     <button
-                      onClick={() => { playClick() }}
+                      onClick={() => { playClick(); router.push(`/admin/journey/${currentPhase}`) }}
                       className="px-4 py-2 text-[10px] font-black tracking-widest rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
                       style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
                     >

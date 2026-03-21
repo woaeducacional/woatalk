@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Mission } from '@/lib/lessons'
+import type { JourneyMission } from '@/lib/journey'
 
 /* ──────────────────────────────────────────────────────────────
    MediaPalette — sidebar card with 10 slots (one per checkpoint)
@@ -22,34 +22,33 @@ interface MediaSlot {
 }
 
 interface MediaPaletteProps {
-  missions: Mission[]
+  journeyMissions: JourneyMission[]
   currentMissionIdx: number
   totalCheckpoints: number
   isOpen: boolean
   onClose: () => void
 }
 
-export function MediaPalette({ missions, currentMissionIdx, totalCheckpoints, isOpen, onClose }: MediaPaletteProps) {
+export function MediaPalette({ journeyMissions, currentMissionIdx, totalCheckpoints, isOpen, onClose }: MediaPaletteProps) {
   const [playingSlot, setPlayingSlot] = useState<number | null>(null)
 
   // Build the 10 slots from first mission of each checkpoint group
   const slots: MediaSlot[] = Array.from({ length: totalCheckpoints }).map((_, i) => {
-    const firstMission = missions[i * 10]
+    const firstMission = journeyMissions[i * 10]
     const cp = i + 1
-    const unlocked = currentMissionIdx >= i * 10 // user reached this checkpoint group
+    const unlocked = currentMissionIdx >= i * 10
 
-    if (!firstMission || !unlocked) {
+    if (!firstMission || !unlocked || firstMission.type !== 'resource') {
       return { checkpoint: cp, type: null, src: null, label: `Checkpoint ${cp}` }
     }
 
-    const ex = firstMission.exercise
-    if (ex.video) {
-      return { checkpoint: cp, type: 'video', src: ex.video, label: firstMission.name }
+    if (firstMission.resourceType === 'video' && firstMission.resourceUrl) {
+      return { checkpoint: cp, type: 'video', src: firstMission.resourceUrl, label: `Checkpoint ${cp}` }
     }
-    if (ex.audio) {
-      return { checkpoint: cp, type: 'audio', src: ex.audio, label: firstMission.name }
+    if (firstMission.resourceType === 'audio' && firstMission.resourceUrl) {
+      return { checkpoint: cp, type: 'audio', src: firstMission.resourceUrl, label: `Checkpoint ${cp}` }
     }
-    return { checkpoint: cp, type: null, src: null, label: firstMission.name }
+    return { checkpoint: cp, type: null, src: null, label: `Checkpoint ${cp}` }
   })
 
   if (!isOpen) return null
