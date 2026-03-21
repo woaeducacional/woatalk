@@ -7,6 +7,7 @@ interface InMemoryUser {
   name: string
   password_hash: string
   avatar_url: string | null
+  role: string
   xp_total: number
   coins_balance: number
   current_phase: number

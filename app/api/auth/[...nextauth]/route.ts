@@ -7,11 +7,20 @@ import { comparePasswords } from '@/lib/password'
 declare module 'next-auth' {
   interface User {
     id?: string
+    role?: string
   }
   interface Session {
     user: User & {
       id?: string
+      role?: string
     }
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id?: string
+    role?: string
   }
 }
 
@@ -36,6 +45,7 @@ const handler = NextAuth({
             email: user.email,
             name: user.name,
             image: user.avatar_url,
+            role: user.role ?? 'user',
           }
         } catch (error) {
           return null
@@ -50,12 +60,14 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
+        token.role = user.role
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
+        session.user.role = token.role as string
       }
       return session
     },

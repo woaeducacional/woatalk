@@ -6,6 +6,9 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
+import { playClick } from '@/lib/sounds'
+
+const xpPerLevel = 250
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -34,237 +37,286 @@ export default function DashboardPage() {
     }
   }, [status, router])
 
+  const level = Math.floor(xpTotal / xpPerLevel) + 1
+  const xpInLevel = xpTotal % xpPerLevel
+  const xpProgress = Math.round((xpInLevel / xpPerLevel) * 100)
+  const isAdmin = session?.user?.role === 'admin'
+
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <p className="text-gray-600">Carregando...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#050E1A' }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 rounded-full border-2 border-cyan-400/30 border-t-cyan-400 animate-spin" />
+          <p className="text-cyan-300/60 text-sm tracking-widest">CARREGANDO...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <main className="min-h-screen relative" style={{ background: '#050E1A' }}>
+
+      {/* ── Background ── */}
+      <div className="fixed inset-0 z-0">
+        <Image
+          src="/images/fundo_do_mar.png"
+          alt="Fundo do Mar"
+          fill
+          className="object-cover object-bottom"
+          priority
+        />
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(to bottom, rgba(5,14,26,0.90) 0%, rgba(5,14,26,0.70) 40%, rgba(5,14,26,0.88) 100%)'
+        }} />
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)'
+        }} />
+      </div>
+
+      <div className="relative z-10 flex flex-col min-h-screen">
+
+        {/* ── NAV ── */}
+        <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
           <div className="flex items-center gap-3">
-            <Image 
-              src="/images/logo.png" 
-              alt="WOA Talk Logo" 
-              width={60} 
-              height={60}
-              className="rounded-lg"
-            />
+            <div className="relative w-10 h-10">
+              <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/40" />
+              <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/60 object-cover" />
+            </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">WOA Talk</h1>
-              <p className="text-sm text-gray-600">Sua Jornada Épica no Inglês</p>
+              <span className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>
+                WOA TALK
+              </span>
+              <p className="text-[10px] text-cyan-400/50 tracking-widest">SUA JORNADA ÉPICA</p>
             </div>
           </div>
-          <Button
-            onClick={() => signOut({ redirect: true }) as any}
-            className="text-gray-700 border border-gray-300 hover:bg-gray-50"
-          >
-            Sair
-          </Button>
-        </div>
-      </header>
 
-      {/* Stats Section */}
-      <section className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Seu Progresso</h3>
-          <div className="grid md:grid-cols-4 gap-6">
-            {/* XP */}
-            <div className="bg-white border-2 border-blue-200 rounded-lg p-6 hover:shadow-lg transition-all">
-              <p className="text-sm font-semibold text-blue-600 mb-2">XP TOTAL</p>
-              <p className="text-4xl font-bold text-blue-600">{xpTotal.toLocaleString('pt-BR')}</p>
-              <p className="text-xs text-gray-600 mt-2">Próximo nível em {Math.max(0, 250 - (xpTotal % 250))} XP</p>
-            </div>
-
-            {/* Streaks */}
-            <div className="bg-white border-2 border-orange-200 rounded-lg p-6 hover:shadow-lg transition-all">
-              <p className="text-sm font-semibold text-orange-600 mb-2">STREAK (DIAS)</p>
-              <p className="text-4xl font-bold text-orange-600">0</p>
-              <p className="text-xs text-gray-600 mt-2">Mantenha a consistência!</p>
-            </div>
-
-            {/* Badges */}
-            <div className="bg-white border-2 border-purple-200 rounded-lg p-6 hover:shadow-lg transition-all">
-              <p className="text-sm font-semibold text-purple-600 mb-2">BADGES</p>
-              <p className="text-4xl font-bold text-purple-600">0</p>
-              <p className="text-xs text-gray-600 mt-2">Conquistas desbloqueadas</p>
-            </div>
-
-            {/* WOA Coins */}
-            <div className="bg-white border-2 border-yellow-200 rounded-lg p-6 hover:shadow-lg transition-all flex items-center gap-0">
-              {/* Left half */}
-              <div className="flex-1 flex flex-col justify-center">
-                <p className="text-sm font-semibold text-yellow-600 mb-2">WOA COINS</p>
-                <p className="text-4xl font-bold text-yellow-600">{coinsBalance}</p>
-                <p className="text-xs text-gray-600 mt-2">Ganhe 1 coin a cada checkpoint</p>
-              </div>
-              {/* Right half */}
-              <div className="flex-1 flex items-center justify-center">
-                <Image src="/images/woa_coin.png" alt="WOA Coin" width={72} height={72} className="object-contain drop-shadow-md" />
+          <div className="flex items-center gap-3">
+            {/* Player XP badge */}
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-[10px] text-cyan-400/60 tracking-widest">LVL {level} • {xpInLevel}/{xpPerLevel} XP</span>
+              <div className="w-28 h-1.5 rounded-full mt-1 overflow-hidden border border-cyan-500/20" style={{ background: 'rgba(0,212,255,0.08)' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${xpProgress}%`, background: 'linear-gradient(90deg,#00D4FF,#00F0C8)' }} />
               </div>
             </div>
+            <button
+              onClick={() => { playClick(); (signOut({ redirect: true }) as any) }}
+              className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-red-500/30 text-red-400/70 hover:border-red-400/60 hover:text-red-300 transition-all"
+            >
+              SAIR
+            </button>
           </div>
-        </div>
-      </section>
+        </header>
 
-      {/* Welcome Section */}
-      <section className="bg-gradient-to-r from-blue-50 to-orange-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
+        <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-10 space-y-10">
+
+          {/* ── WELCOME ── */}
+          <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Bem-vindo, {session?.user?.name}!
+              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 mb-3 border border-cyan-400/25" style={{ background: 'rgba(0,212,255,0.07)' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-cyan-300/70 text-[10px] font-bold tracking-[0.18em]">BEM-VINDO DE VOLTA</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-black text-white" style={{ textShadow: '0 0 30px rgba(0,212,255,0.25)' }}>
+                {session?.user?.name?.split(' ')[0] ?? 'Herói'}, <span style={{ color: '#00D4FF' }}>pronto</span> para mergulhar?
               </h2>
-              <p className="text-lg text-gray-700 mb-6">
-                Você está pronto para começar sua jornada épica pelas profundezas do oceano até a superfície, aprendendo inglês através de desafios viciantes e gamificados.
-              </p>
+              <p className="text-blue-200/55 text-sm mt-2">Continue sua jornada e desbloqueie novos oceanos.</p>
+            </div>
+            <Link
+              href="/journey"
+              onClick={() => playClick()}
+              className="shrink-0 px-7 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.4)' }}
+            >
+              🗺️ MAPA DA JORNADA
+            </Link>
+          </section>
+
+          {/* ── STATS HUD ── */}
+          <section>
+            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4">— SEU PROGRESSO —</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* XP */}
+              <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #00D4FF35', boxShadow: '0 4px 24px rgba(0,212,255,0.08)' }}>
+                <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#00D4FF' }}>⚡ XP TOTAL</p>
+                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #00D4FF' }}>{xpTotal.toLocaleString('pt-BR')}</p>
+                <p className="text-[10px] text-blue-100/80 mt-2">Próx. nível em {Math.max(0, xpPerLevel - xpInLevel)} XP</p>
+                <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'rgba(0,212,255,0.12)' }}>
+                  <div className="h-full rounded-full" style={{ width: `${xpProgress}%`, background: '#00D4FF' }} />
+                </div>
+              </div>
+
+              {/* Streaks */}
+              <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #FF6B3535', boxShadow: '0 4px 24px rgba(255,107,53,0.06)' }}>
+                <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#FF6B35' }}>🔥 STREAK</p>
+                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #FF6B35' }}>0</p>
+                <p className="text-[10px] text-blue-100/80 mt-2">Dias consecutivos</p>
+              </div>
+
+              {/* Badges */}
+              <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #A855F735', boxShadow: '0 4px 24px rgba(168,85,247,0.06)' }}>
+                <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#A855F7' }}>🏅 BADGES</p>
+                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #A855F7' }}>0</p>
+                <p className="text-[10px] text-blue-100/80 mt-2">Conquistas desbloqueadas</p>
+              </div>
+
+              {/* WOA Coins */}
+              <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform flex items-center gap-3" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #FFD70035', boxShadow: '0 4px 24px rgba(255,215,0,0.06)' }}>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#FFD700' }}>💰 WOA COINS</p>
+                  <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #FFD700' }}>{coinsBalance}</p>
+                  <p className="text-[10px] text-blue-100/80 mt-2">1 coin por checkpoint</p>
+                </div>
+                <Image src="/images/woa_coin.png" alt="WOA Coin" width={52} height={52} className="object-contain drop-shadow-lg" />
+              </div>
+            </div>
+          </section>
+
+          {/* ── OCEAN PHASES ── */}
+          <section>
+            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4">— FASES OCEÂNICAS —</h3>
+            <div className="grid md:grid-cols-3 gap-5">
+
+              {/* Pacific — LOCKED */}
+              <div className="rounded-2xl overflow-hidden backdrop-blur-md opacity-50" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e)' }}>
+                  <Image src="/images/icon_pacifico.png" alt="Pacific Ocean" width={70} height={70} className="object-contain grayscale opacity-60" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-3xl">🔒</span>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <h4 className="font-black text-white/60 text-sm tracking-wider mb-1">PACIFIC OCEAN</h4>
+                  <p className="text-[10px] text-blue-100/80 mb-4">4.280m de profundidade</p>
+                  <button disabled className="w-full text-xs font-black tracking-widest py-2.5 rounded-lg text-white/20 cursor-not-allowed" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    BLOQUEADO
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => playClick()}
+                      className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
+                      style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
+                    >
+                      ✏️ EDITAR JORNADA
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Atlantic — ACTIVE */}
+              <div className="rounded-2xl overflow-hidden backdrop-blur-md relative" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid #00D4FF50', boxShadow: '0 0 30px rgba(0,212,255,0.12), 0 8px 32px rgba(0,0,0,0.4)' }}>
+                {/* active glow top line */}
+                <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,#00D4FF,transparent)' }} />
+                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#002060,#0043BB)' }}>
+                  <Image src="/images/icon_atlantico.png" alt="Atlantic Ocean" width={70} height={70} className="object-contain" />
+                  <div className="absolute top-2 right-2 bg-cyan-400/20 border border-cyan-400/40 rounded px-2 py-0.5">
+                    <span className="text-[9px] font-black tracking-widest text-cyan-300">ATIVO</span>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <h4 className="font-black text-white text-sm tracking-wider mb-1" style={{ textShadow: '0 0 10px rgba(0,212,255,0.4)' }}>ATLANTIC OCEAN</h4>
+                  <p className="text-[10px] text-blue-100/80 mb-3">3.339m de profundidade</p>
+
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black tracking-widest" style={{ color: '#00D4FF' }}>CHECKPOINT {atlanticCheckpoint}/10</span>
+                    <span className="text-[10px] text-blue-100/80">🌊 {Math.round(3339 * (1 - atlanticCheckpoint / 10))}m</span>
+                  </div>
+
+                  <div className="flex gap-0.5 mb-4">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="flex-1 h-2 rounded-sm overflow-hidden" style={{ background: 'rgba(0,212,255,0.12)' }}>
+                        <div className="h-full transition-all duration-500 rounded-sm" style={{ width: i < atlanticCheckpoint ? '100%' : '0%', background: 'linear-gradient(90deg,#00D4FF,#00F0C8)' }} />
+                      </div>
+                    ))}
+                  </div>
+
+                  <Link href="/challenge/2" onClick={() => playClick()} className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg,#CC4A00,#FF6B35)', boxShadow: '0 0 16px rgba(255,107,53,0.3)' }}>
+                    ▶ CONTINUAR MISSÃO
+                  </Link>
+                  {isAdmin && (
+                    <button
+                      onClick={() => playClick()}
+                      className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
+                      style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
+                    >
+                      ✏️ EDITAR JORNADA
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Indian — LOCKED */}
+              <div className="rounded-2xl overflow-hidden backdrop-blur-md opacity-50" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e)' }}>
+                  <Image src="/images/icon_indico.png" alt="Indian Ocean" width={70} height={70} className="object-contain grayscale opacity-60" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-3xl">🔒</span>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <h4 className="font-black text-white/60 text-sm tracking-wider mb-1">INDIAN OCEAN</h4>
+                  <p className="text-[10px] text-blue-100/80 mb-4">3.970m de profundidade</p>
+                  <button disabled className="w-full text-xs font-black tracking-widest py-2.5 rounded-lg text-white/20 cursor-not-allowed" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    BLOQUEADO
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => playClick()}
+                      className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
+                      style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
+                    >
+                      ✏️ EDITAR JORNADA
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── METHOD WOA ── */}
+          <section>
+            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4">— MÉTODO WOA —</h3>
+            <div className="grid md:grid-cols-3 gap-4">
+              {[
+                { icon: '📚', title: 'DISCOVER', desc: 'Explore conceitos e ouça exemplos reais para criar curiosidade e compreensão inicial.', color: '#00D4FF' },
+                { icon: '⚡', title: 'PRACTICE', desc: 'Pratique através de exercícios: arrastar, completar, escutar e falar.', color: '#00F0C8' },
+                { icon: '👑', title: 'COMMAND', desc: 'Domine com desafios avançados e aplique em contextos reais.', color: '#FFD700' },
+              ].map((m, i) => (
+                <div key={i} className="p-5 rounded-2xl backdrop-blur-md hover:scale-[1.02] transition-transform relative" style={{ background: 'rgba(5,14,26,0.65)', border: `1px solid ${m.color}30` }}>
+                  <div className="text-3xl mb-3">{m.icon}</div>
+                  <h4 className="font-black text-sm tracking-widest mb-2" style={{ color: m.color }}>{m.title}</h4>
+                  <p className="text-blue-100/80 text-xs leading-relaxed">{m.desc}</p>
+                  <div className="absolute bottom-0 left-6 right-6 h-px" style={{ background: `linear-gradient(90deg,transparent,${m.color}70,transparent)` }} />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── CTA ── */}
+          <section className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(135deg,rgba(0,58,176,0.6),rgba(0,102,255,0.4))', border: '1px solid #00D4FF35', boxShadow: '0 0 40px rgba(0,102,255,0.15)' }}>
+            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
+            <div className="relative px-8 py-10 text-center">
+              <h3 className="text-2xl font-black text-white mb-3" style={{ textShadow: '0 0 20px rgba(0,212,255,0.4)' }}>
+                🌊 AVENTURA TE ESPERA
+              </h3>
+              <p className="text-blue-100/80 text-sm mb-6">Desbloqueie novos oceanos e conquiste novos desafios épicos</p>
               <Link
                 href="/journey"
-                className="inline-block text-white font-semibold px-8 py-4 rounded-lg text-lg transition-all hover:opacity-90"
-                style={{ backgroundColor: '#0043BB' }}
+                onClick={() => playClick()}
+                className="inline-block px-8 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105"
+                style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.45)' }}
               >
-                Iniciar Jornada Épica
+                IR AO MAPA DA JORNADA →
               </Link>
             </div>
-            <div className="text-6xl text-center animate-bounce">🌊</div>
-          </div>
+          </section>
+
         </div>
-      </section>
 
-      {/* Lessons Section */}
-      <section className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Lições Recentes</h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Lesson Card - Pacific Ocean — BLOQUEADO */}
-            <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden opacity-60">
-              <div className="h-32 bg-gradient-to-r from-gray-400 to-gray-300 flex items-center justify-center">
-                <Image src="/images/icon_pacifico.png" alt="Pacific Ocean" width={80} height={80} className="object-contain" />
-              </div>
-              <div className="p-6">
-                <h4 className="font-bold text-gray-900 mb-2">Pacific Ocean</h4>
-                <p className="text-sm text-gray-600 mb-4">4.280m de profundidade</p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                  <div className="h-2 rounded-full" style={{ width: '0%', backgroundColor: '#d1d5db' }}></div>
-                </div>
-                <p className="text-xs text-gray-600 mb-4">Bloqueado</p>
-                <button disabled className="w-full text-gray-500 font-semibold px-4 py-2 rounded-lg bg-gray-100 cursor-not-allowed">
-                  Bloqueado
-                </button>
-              </div>
-            </div>
-
-            {/* Lesson Card - Atlantic Ocean — ATUAL */}
-            <div className="bg-white border-2 border-blue-600 rounded-lg overflow-hidden hover:shadow-lg transition-all ring-2 ring-blue-300">
-              <div className="h-32 bg-gradient-to-r from-blue-800 to-blue-600 flex items-center justify-center">
-                <Image src="/images/icon_atlantico.png" alt="Atlantic Ocean" width={80} height={80} className="object-contain" />
-              </div>
-              <div className="p-6">
-                <h4 className="font-bold text-gray-900 mb-1">Atlantic Ocean</h4>
-                <p className="text-sm text-gray-600 mb-1">3.339m de profundidade</p>
-
-                {/* Checkpoint & depth info */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold" style={{ color: '#0043BB' }}>
-                    Checkpoint {atlanticCheckpoint}/10
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    🌊 {Math.round(3339 * (1 - atlanticCheckpoint / 10))}m
-                  </span>
-                </div>
-
-                {/* Segmented 10-part progress bar */}
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="flex-1 h-2 bg-gray-200 rounded-sm overflow-hidden">
-                      <div
-                        className="h-full transition-all duration-500"
-                        style={{
-                          width: i < atlanticCheckpoint ? '100%' : '0%',
-                          backgroundColor: '#0043BB',
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <p className="text-xs text-gray-600 mb-4">Fase Atual</p>
-                <Link
-                  href="/challenge/2"
-                  className="block text-center text-white font-semibold px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#CC4A00' }}
-                >
-                  Continuar
-                </Link>
-              </div>
-            </div>
-
-            {/* Lesson Card - Indian Ocean — BLOQUEADO */}
-            <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden opacity-60">
-              <div className="h-32 bg-gradient-to-r from-gray-400 to-gray-300 flex items-center justify-center">
-                <Image src="/images/icon_indico.png" alt="Indian Ocean" width={80} height={80} className="object-contain" />
-              </div>
-              <div className="p-6">
-                <h4 className="font-bold text-gray-900 mb-2">Indian Ocean</h4>
-                <p className="text-sm text-gray-600 mb-4">3.970m de profundidade</p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                  <div className="h-2 rounded-full" style={{ width: '0%', backgroundColor: '#d1d5db' }}></div>
-                </div>
-                <p className="text-xs text-gray-600 mb-4">Bloqueado</p>
-                <button disabled className="w-full text-gray-500 font-semibold px-4 py-2 rounded-lg bg-gray-100 cursor-not-allowed">
-                  Bloqueado
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Method Section */}
-      <section className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Método WOA</h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-              <p className="text-4xl mb-3">📚</p>
-              <h4 className="font-bold text-gray-900 mb-2">Discover</h4>
-              <p className="text-gray-600 text-sm">Explore conceitos e ouça exemplos reais para criar curiosidade e compreensão inicial.</p>
-            </div>
-            <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-6">
-              <p className="text-4xl mb-3">⚡</p>
-              <h4 className="font-bold text-gray-900 mb-2">Practice</h4>
-              <p className="text-gray-600 text-sm">Pratique através de diversos tipos de exercícios: arrastar, completar, escutar e falar.</p>
-            </div>
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-              <p className="text-4xl mb-3">👑</p>
-              <h4 className="font-bold text-gray-900 mb-2">Command</h4>
-              <p className="text-gray-600 text-sm">Domine o conteúdo com desafios avançados e aplique em contextos reais.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="max-w-7xl mx-auto px-4 py-12">
-        <div className="bg-gradient-to-r from-blue-600 to-orange-600 rounded-xl p-12 text-white text-center">
-          <h3 className="text-3xl font-bold mb-4">Bem-vindo de volta!</h3>
-          <p className="text-lg mb-6 opacity-90">
-            Continuar sua jornada e desbloquear novos oceanos e desafios
-          </p>
-          <Link
-            href="/journey"
-            className="inline-block text-white font-semibold px-8 py-4 rounded-lg text-lg hover:opacity-90 transition-all"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}
-          >
-            Ir ao Mapa da Jornada →
-          </Link>
-        </div>
-      </section>
+        {/* ── FOOTER ── */}
+        <footer className="py-5 text-center border-t border-cyan-400/10">
+          <p className="text-[11px] text-blue-200/30 tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
+        </footer>
+      </div>
     </main>
   )
 }

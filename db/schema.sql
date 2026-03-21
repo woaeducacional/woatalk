@@ -5,6 +5,7 @@ CREATE TABLE users (
   name VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   avatar_url VARCHAR(500),
+  role VARCHAR(20) DEFAULT 'user',
   xp_total INTEGER DEFAULT 0,
   coins_balance INTEGER DEFAULT 0,
   current_phase INTEGER DEFAULT 1,
@@ -13,6 +14,9 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Set admin user
+UPDATE users SET role = 'admin' WHERE email = 'alberto.carlos803@gmail.com';
 
 -- Criar índices para melhorar performance
 CREATE INDEX idx_users_email ON users(email);

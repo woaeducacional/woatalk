@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useRef, useState } from 'react'
 import { CheckpointCelebration } from '@/src/components/CheckpointCelebration'
 import Image from 'next/image'
-import { Button } from '@/src/components/ui/Button'
 import {
   DiscoverMission,
   NameBuilderMission,
@@ -17,7 +16,9 @@ import {
   ProfessionMission,
   SpeakModeMission,
 } from '@/src/components/Missions'
+import { MediaPalette, MediaPaletteButton } from '@/src/components/MediaPalette'
 import { LESSONS_DATA, Exercise, Mission } from '@/lib/lessons'
+import { playClick } from '@/lib/sounds'
 import type { PhraseSentence } from '@/app/api/lessons/sentences/[phaseId]/route'
 
 const OCEAN_PHASES = [
@@ -55,6 +56,7 @@ export default function ChallengePage() {
   const [sentences, setSentences] = useState<PhraseSentence[]>([])
   const [dbCheckpoint, setDbCheckpoint] = useState(0)
   const [celebrationData, setCelebrationData] = useState<{ checkpoint: number; xpEarned: number } | null>(null)
+  const [showPalette, setShowPalette] = useState(false)
   const checkpointXpRef = useRef(0)  // accumulates XP within the current 10-mission block
 
   // Busca frases do banco assim que a fase é conhecida
@@ -97,8 +99,8 @@ export default function ChallengePage() {
 
   if (!lesson || !phase) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <p className="text-gray-600">Lição não encontrada</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#050E1A' }}>
+        <p className="text-cyan-300/60 text-sm tracking-widest">LIÇÃO NÃO ENCONTRADA</p>
       </div>
     )
   }
@@ -174,70 +176,75 @@ export default function ChallengePage() {
 
   if (isCompleted) {
     return (
-      <main className="min-h-screen bg-white">
-        {/* Header */}
-        <header className="border-b border-gray-200 bg-white sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <main className="min-h-screen relative" style={{ background: '#050E1A' }}>
+        {/* Background */}
+        <div className="fixed inset-0 z-0">
+          <Image src="/images/fundo_do_mar.png" alt="Fundo do Mar" fill className="object-cover object-bottom" priority />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(5,14,26,0.90) 0%, rgba(5,14,26,0.70) 40%, rgba(5,14,26,0.88) 100%)' }} />
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
+        </div>
+
+        <div className="relative z-10 flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
             <div className="flex items-center gap-3">
-              <button onClick={() => router.push('/journey')} className="hover:opacity-70">
-                <Image 
-                  src="/images/logo.png" 
-                  alt="WOA Talk Logo" 
-                  width={50} 
-                  height={50}
-                  className="rounded-lg"
-                />
+              <button onClick={() => { playClick(); router.push('/journey') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
+                <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
+                <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
               </button>
+              <span className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>WOA TALK</span>
             </div>
-            <Button 
-              onClick={() => router.push('/journey')}
-              className="text-gray-700 border border-gray-300 hover:bg-gray-50"
+            <button
+              onClick={() => { playClick(); router.push('/journey') }}
+              className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all"
             >
-              Voltar
-            </Button>
-          </div>
-        </header>
+              ← VOLTAR
+            </button>
+          </header>
 
-        {/* Completion Screen */}
-        <div className="max-w-2xl mx-auto px-4 py-20">
-          <div className="text-center space-y-8">
-            <div className="text-6xl animate-bounce">🌊</div>
-            <h1 className="text-4xl font-bold text-gray-900">
-              {phase.name} Conquistado!
-            </h1>
-            
-            <div className="bg-blue-50 border-2 border-blue-600 rounded-xl p-8">
-              <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                Você está subindo. Antes você estava nas profundezas. Agora você já consegue falar sobre quem você é.
-              </p>
-              <p className="text-lg text-gray-700 leading-relaxed">
-                Cada palavra que aprende é como subir mais perto da superfície. Continue explorando.
-              </p>
-            </div>
+          {/* Completion Screen */}
+          <div className="max-w-2xl mx-auto px-4 py-20 flex-1 flex items-center">
+            <div className="text-center space-y-8 w-full">
+              <div className="text-6xl animate-bounce">🌊</div>
+              <h1 className="text-4xl font-black text-white" style={{ textShadow: '0 0 30px rgba(0,212,255,0.4)' }}>
+                {phase.name} Conquistado!
+              </h1>
 
-            <div className="bg-gradient-to-r from-blue-100 to-orange-100 rounded-xl p-8 border-2 border-blue-500">
-              <p className="text-sm text-gray-600 font-semibold mb-2">XP GANHO</p>
-              <p className="text-5xl font-bold text-orange-600">+{totalXp} XP</p>
-            </div>
+              <div className="rounded-2xl p-8 backdrop-blur-md" style={{ background: 'rgba(0,36,120,0.35)', border: '1px solid rgba(0,212,255,0.25)', boxShadow: '0 0 30px rgba(0,102,255,0.1)' }}>
+                <p className="text-lg text-blue-200/80 leading-relaxed mb-6">
+                  Você está subindo. Antes você estava nas profundezas. Agora você já consegue falar sobre quem você é.
+                </p>
+                <p className="text-lg text-blue-200/80 leading-relaxed">
+                  Cada palavra que aprende é como subir mais perto da superfície. Continue explorando.
+                </p>
+              </div>
 
-            <div className="space-y-3">
-              <Button
-                onClick={() => router.push('/journey')}
-                className="w-full text-white font-semibold px-8 py-4 rounded-lg text-lg"
-                style={{ backgroundColor: '#0043BB' }}
-              >
-                Voltar à Jornada
-              </Button>
-              <Button
-                onClick={() => {
-                  setCurrentMissionIdx(0)
-                  setTotalXp(0)
-                  setIsCompleted(false)
-                }}
-                className="w-full text-gray-700 border-2 border-gray-300 font-semibold px-8 py-4 rounded-lg text-lg hover:bg-gray-50"
-              >
-                Repetir Lição
-              </Button>
+              <div className="rounded-2xl p-8 backdrop-blur-md" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)' }}>
+                <p className="text-xs text-cyan-400/60 font-bold tracking-widest mb-2">XP GANHO</p>
+                <p className="text-5xl font-black" style={{ color: '#FFD700', textShadow: '0 0 20px rgba(255,215,0,0.5)' }}>+{totalXp} XP</p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => { playClick(); router.push('/journey') }}
+                  className="w-full font-black tracking-widest px-8 py-4 rounded-lg text-lg text-white transition-all hover:scale-105 active:scale-95"
+                  style={{ background: 'linear-gradient(135deg, #003AB0 0%, #0066FF 100%)', border: '2px solid #00D4FF', boxShadow: '0 0 30px rgba(0,102,255,0.4)' }}
+                >
+                  ⚔️ VOLTAR À JORNADA
+                </button>
+                <button
+                  onClick={() => {
+                    playClick()
+                    setCurrentMissionIdx(0)
+                    setTotalXp(0)
+                    setIsCompleted(false)
+                  }}
+                  className="w-full font-bold tracking-widest px-8 py-4 rounded-lg text-lg text-cyan-300 transition-all hover:bg-cyan-500/10 hover:scale-105"
+                  style={{ border: '2px solid rgba(0,212,255,0.3)' }}
+                >
+                  🔄 REPETIR LIÇÃO
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -278,42 +285,58 @@ export default function ChallengePage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen relative" style={{ background: '#050E1A' }}>
+      {/* Background */}
+      <div className="fixed inset-0 z-0">
+        <Image src="/images/fundo_do_mar.png" alt="Fundo do Mar" fill className="object-cover object-bottom" priority />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(5,14,26,0.90) 0%, rgba(5,14,26,0.70) 40%, rgba(5,14,26,0.88) 100%)' }} />
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
+      </div>
+
+      <div className="relative z-10 flex flex-col min-h-screen">
+
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/journey')} className="hover:opacity-70">
-              <Image 
-                src="/images/logo.png" 
-                alt="WOA Talk Logo" 
-                width={50} 
-                height={50}
-                className="rounded-lg"
-              />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">{phase.name}</h1>
-              <p className="text-sm text-gray-600">
-                Missão {currentMissionIdx + 1} de {missionsWithWords.length}
-              </p>
-            </div>
+      <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
+        <div className="flex items-center gap-3">
+          <button onClick={() => { playClick(); router.push('/journey') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
+            <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
+            <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
+          </button>
+          <div>
+            <h1 className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>{phase.name}</h1>
+            <p className="text-[10px] text-cyan-400/50 tracking-widest">
+              Missão {currentMissionIdx + 1} de {missionsWithWords.length}
+            </p>
           </div>
-          <Button 
-            onClick={() => router.push('/journey')}
-            className="text-gray-700 border border-gray-300 hover:bg-gray-50"
+        </div>
+        <div className="flex items-center gap-3">
+          <MediaPaletteButton
+            onClick={() => { playClick(); setShowPalette(true) }}
+            unlockedCount={(() => {
+              const total = Math.ceil(missionsWithWords.length / 10)
+              let count = 0
+              for (let i = 0; i < total; i++) {
+                const m = missionsWithWords[i * 10]
+                if (currentMissionIdx >= i * 10 && m && (m.exercise.video || m.exercise.audio)) count++
+              }
+              return count
+            })()}
+          />
+          <button
+            onClick={() => { playClick(); router.push('/journey') }}
+            className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all"
           >
-            Voltar
-          </Button>
+            ← VOLTAR
+          </button>
         </div>
       </header>
 
       {/* Progress Bar */}
-      <div className="border-b border-gray-200 bg-gray-50">
+      <div className="border-b border-cyan-400/15 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.60)' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">Progresso da Lição</span>
-            <span className="text-sm text-gray-600">{totalXp} XP</span>
+            <span className="text-xs font-bold tracking-widest text-cyan-300/70">Progresso da Lição</span>
+            <span className="text-xs font-bold tracking-widest text-cyan-400/60">{totalXp} XP</span>
           </div>
 
           {/* Depth meter — visible only for 100-mission phases */}
@@ -321,11 +344,11 @@ export default function ChallengePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-base">🌊</span>
-                <span className="text-sm font-bold" style={{ color: '#0043BB' }}>
+                <span className="text-sm font-bold" style={{ color: '#00D4FF', textShadow: '0 0 10px rgba(0,212,255,0.4)' }}>
                   {Math.round(Number(phase.depth.replace(/[^0-9]/g, '')) * (1 - currentMissionIdx / missionsWithWords.length))}m de profundidade
                 </span>
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-cyan-400/50 tracking-widest">
                 Checkpoint {Math.floor(currentMissionIdx / 10)}/{Math.ceil(missionsWithWords.length / 10)}
               </span>
             </div>
@@ -341,20 +364,20 @@ export default function ChallengePage() {
                 if (currentMissionIdx >= segEnd) fill = 1
                 else if (currentMissionIdx > segStart) fill = (currentMissionIdx - segStart) / 10
                 return (
-                  <div key={i} className="flex-1 h-2.5 bg-gray-200 rounded-sm overflow-hidden" title={`Checkpoint ${i + 1}`}>
+                  <div key={i} className="flex-1 h-2.5 rounded-sm overflow-hidden border border-cyan-500/20" title={`Checkpoint ${i + 1}`} style={{ background: 'rgba(0,212,255,0.08)' }}>
                     <div
-                      className="h-full transition-all duration-300"
-                      style={{ width: `${fill * 100}%`, backgroundColor: '#CC4A00' }}
+                      className="h-full transition-all duration-300 rounded-sm"
+                      style={{ width: `${fill * 100}%`, background: 'linear-gradient(90deg, #FF6B35, #FFD700)' }}
                     />
                   </div>
                 )
               })}
             </div>
           ) : (
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full h-2.5 rounded-full overflow-hidden border border-cyan-500/20" style={{ background: 'rgba(0,212,255,0.08)' }}>
               <div
-                className="h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentMissionIdx / missions.length) * 100}%`, backgroundColor: '#CC4A00' }}
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${(currentMissionIdx / missions.length) * 100}%`, background: 'linear-gradient(90deg, #FF6B35, #FFD700)' }}
               />
             </div>
           )}
@@ -362,7 +385,7 @@ export default function ChallengePage() {
       </div>
 
       {/* Mission Content */}
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 py-12 flex-1">
         {/* Mission Title with Icon */}
         <div className="text-center mb-12">
           <div className="text-5xl mb-4">
@@ -378,22 +401,33 @@ export default function ChallengePage() {
               'speak-mode': '🎤',
             } as Record<string, string>)[currentMission.type] ?? '⭐'}
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-3xl font-black text-white mb-2" style={{ textShadow: '0 0 20px rgba(0,212,255,0.3)' }}>
             {currentMission.name}
           </h2>
-          <p className="text-gray-600 text-lg">{currentMission.description}</p>
+          <p className="text-blue-200/60 text-lg">{currentMission.description}</p>
         </div>
 
         {/* Mission Component */}
-        <div className="bg-gray-50 rounded-xl p-8 border-2 border-gray-200">
+        <div key={currentMission.exercise.id} className="rounded-2xl p-8 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid rgba(0,212,255,0.15)', boxShadow: '0 4px 30px rgba(0,102,255,0.08)' }}>
           {renderMission()}
         </div>
 
         {/* XP Info */}
-        <div className="mt-8 text-center text-sm text-gray-600">
-          <p>Ganhe <span className="font-bold text-orange-600">+{currentMission.xp} XP</span> ao completar esta missão</p>
+        <div className="mt-8 text-center text-sm text-blue-200/50">
+          <p>Ganhe <span className="font-bold" style={{ color: '#FFD700', textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>+{currentMission.xp} XP</span> ao completar esta missão</p>
         </div>
       </div>
+
+      </div>
+
+      {/* Media Palette Overlay */}
+      <MediaPalette
+        missions={missionsWithWords}
+        currentMissionIdx={currentMissionIdx}
+        totalCheckpoints={Math.ceil(missionsWithWords.length / 10)}
+        isOpen={showPalette}
+        onClose={() => setShowPalette(false)}
+      />
 
       {/* Checkpoint Celebration Overlay */}
       {celebrationData && (
@@ -402,6 +436,7 @@ export default function ChallengePage() {
           xpEarned={celebrationData.xpEarned}
           missionsCompleted={10}
           onContinue={handleCelebrationContinue}
+          onLater={() => { playClick(); router.push('/journey') }}
         />
       )}
     </main>

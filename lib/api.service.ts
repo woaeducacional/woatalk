@@ -10,6 +10,7 @@ export interface User {
   name: string
   password_hash: string
   avatar_url: string | null
+  role: string
   xp_total: number
   coins_balance: number
   current_phase: number
@@ -105,6 +106,7 @@ class ApiService {
       name,
       password_hash: passwordHash,
       avatar_url: null,
+      role: 'user',
       xp_total: 0,
       coins_balance: 0,
       current_phase: 1,

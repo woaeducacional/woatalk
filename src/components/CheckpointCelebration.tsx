@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { playClick, playPoints } from '@/lib/sounds'
 
 interface CheckpointCelebrationProps {
   checkpoint: number        // 1-10
   xpEarned: number
   missionsCompleted: number // 10
   onContinue: () => void
+  onLater?: () => void
 }
 
 export function CheckpointCelebration({
@@ -15,6 +17,7 @@ export function CheckpointCelebration({
   xpEarned,
   missionsCompleted,
   onContinue,
+  onLater,
 }: CheckpointCelebrationProps) {
   const [show, setShow]             = useState(false)
   const [xpDisplay, setXpDisplay]   = useState(0)
@@ -22,9 +25,9 @@ export function CheckpointCelebration({
   const [particles, setParticles]   = useState<{ id: number; x: number; y: number; color: string; angle: number }[]>([])
   const rafRef                      = useRef<number | null>(null)
 
-  // Fade in on mount
+  // Fade in on mount + play points sound
   useEffect(() => {
-    const t = setTimeout(() => setShow(true), 30)
+    const t = setTimeout(() => { setShow(true); playPoints() }, 30)
     return () => clearTimeout(t)
   }, [])
 
@@ -180,9 +183,11 @@ export function CheckpointCelebration({
               : 'Quase lá! Um último mergulho e você chega ao fundo!'}
           </p>
 
+          <p className="text-blue-200 text-sm font-semibold">Deseja continuar ou prefere voltar mais tarde?</p>
+
           {/* CTA */}
           <button
-            onClick={onContinue}
+            onClick={() => { playClick(); onContinue() }}
             className="w-full py-4 rounded-2xl font-black text-white text-lg tracking-wide transition-all active:scale-95 hover:opacity-90"
             style={{
               background: 'linear-gradient(90deg, #CC4A00, #e85d00)',
@@ -192,6 +197,19 @@ export function CheckpointCelebration({
           >
             Continuar →
           </button>
+
+          {onLater && (
+            <button
+              onClick={() => { playClick(); onLater() }}
+              className="w-full py-3 rounded-2xl font-bold text-blue-200 text-base tracking-wide transition-all active:scale-95 hover:bg-white/10"
+              style={{
+                border: '2px solid rgba(255,255,255,0.2)',
+                animation: show ? 'popIn 0.4s ease 1.4s both' : 'none',
+              }}
+            >
+              Mais tarde
+            </button>
+          )}
         </div>
       </div>
     </div>

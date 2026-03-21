@@ -11,10 +11,19 @@ interface MissionProps {
   onComplete: (xp: number) => void
 }
 
+function getYouTubeId(url: string): string | null {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{11})/)
+  return match ? match[1] : null
+}
+
 export function DiscoverMission({ exercise, onComplete }: MissionProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasListened, setHasListened] = useState(false)
+  const [hasWatched, setHasWatched] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+
+  const isVideo = !!exercise.video
+  const videoId = exercise.video ? getYouTubeId(exercise.video) : null
 
   const handlePlay = () => {
     if (audioRef.current) {
@@ -29,11 +38,57 @@ export function DiscoverMission({ exercise, onComplete }: MissionProps) {
     setHasListened(true)
   }
 
+  if (isVideo && videoId) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center space-y-4">
+          <h3 className="text-2xl font-bold text-white">Assista e Descubra</h3>
+          <p className="text-white/70">Não se preocupe em entender tudo. Apenas descubra.</p>
+        </div>
+
+        <div className="flex justify-center">
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{
+              border: '2px solid #0043BB',
+              width: '100%',
+              maxWidth: '560px',
+              aspectRatio: '16/9',
+            }}
+          >
+            <iframe
+              width="100%"
+              height="100%"
+              src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`}
+              title="Missão - Vídeo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ border: 'none' }}
+              onLoad={() => setHasWatched(true)}
+            />
+          </div>
+        </div>
+
+        {hasWatched && (
+          <div className="flex justify-center gap-4 pt-2">
+            <button
+              onClick={() => onComplete(exercise.xp)}
+              className="text-white font-bold tracking-wide px-6 py-3 rounded-lg transition-all hover:scale-105 active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #CC4A00, #FF6B35)', border: '2px solid #FF6B35', boxShadow: '0 0 15px rgba(255,107,53,0.3)', cursor: 'pointer' }}
+            >
+              Avançar →
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-center space-y-4">
-        <h3 className="text-2xl font-bold text-gray-900">Escute e Descubra</h3>
-        <p className="text-gray-600">Não se preocupe em entender tudo. Apenas descubra.</p>
+        <h3 className="text-2xl font-bold text-white">Escute e Descubra</h3>
+        <p className="text-white/70">Não se preocupe em entender tudo. Apenas descubra.</p>
       </div>
 
       <audio ref={audioRef} src={exercise.audio} onEnded={handleEnded} />
@@ -84,37 +139,79 @@ export function DiscoverMission({ exercise, onComplete }: MissionProps) {
 
 export function NameBuilderMission({ exercise, onComplete }: MissionProps) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [showTranslation, setShowTranslation] = useState(false)
 
   const handleSelect = (option: string) => {
+    if (selected) return
     setSelected(option)
-    if (option === exercise.correctAnswer) {
-      setTimeout(() => onComplete(exercise.xp), 500)
-    }
+    setTimeout(() => onComplete(exercise.xp), 500)
   }
+
+  const displayQuestion = showTranslation && exercise.questionPt ? exercise.questionPt : exercise.question
 
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-2xl font-bold text-gray-900">{exercise.question}</h3>
+        <div className="flex items-center justify-center gap-3">
+          <h3
+            className="text-2xl font-bold text-white transition-opacity duration-300"
+            key={showTranslation ? 'pt' : 'en'}
+            style={{ animation: 'fadeIn 0.3s ease' }}
+          >
+            {displayQuestion}
+          </h3>
+          {exercise.questionPt && (
+            <button
+              onClick={() => setShowTranslation(prev => !prev)}
+              className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+              style={{
+                backgroundColor: showTranslation ? 'rgba(255,107,53,0.3)' : 'rgba(255,255,255,0.15)',
+                border: showTranslation ? '2px solid #FF6B35' : '2px solid rgba(255,255,255,0.3)',
+                cursor: 'pointer',
+              }}
+              title={showTranslation ? 'Ver em inglês' : 'Traduzir para português'}
+            >
+              <span className="text-sm">?</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        {exercise.options?.map((option) => (
-          <button
-            key={option}
-            onClick={() => handleSelect(option)}
-            className={`p-4 rounded-lg font-semibold text-lg transition-all border-2 ${
-              selected === option
-                ? option === exercise.correctAnswer
-                  ? 'bg-green-100 border-green-500 text-green-900'
-                  : 'bg-red-100 border-red-500 text-red-900'
-                : 'bg-gray-50 border-gray-300 text-gray-900 hover:border-blue-500'
-            }`}
-          >
-            {option}
-          </button>
-        ))}
+        {exercise.options?.map((option) => {
+          const isSelected = selected === option
+          const isCorrect = !exercise.correctAnswer || option === exercise.correctAnswer
+          return (
+            <button
+              key={option}
+              onClick={() => handleSelect(option)}
+              className="p-4 rounded-lg font-bold text-lg transition-all border-2 hover:scale-[1.02] hover:brightness-110"
+              style={{
+                backgroundColor: isSelected
+                  ? isCorrect ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.2)'
+                  : 'rgba(255,255,255,0.08)',
+                borderColor: isSelected
+                  ? isCorrect ? '#22c55e' : '#ef4444'
+                  : 'rgba(255,255,255,0.2)',
+                color: isSelected
+                  ? isCorrect ? '#86efac' : '#fca5a5'
+                  : 'white',
+                cursor: 'pointer',
+                opacity: selected && !isSelected ? 0.4 : 1,
+              }}
+            >
+              {option}
+            </button>
+          )
+        })}
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -163,20 +260,20 @@ export function OrderSentenceMission({ exercise, onComplete }: MissionProps) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h3 className="text-2xl font-bold text-gray-900">Organize as Palavras</h3>
-        <p className="text-gray-600 mt-2">Clique nas palavras para montar a sentença correta.</p>
+        <h3 className="text-2xl font-bold text-white">Organize as Palavras</h3>
+        <p className="text-white/70 mt-2">Clique nas palavras para montar a sentença correta.</p>
       </div>
 
       {/* Palavras disponíveis */}
-      <div className="p-4 bg-gray-100 rounded-lg min-h-16 border-2 border-dashed border-gray-300">
-        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Palavras disponíveis</p>
+      <div className="p-4 rounded-lg min-h-16 border-2 border-dashed" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)' }}>
+        <p className="text-xs font-semibold text-white/50 uppercase mb-3">Palavras disponíveis</p>
         <div className="flex flex-wrap gap-2 min-h-8">
           {available.map((word, idx) => (
             <button
               key={`avail-${idx}`}
               onClick={() => moveToArranged(word, idx)}
-              className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg font-semibold text-gray-900 hover:border-blue-500 hover:bg-blue-50 transition-all"
-              style={{ cursor: 'pointer' }}
+              className="px-4 py-2 rounded-lg font-semibold text-white transition-all hover:scale-105 border-2"
+              style={{ background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.2)', cursor: 'pointer' }}
             >
               {word}
             </button>
@@ -186,29 +283,25 @@ export function OrderSentenceMission({ exercise, onComplete }: MissionProps) {
 
       {/* Área da sentença */}
       <div
-        className={`p-4 rounded-lg min-h-16 border-2 transition-all ${
-          result === 'correct'
-            ? 'border-green-500 bg-green-50'
-            : result === 'wrong'
-            ? 'border-red-400 bg-red-50'
-            : 'border-blue-300 bg-blue-50'
-        }`}
+        className="p-4 rounded-lg min-h-16 border-2 transition-all"
+        style={{
+          background: result === 'correct' ? 'rgba(22,163,74,0.15)' : result === 'wrong' ? 'rgba(220,38,38,0.15)' : 'rgba(0,67,187,0.15)',
+          borderColor: result === 'correct' ? '#22c55e' : result === 'wrong' ? '#ef4444' : '#0043BB',
+        }}
       >
-        <p className={`text-xs font-semibold uppercase mb-3 ${
-          result === 'correct' ? 'text-green-600' : result === 'wrong' ? 'text-red-500' : 'text-blue-600'
-        }`}>
+        <p className="text-xs font-semibold uppercase mb-3" style={{ color: result === 'correct' ? '#86efac' : result === 'wrong' ? '#fca5a5' : '#93c5fd' }}>
           {result === 'correct' ? '✓ Correto!' : result === 'wrong' ? '✗ Tente novamente' : 'Sua sentença'}
         </p>
         <div className="flex flex-wrap gap-2 min-h-8">
           {arranged.length === 0 && (
-            <p className="text-gray-400 italic text-sm">Clique nas palavras acima para montar a frase...</p>
+            <p className="text-white/40 italic text-sm">Clique nas palavras acima para montar a frase...</p>
           )}
           {arranged.map((word, idx) => (
             <button
               key={`arr-${idx}`}
               onClick={() => moveToAvailable(word, idx)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-all"
-              style={{ cursor: 'pointer' }}
+              className="px-4 py-2 text-white rounded-lg font-semibold transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #CC4A00, #FF6B35)', cursor: 'pointer' }}
             >
               {word}
             </button>
@@ -220,17 +313,17 @@ export function OrderSentenceMission({ exercise, onComplete }: MissionProps) {
       <div className="flex gap-3">
         <button
           onClick={handleReset}
-          className="flex-1 font-semibold px-4 py-3 rounded-lg border-2 border-gray-300 text-gray-600 hover:bg-gray-50 transition-all"
-          style={{ cursor: 'pointer' }}
+          className="flex-1 font-semibold px-4 py-3 rounded-lg border-2 text-white/70 transition-all hover:bg-white/10"
+          style={{ borderColor: 'rgba(255,255,255,0.2)', cursor: 'pointer' }}
         >
           Reiniciar
         </button>
         <button
           onClick={handleCheck}
           disabled={arranged.length === 0}
-          className="flex-2 text-white font-semibold px-6 py-3 rounded-lg transition-all disabled:opacity-40"
+          className="text-white font-semibold px-6 py-3 rounded-lg transition-all disabled:opacity-40"
           style={{
-            backgroundColor: '#CC4A00',
+            background: 'linear-gradient(135deg, #CC4A00, #FF6B35)',
             cursor: arranged.length === 0 ? 'not-allowed' : 'pointer',
             flex: 2,
           }}
@@ -266,7 +359,7 @@ export function ListenSelectMission({ exercise, onComplete }: MissionProps) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-4">
-        <h3 className="text-2xl font-bold text-gray-900">Escute e Escolha</h3>
+        <h3 className="text-2xl font-bold text-white">Escute e Escolha</h3>
       </div>
 
       <audio ref={audioRef} src={exercise.audio} onEnded={() => { setIsPlaying(false); setHasListened(true) }} />
@@ -292,14 +385,20 @@ export function ListenSelectMission({ exercise, onComplete }: MissionProps) {
             <button
               key={idx}
               onClick={() => handleSelect(option)}
-              className={`p-4 rounded-lg font-semibold text-lg transition-all border-2 text-left ${
-                selected === option
-                  ? option === exercise.correctAnswer
-                    ? 'bg-green-100 border-green-500 text-green-900'
-                    : 'bg-red-100 border-red-500 text-red-900'
-                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:border-blue-500'
-              }`}
-              style={{ cursor: 'pointer' }}
+              className="p-4 rounded-lg font-semibold text-lg transition-all border-2 text-left"
+              style={{
+                backgroundColor: selected === option
+                  ? option === exercise.correctAnswer ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.2)'
+                  : 'rgba(255,255,255,0.08)',
+                borderColor: selected === option
+                  ? option === exercise.correctAnswer ? '#22c55e' : '#ef4444'
+                  : 'rgba(255,255,255,0.2)',
+                color: selected === option
+                  ? option === exercise.correctAnswer ? '#86efac' : '#fca5a5'
+                  : 'white',
+                cursor: 'pointer',
+                opacity: selected && selected !== option ? 0.4 : 1,
+              }}
             >
               {String.fromCharCode(65 + idx)}) {option}
             </button>
@@ -308,7 +407,7 @@ export function ListenSelectMission({ exercise, onComplete }: MissionProps) {
       )}
 
       {!hasListened && (
-        <p className="text-center text-sm text-gray-500">Escute o áudio para liberar as opções</p>
+        <p className="text-center text-sm text-white/50">Escute o áudio para liberar as opções</p>
       )}
     </div>
   )
@@ -338,17 +437,19 @@ function FillBlankMission({ exercise, onComplete, label }: MissionProps & { labe
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-2xl font-bold text-gray-900">{exercise.question}</h3>
-        <p className="text-sm text-gray-500">{label}</p>
+        <h3 className="text-2xl font-bold text-white">{exercise.question}</h3>
+        <p className="text-sm text-white/50">{label}</p>
       </div>
 
       <div
-        className={`flex items-center border-2 rounded-lg overflow-hidden transition-colors ${
-          wrong ? 'border-red-400 bg-red-50' : 'border-gray-300 focus-within:border-blue-500'
-        }`}
+        className="flex items-center border-2 rounded-lg overflow-hidden transition-colors"
+        style={{
+          borderColor: wrong ? '#ef4444' : 'rgba(255,255,255,0.2)',
+          background: wrong ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.05)',
+        }}
       >
         {prefix && (
-          <span className="px-4 py-4 font-semibold text-gray-500 bg-gray-100 border-r border-gray-200 whitespace-nowrap select-none">
+          <span className="px-4 py-4 font-semibold text-white/60 whitespace-nowrap select-none" style={{ background: 'rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
             {prefix}
           </span>
         )}
@@ -358,13 +459,13 @@ function FillBlankMission({ exercise, onComplete, label }: MissionProps & { labe
           onChange={(e) => { setAnswer(e.target.value); setWrong(false) }}
           onKeyDown={(e) => e.key === 'Enter' && answer.trim() && handleSubmit()}
           placeholder="..."
-          className="flex-1 px-4 py-4 font-semibold text-lg bg-transparent outline-none"
+          className="flex-1 px-4 py-4 font-semibold text-lg bg-transparent outline-none text-white placeholder-white/30"
           autoComplete="off"
         />
       </div>
 
       {wrong && (
-        <p className="text-center text-sm text-red-500">Resposta incorreta — tente novamente!</p>
+        <p className="text-center text-sm text-red-400">Resposta incorreta — tente novamente!</p>
       )}
 
       <Button
@@ -402,7 +503,7 @@ export function PhoneNumberMission({ exercise, onComplete }: MissionProps) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-2xl font-bold text-gray-900">{exercise.question}</h3>
+        <h3 className="text-2xl font-bold text-white">{exercise.question}</h3>
       </div>
 
       <div className="flex gap-2 justify-center">
@@ -414,7 +515,8 @@ export function PhoneNumberMission({ exercise, onComplete }: MissionProps) {
             maxLength={idx === 0 ? 3 : idx === 1 ? 3 : 4}
             value={part}
             onChange={(e) => handleChange(idx, e.target.value)}
-            className="w-20 p-4 border-2 border-gray-300 rounded-lg font-bold text-lg text-center focus:border-blue-500 focus:outline-none"
+            className="w-20 p-4 border-2 rounded-lg font-bold text-lg text-center text-white outline-none"
+            style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)' }}
             placeholder={idx === 0 ? 'XXX' : idx === 1 ? 'XXX' : 'XXXX'}
           />
         ))}
@@ -598,15 +700,16 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
     <div className="space-y-6">
       {/* Cabeçalho */}
       <div className="text-center space-y-2">
-        <h3 className="text-2xl font-bold text-gray-900">{exercise.question}</h3>
+        <h3 className="text-2xl font-bold text-white">{exercise.question}</h3>
         {hasExpected && (stage === 'idle' || stage === 'recording') && (
-          <div className={`mt-4 p-4 border rounded-xl transition-all ${
-            stage === 'recording'
-              ? 'bg-blue-100 border-blue-400 shadow-md'
-              : 'bg-blue-50 border-blue-200'
-          }`}>
-            <p className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2">Diga em inglês:</p>
-            <p className="text-blue-900 font-semibold text-lg italic leading-relaxed">"{exercise.correctAnswer}"</p>
+          <div className={`mt-4 p-4 border rounded-xl transition-all`}
+            style={{
+              background: stage === 'recording' ? 'rgba(0,67,187,0.3)' : 'rgba(0,67,187,0.15)',
+              borderColor: stage === 'recording' ? '#0043BB' : 'rgba(0,67,187,0.3)',
+            }}
+          >
+            <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-2">Diga em inglês:</p>
+            <p className="text-white font-semibold text-lg italic leading-relaxed">"{exercise.correctAnswer}"</p>
           </div>
         )}
       </div>
@@ -615,7 +718,7 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
       {stage === 'idle' && (
         <div className="flex flex-col items-center gap-4 py-4">
           {error && (
-            <p className="text-red-500 text-sm text-center px-4">{error}</p>
+            <p className="text-red-400 text-sm text-center px-4">{error}</p>
           )}
           <button
             onClick={handleStartRecording}
@@ -624,7 +727,7 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
           >
             🎤
           </button>
-          <p className="text-gray-500 text-sm">Toque para começar a gravar</p>
+          <p className="text-white/50 text-sm">Toque para começar a gravar</p>
         </div>
       )}
 
@@ -668,9 +771,9 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
       {/* ─── PROCESSING ─── */}
       {stage === 'processing' && (
         <div className="flex flex-col items-center gap-4 py-10">
-          <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
-          <p className="text-gray-600 font-semibold">Analisando sua fala...</p>
-          <p className="text-gray-400 text-sm">Processando sua fala...</p>
+          <div className="w-16 h-16 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(0,67,187,0.2)', borderTopColor: '#0043BB' }} />
+          <p className="text-white font-semibold">Analisando sua fala...</p>
+          <p className="text-white/40 text-sm">Processando sua fala...</p>
         </div>
       )}
 
@@ -682,7 +785,7 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
           <div className="flex flex-col items-center">
             <div className="relative">
               <svg width="144" height="144" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="72" cy="72" r={RADIUS} fill="none" stroke="#e5e7eb" strokeWidth="14" />
+                <circle cx="72" cy="72" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="14" />
                 <circle
                   ref={circleRef}
                   cx="72" cy="72" r={RADIUS}
@@ -701,16 +804,16 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
                 </span>
               </div>
             </div>
-            <p className="text-lg font-bold mt-2 text-gray-800">{scoreLabel}</p>
+            <p className="text-lg font-bold mt-2 text-white">{scoreLabel}</p>
             {score < 50 && (
-              <p className="text-sm text-gray-500 mt-1">Precisa de ≥ 50% para continuar</p>
+              <p className="text-sm text-white/50 mt-1">Precisa de ≥ 50% para continuar</p>
             )}
           </div>
 
           {/* Diff palavra por palavra */}
           {hasExpected && wordResults.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-center">
+              <p className="text-xs font-bold text-white/40 uppercase tracking-widest text-center">
                 Palavra por palavra
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
@@ -730,11 +833,11 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
                 ))}
               </div>
               <div className="flex gap-4 justify-center mt-1">
-                <span className="flex items-center gap-1 text-xs text-green-700 font-semibold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block" /> Correto
+                <span className="flex items-center gap-1 text-xs text-green-400 font-semibold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> Correto
                 </span>
-                <span className="flex items-center gap-1 text-xs text-red-700 font-semibold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" /> Errado / faltando
+                <span className="flex items-center gap-1 text-xs text-red-400 font-semibold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> Errado / faltando
                 </span>
               </div>
             </div>
@@ -742,17 +845,17 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
 
           {/* Transcrição bruta */}
           {transcript && (
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Você disse:</p>
-              <p className="text-gray-700 italic">"{transcript}"</p>
+            <div className="p-4 rounded-xl border" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
+              <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">Você disse:</p>
+              <p className="text-white/80 italic">"{transcript}"</p>
             </div>
           )}
 
           {/* Frase esperada (reminder) */}
           {hasExpected && exercise.correctAnswer && (
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-              <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Esperado:</p>
-              <p className="text-blue-800 italic">"{exercise.correctAnswer}"</p>
+            <div className="p-4 rounded-xl border" style={{ background: 'rgba(0,67,187,0.15)', borderColor: 'rgba(0,67,187,0.3)' }}>
+              <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-1">Esperado:</p>
+              <p className="text-white italic">"{exercise.correctAnswer}"</p>
             </div>
           )}
 
@@ -760,7 +863,8 @@ export function SpeakModeMission({ exercise, onComplete }: MissionProps) {
           <div className="flex gap-3 pt-2">
             <button
               onClick={handleRetry}
-              className="flex-1 border-2 border-gray-300 text-gray-700 font-semibold px-4 py-3 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex-1 border-2 text-white/70 font-semibold px-4 py-3 rounded-xl transition-colors hover:bg-white/10"
+              style={{ borderColor: 'rgba(255,255,255,0.2)' }}
             >
               🔁 Tentar Novamente
             </button>

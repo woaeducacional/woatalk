@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Custom harpoon cursor site-wide */
+*, *::before, *::after {
+  cursor: url('/images/cursor_arpao_64.png'), auto !important;
+}
+a, button, [role="button"], input[type="submit"], input[type="button"], select, label[for] {
+  cursor: url('/images/cursor_arpao_pointer_64.png'), pointer !important;
+}
+
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }

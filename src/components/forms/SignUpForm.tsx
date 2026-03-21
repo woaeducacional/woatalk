@@ -18,6 +18,7 @@ import { Input } from '@/src/components/ui/Input'
 import { Button } from '@/src/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/src/components/ui/Card'
 import { EmailVerification } from './EmailVerification'
+import { playClick } from '@/lib/sounds'
 
 export function SignUpForm() {
   const router = useRouter()
@@ -51,6 +52,7 @@ export function SignUpForm() {
   })
 
   async function onSubmit(data: SignUpInput) {
+    playClick()
     setIsLoading(true)
     setError(null)
 
@@ -92,7 +94,7 @@ export function SignUpForm() {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>Criar Conta</CardTitle>
+          <CardTitle>CRIAR CONTA</CardTitle>
           <CardDescription>Comece sua jornada no WOA Talk</CardDescription>
         </CardHeader>
         <CardContent>
@@ -181,12 +183,12 @@ export function SignUpForm() {
             />
 
             <Button type="submit" className="w-full" loading={isLoading}>
-              Criar Conta
+              🌊 INICIAR JORNADA
             </Button>
 
-            <p className="text-center text-sm text-blue-300">
+            <p className="text-center text-sm text-blue-300/70">
               Já tem uma conta?{' '}
-              <a href="/auth/signin" className="text-orange-500 hover:text-orange-400 font-semibold">
+              <a href="/auth/signin" className="font-bold text-cyan-400 hover:text-cyan-300 transition-colors">
                 Faça login
               </a>
             </p>

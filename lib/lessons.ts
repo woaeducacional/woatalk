@@ -15,7 +15,9 @@ export interface Exercise {
   id: string
   type: MissionType
   question?: string
+  questionPt?: string
   audio?: string
+  video?: string
   options?: string[]
   correctAnswer?: string
   words?: string[]       // Para order-sentence: palavras injetadas do banco (já embaralha no componente)
@@ -185,17 +187,17 @@ export const LESSONS_DATA: Record<number, Lesson> = {
     narrative: 'You are rising. Você saiu das regiões mais profundas. Agora começa a enxergar formas e luz no oceano.',
     curiosity: 'O Oceano Atlântico separa dois grandes mundos: América e Europa. Durante séculos ele conectou culturas, línguas e civilizações. Assim como os exploradores atravessaram o Atlântico para descobrir novos mundos, você está atravessando o idioma inglês para descobrir novas oportunidades.',
     missions: [
-      // ── CHECKPOINT 1 · Greetings (M1-10) ──────────────────────────
-      { id: 1, name: 'First Contact', type: 'discover', description: 'Escute o diálogo de apresentação. Só ouça — não precisa entender tudo ainda.', exercise: { id: 'a2-m1', type: 'discover', audio: '/audio/dialog-exemplo.mp3', xp: 20 }, xp: 20 },
-      { id: 2, name: 'Hello or Goodbye?', type: 'name-builder', description: 'Escolha a palavra certa.', exercise: { id: 'a2-m2', type: 'name-builder', question: '___ there! How are you?', options: ['Hi', 'Bye', 'Yes'], correctAnswer: 'Hi', xp: 25 }, xp: 25 },
-      { id: 3, name: 'Good Morning', type: 'order-sentence', description: 'Organize as palavras.', exercise: { id: 'a2-m3', type: 'order-sentence', correctAnswer: 'Good morning everyone', xp: 25 }, xp: 25 },
-      { id: 4, name: 'Listen: Greeting', type: 'listen-select', description: 'Escute e escolha.', exercise: { id: 'a2-m4', type: 'listen-select', audio: '/audio/dialog-exemplo.mp3', question: 'Which greeting did you hear?', options: ['Good morning', 'Good night', 'Good afternoon'], correctAnswer: 'Good morning', xp: 25 }, xp: 25 },
-      { id: 5, name: 'See You Later', type: 'name-builder', description: 'Complete a despedida.', exercise: { id: 'a2-m5', type: 'name-builder', question: 'Goodbye, see you ___!', options: ['later', 'early', 'never'], correctAnswer: 'later', xp: 25 }, xp: 25 },
-      { id: 6, name: 'How Are You?', type: 'listen-select', description: 'Identifique a pergunta correta.', exercise: { id: 'a2-m6', type: 'listen-select', audio: '/audio/dialog-exemplo.mp3', question: "How do you ask if someone's well?", options: ['How are you?', 'Where are you?', 'Who are you?'], correctAnswer: 'How are you?', xp: 25 }, xp: 25 },
-      { id: 7, name: "I'm Fine", type: 'order-sentence', description: 'Organize a resposta clássica.', exercise: { id: 'a2-m7', type: 'order-sentence', correctAnswer: 'I am fine thank you', xp: 25 }, xp: 25 },
-      { id: 8, name: 'Thanks!', type: 'name-builder', description: 'Complete a frase.', exercise: { id: 'a2-m8', type: 'name-builder', question: "I'm fine, ___!", options: ['thanks', 'sorry', 'please'], correctAnswer: 'thanks', xp: 25 }, xp: 25 },
-      { id: 9, name: 'Nice to Meet You', type: 'listen-select', description: 'Escolha a expressão do primeiro encontro.', exercise: { id: 'a2-m9', type: 'listen-select', audio: '/audio/dialog-exemplo.mp3', question: 'What do you say meeting someone for the first time?', options: ['Nice to meet you', 'See you later', 'Good night'], correctAnswer: 'Nice to meet you', xp: 25 }, xp: 25 },
-      { id: 10, name: '🏁 Speak: Greetings', type: 'speak-mode', description: 'Checkpoint 1 — Diga a frase em voz alta.', exercise: { id: 'a2-m10', type: 'speak-mode', question: 'Diga em voz alta:', correctAnswer: 'Nice to meet you', xp: 50 }, xp: 50 },
+      // ── CHECKPOINT 1 · Hobbies & Interests - Video (M1-10) ──────────────────────
+      { id: 1, name: 'First Contact', type: 'discover', description: 'Assista ao vídeo de apresentação. Só observe — não precisa entender tudo ainda.', exercise: { id: 'a2-m1', type: 'discover', video: 'https://www.youtube.com/watch?v=yOJkygDGWvU', xp: 20 }, xp: 20 },
+      { id: 2, name: 'Video Difficulty', type: 'name-builder', description: 'Como você classifica a dificuldade de entender o vídeo?', exercise: { id: 'a2-m2', type: 'name-builder', question: 'Como você classifica a dificuldade de entender o vídeo?', options: ['Fácil', 'Médio', 'Difícil'], xp: 20 }, xp: 20 },
+      { id: 3, name: 'Favorite Sport', type: 'name-builder', description: 'Responda sobre o vídeo.', exercise: { id: 'a2-m3', type: 'name-builder', question: 'What sport does the man like to play?', questionPt: 'Qual esporte o homem gosta de jogar?', options: ['Basketball', 'Soccer', 'Tennis'], correctAnswer: 'Soccer', xp: 25 }, xp: 25 },
+      { id: 4, name: 'How Often', type: 'name-builder', description: 'Responda sobre o vídeo.', exercise: { id: 'a2-m4', type: 'name-builder', question: 'How often does the man play soccer?', questionPt: 'Com que frequência o homem joga futebol?', options: ['Once a week', 'Twice a week', 'Every day'], correctAnswer: 'Twice a week', xp: 25 }, xp: 25 },
+      { id: 5, name: 'Playing For', type: 'name-builder', description: 'Responda sobre o vídeo.', exercise: { id: 'a2-m5', type: 'name-builder', question: 'How long has the man been playing soccer?', questionPt: 'Há quanto tempo o homem joga futebol?', options: ['5 years', '10 years', '15 years'], correctAnswer: '10 years', xp: 25 }, xp: 25 },
+      { id: 6, name: 'Woman Hobby', type: 'name-builder', description: 'Responda sobre o vídeo.', exercise: { id: 'a2-m6', type: 'name-builder', question: 'What does the woman enjoy doing?', questionPt: 'O que a mulher gosta de fazer?', options: ['Playing the piano', 'Playing soccer', 'Going to the gym'], correctAnswer: 'Playing the piano', xp: 25 }, xp: 25 },
+      { id: 7, name: 'Since When', type: 'name-builder', description: 'Responda sobre o vídeo.', exercise: { id: 'a2-m7', type: 'name-builder', question: 'Since when has the woman been playing the piano?', questionPt: 'Desde quando a mulher toca piano?', options: ['Since she was 5', 'Since she was 10', 'Since she was 15'], correctAnswer: 'Since she was 5', xp: 25 }, xp: 25 },
+      { id: 8, name: 'Yoga Frequency', type: 'name-builder', description: 'Responda sobre o vídeo.', exercise: { id: 'a2-m8', type: 'name-builder', question: 'How often does the woman do Yoga?', questionPt: 'Com que frequência a mulher faz Yoga?', options: ['Once a week', 'Twice a week', '3 times a week'], correctAnswer: '3 times a week', xp: 25 }, xp: 25 },
+      { id: 9, name: 'Man at Gym', type: 'name-builder', description: 'Responda sobre o vídeo.', exercise: { id: 'a2-m9', type: 'name-builder', question: 'Besides soccer, what else does the man do?', questionPt: 'Além de futebol, o que mais o homem faz?', options: ['He goes to the gym', 'He does Yoga', 'He plays the piano'], correctAnswer: 'He goes to the gym', xp: 25 }, xp: 25 },
+      { id: 10, name: 'Complete the Sentence', type: 'order-sentence', description: 'Organize a frase do vídeo.', exercise: { id: 'a2-m10', type: 'order-sentence', correctAnswer: 'I really like to play soccer', xp: 30 }, xp: 30 },
 
       // ── CHECKPOINT 2 · Your Name (M11-20) ─────────────────────────
       { id: 11, name: '🎤 Say: Your Name', type: 'speak-mode', description: 'Diga em voz alta como apresentar seu nome.', exercise: { id: 'a2-m11', type: 'speak-mode', question: 'Diga em voz alta:', correctAnswer: 'My name is Oliver', xp: 30 }, xp: 30 },
