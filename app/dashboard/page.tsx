@@ -7,6 +7,8 @@ import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
 import { playClick } from '@/lib/sounds'
+import { EagleTip } from '@/src/components/EagleTip'
+import { EnergyBar } from '@/src/components/EnergyBar'
 
 const xpPerLevel = 250
 
@@ -16,6 +18,7 @@ export default function DashboardPage() {
   const [atlanticCheckpoint, setAtlanticCheckpoint] = useState(0)
   const [xpTotal, setXpTotal] = useState(0)
   const [coinsBalance, setCoinsBalance] = useState(0)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     fetch('/api/progress/2')
@@ -98,6 +101,14 @@ export default function DashboardPage() {
                 <div className="h-full rounded-full transition-all" style={{ width: `${xpProgress}%`, background: 'linear-gradient(90deg,#00D4FF,#00F0C8)' }} />
               </div>
             </div>
+            <EnergyBar />
+            <button
+              onClick={() => { playClick(); setSidebarOpen(true) }}
+              className="text-xs font-black tracking-widest px-4 py-2 rounded transition-all hover:scale-105"
+              style={{ border: '1px solid rgba(0,212,255,0.35)', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
+            >
+              EXPLORADOR
+            </button>
             <button
               onClick={() => { playClick(); (signOut({ redirect: true }) as any) }}
               className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-red-500/30 text-red-400/70 hover:border-red-400/60 hover:text-red-300 transition-all"
@@ -232,41 +243,6 @@ export default function DashboardPage() {
                   <Link href="/challenge/2" onClick={() => playClick()} className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg,#CC4A00,#FF6B35)', boxShadow: '0 0 16px rgba(255,107,53,0.3)' }}>
                     ▶ CONTINUAR MISSÃO
                   </Link>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { playClick(); router.push('/admin/journey/2') }}
-                      className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
-                      style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
-                    >
-                      ✏️ EDITAR JORNADA
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Indian — LOCKED */}
-              <div className="rounded-2xl overflow-hidden backdrop-blur-md opacity-50" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e)' }}>
-                  <Image src="/images/icon_indico.png" alt="Indian Ocean" width={70} height={70} className="object-contain grayscale opacity-60" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-3xl">🔒</span>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h4 className="font-black text-white/60 text-sm tracking-wider mb-1">INDIAN OCEAN</h4>
-                  <p className="text-[10px] text-blue-100/80 mb-4">3.970m de profundidade</p>
-                  <button disabled className="w-full text-xs font-black tracking-widest py-2.5 rounded-lg text-white/20 cursor-not-allowed" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    BLOQUEADO
-                  </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { playClick(); router.push('/admin/journey/3') }}
-                      className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
-                      style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
-                    >
-                      ✏️ EDITAR JORNADA
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -317,6 +293,145 @@ export default function DashboardPage() {
           <p className="text-[11px] text-blue-200/30 tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
         </footer>
       </div>
+      {/* ── SIDEBAR EXPLORADOR ── */}
+      {/* Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)' }}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Panel */}
+      <div
+        className="fixed top-0 right-0 h-full z-50 flex flex-col"
+        style={{
+          width: '300px',
+          background: 'rgba(5,14,26,0.97)',
+          borderLeft: '1px solid rgba(0,212,255,0.2)',
+          boxShadow: '-8px 0 40px rgba(0,0,0,0.6)',
+          transform: sidebarOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        {/* Close */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <span className="text-[10px] font-black tracking-[0.25em]" style={{ color: 'rgba(255,255,255,0.4)' }}>EXPLORADOR</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="w-7 h-7 flex items-center justify-center rounded-full text-white/40 hover:text-white/80 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.07)' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Avatar placeholder */}
+        <div className="flex flex-col items-center pt-8 pb-6 px-6">
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(0,67,187,0.5), rgba(0,212,255,0.2))',
+              border: '2px solid rgba(0,212,255,0.35)',
+              boxShadow: '0 0 24px rgba(0,212,255,0.2)',
+            }}
+          >
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="8" r="4" fill="rgba(0,212,255,0.6)" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(0,212,255,0.6)" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </div>
+
+          {/* Name */}
+          <p className="text-base font-black text-white tracking-wide text-center">
+            {session?.user?.name ?? 'Herói'}
+          </p>
+          <p className="text-[10px] mt-1 tracking-widest" style={{ color: 'rgba(0,212,255,0.55)' }}>
+            {session?.user?.email ?? ''}
+          </p>
+        </div>
+
+        <div className="flex-1 px-6 space-y-6 overflow-y-auto">
+          {/* Level + XP bar */}
+          <div
+            className="rounded-xl p-4"
+            style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-black tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>NÍVEL</span>
+              <span className="text-2xl font-black" style={{ color: '#00D4FF', textShadow: '0 0 12px rgba(0,212,255,0.6)' }}>
+                {level}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold" style={{ color: '#00D4FF' }}>{xpInLevel} XP</span>
+              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{xpPerLevel} XP</span>
+            </div>
+            <div
+              className="w-full h-3 rounded-full overflow-hidden"
+              style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.18)' }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${xpProgress}%`,
+                  background: 'linear-gradient(90deg,#0043BB,#00D4FF,#00F0C8)',
+                  boxShadow: '0 0 8px rgba(0,212,255,0.5)',
+                }}
+              />
+            </div>
+            <p className="text-[10px] mt-2 text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              {Math.max(0, xpPerLevel - xpInLevel)} XP para o próximo nível
+            </p>
+
+            <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-sm font-black" style={{ color: '#00D4FF' }}>{xpTotal.toLocaleString('pt-BR')}</span>
+                <span className="text-[9px] tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>XP TOTAL</span>
+              </div>
+              <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-sm font-black" style={{ color: '#FFA940' }}>{coinsBalance}</span>
+                <span className="text-[9px] tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>MOEDAS</span>
+              </div>
+            </div>
+          </div>
+
+          {/* History rewards button */}
+          <Link
+            href="/history"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center justify-between w-full rounded-xl px-4 py-3.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: 'rgba(192,132,252,0.1)',
+              border: '1px solid rgba(192,132,252,0.25)',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🏆</span>
+              <div>
+                <p className="text-sm font-black tracking-wider text-white">HISTORY REWARDS</p>
+                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>XP, moedas e badges ganhos</p>
+              </div>
+            </div>
+            <span style={{ color: 'rgba(192,132,252,0.7)', fontSize: '18px' }}>›</span>
+          </Link>
+        </div>
+
+        {/* Bottom padding */}
+        <div className="h-8" />
+      </div>
+      <EagleTip
+        storageKey="eagle_dashboard_welcome"
+        lines={[
+          '🦅 Bem-vindo ao fundo do mar, explorador!',
+          'Você mergulhou fundo e agora precisa subir à superfície.',
+          'Siga sua Jornada e resolva as missões para ganhar XP e voltar ao topo!',
+        ]}
+        buttonLabel="VAMOS COMEÇAR"
+      />
     </main>
   )
 }

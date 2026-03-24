@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { JourneyMission } from '@/lib/journey'
+import { EagleTip } from '@/src/components/EagleTip'
 
 interface MissionProps {
   mission: JourneyMission
   onComplete: (xp: number) => void
+  onError?: () => void
 }
 
 /* ─── helpers ─── */
@@ -20,6 +22,23 @@ function getYouTubeId(url: string): string | null {
    ═══════════════════════════════════════════════════ */
 
 export function ResourceMission({ mission, onComplete }: MissionProps) {
+  return (
+    <>
+      <EagleTip
+        storageKey="eagle_tutorial_resource"
+        lines={[
+          '🎬 Missão: Descoberta!',
+          'Assista ou ouça o conteúdo antes de avançar.',
+          'Não precisa entender tudo — só mergulhe!',
+        ]}
+        buttonLabel="ENTENDIDO!"
+      />
+      <ResourceMissionInner mission={mission} onComplete={onComplete} />
+    </>
+  )
+}
+
+function ResourceMissionInner({ mission, onComplete }: MissionProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasListened, setHasListened] = useState(false)
   const [hasWatched, setHasWatched] = useState(false)
@@ -113,6 +132,23 @@ export function ResourceMission({ mission, onComplete }: MissionProps) {
    ═══════════════════════════════════════════════════ */
 
 export function DifficultyMission({ mission, onComplete }: MissionProps) {
+  return (
+    <>
+      <EagleTip
+        storageKey="eagle_tutorial_difficulty"
+        lines={[
+          '💭 Missão: Dificuldade!',
+          'Conte pra mim o quanto isso foi difícil pra você.',
+          'Não tem resposta errada — é só pra eu te conhecer melhor!',
+        ]}
+        buttonLabel="ENTENDIDO!"
+      />
+      <DifficultyMissionInner mission={mission} onComplete={onComplete} />
+    </>
+  )
+}
+
+function DifficultyMissionInner({ mission, onComplete }: MissionProps) {
   const [selected, setSelected] = useState<string | null>(null)
 
   const handleSelect = (option: string) => {
@@ -155,15 +191,36 @@ export function DifficultyMission({ mission, onComplete }: MissionProps) {
    3. QuestionMission  –  multiple choice + translation toggle
    ═══════════════════════════════════════════════════ */
 
-export function QuestionMission({ mission, onComplete }: MissionProps) {
+export function QuestionMission({ mission, onComplete, onError }: MissionProps) {
+  return (
+    <>
+      <EagleTip
+        storageKey="eagle_tutorial_question"
+        lines={[
+          '❓ Missão: Múltipla Escolha!',
+          'Leia a pergunta e escolha a resposta correta.',
+          'Se errar, te mostro a resposta certa. Sem drama!',
+        ]}
+        buttonLabel="ENTENDIDO!"
+      />
+      <QuestionMissionInner mission={mission} onComplete={onComplete} onError={onError} />
+    </>
+  )
+}
+
+function QuestionMissionInner({ mission, onComplete, onError }: MissionProps) {
   const [selected, setSelected] = useState<string | null>(null)
   const [showTranslation, setShowTranslation] = useState(false)
+
+  const isWrong = selected !== null && mission.correctAnswer ? selected !== mission.correctAnswer : false
 
   const handleSelect = (option: string) => {
     if (selected) return
     setSelected(option)
     if (!mission.correctAnswer || option === mission.correctAnswer) {
       setTimeout(() => onComplete(mission.xp), 500)
+    } else {
+      onError?.()
     }
   }
 
@@ -196,24 +253,38 @@ export function QuestionMission({ mission, onComplete }: MissionProps) {
         {mission.options?.map((option) => {
           const isSelected = selected === option
           const isCorrect = !mission.correctAnswer || option === mission.correctAnswer
+          const highlightCorrect = isWrong && isCorrect
           return (
             <button
               key={option}
               onClick={() => handleSelect(option)}
               className="p-4 rounded-lg font-bold text-lg transition-all border-2 hover:scale-[1.02] hover:brightness-110"
               style={{
-                backgroundColor: isSelected ? (isCorrect ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.2)') : 'rgba(255,255,255,0.08)',
-                borderColor: isSelected ? (isCorrect ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.2)',
-                color: isSelected ? (isCorrect ? '#86efac' : '#fca5a5') : 'white',
+                backgroundColor: highlightCorrect ? 'rgba(22,163,74,0.25)' : isSelected ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
+                borderColor: highlightCorrect ? '#22c55e' : isSelected ? '#ef4444' : 'rgba(255,255,255,0.2)',
+                color: highlightCorrect ? '#86efac' : isSelected ? '#fca5a5' : 'white',
                 cursor: 'pointer',
-                opacity: selected && !isSelected ? 0.4 : 1,
+                opacity: selected && !isSelected && !highlightCorrect ? 0.3 : 1,
               }}
             >
-              {option}
+              {option}{highlightCorrect ? ' ✓' : ''}
             </button>
           )
-        })}
-      </div>
+        })}      </div>
+      {isWrong && (
+        <div className="space-y-2 pt-1">
+          <p className="text-center text-xs text-red-400/80 tracking-wide">Resposta correta destacada em verde</p>
+          <div className="flex justify-center">
+            <button
+              onClick={() => onComplete(0)}
+              className="font-bold tracking-wide px-6 py-2.5 rounded-lg text-white transition-all hover:scale-105 active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)' }}
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
       <style jsx>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-4px); }
@@ -228,27 +299,112 @@ export function QuestionMission({ mission, onComplete }: MissionProps) {
    4. CompleteMission  –  fill-in-the-blank with options
    ═══════════════════════════════════════════════════ */
 
-export function CompleteMission({ mission, onComplete }: MissionProps) {
+export function CompleteMission({ mission, onComplete, onError }: MissionProps) {
+  return (
+    <>
+      <EagleTip
+        storageKey="eagle_tutorial_complete"
+        lines={[
+          '✏️ Missão: Complete a Frase!',
+          'Escolha a palavra que melhor completa a sentença.',
+          'Preste atenção no contexto — ele é a chave!',
+        ]}
+        buttonLabel="ENTENDIDO!"
+      />
+      <CompleteMissionInner mission={mission} onComplete={onComplete} onError={onError} />
+    </>
+  )
+}
+
+function CompleteMissionInner({ mission, onComplete, onError }: MissionProps) {
   const [selected, setSelected] = useState<string | null>(null)
   const [showTranslation, setShowTranslation] = useState(false)
+
+  const isWrong = selected !== null && mission.correctAnswer ? selected !== mission.correctAnswer : false
 
   const handleSelect = (option: string) => {
     if (selected) return
     setSelected(option)
     if (!mission.correctAnswer || option === mission.correctAnswer) {
       setTimeout(() => onComplete(mission.xp), 500)
+    } else {
+      onError?.()
     }
   }
 
-  const displayQuestion = showTranslation && mission.questionPt ? mission.questionPt : mission.question
+  const rawQuestion = showTranslation && mission.questionPt ? mission.questionPt : (mission.question ?? '')
+
+  // Split on ___ to render blank as styled underline
+  const parts = rawQuestion.split('___')
+  const filledWord = selected ?? '___'
+  const isCorrect = !mission.correctAnswer || selected === mission.correctAnswer
+
+  function renderSentence() {
+    if (parts.length < 2) {
+      // No ___ marker — show question + separate answer zone below
+      return (
+        <div className="space-y-4 w-full">
+          <span className="text-2xl font-bold text-white">{rawQuestion}</span>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs font-bold tracking-widest" style={{ color: 'rgba(0,212,255,0.5)' }}>
+              RESPOSTA
+            </span>
+            <span
+              className="inline-block min-w-[180px] text-center font-black text-xl px-4 py-2 rounded-lg"
+              style={{
+                borderBottom: selected
+                  ? `3px solid ${isCorrect ? '#22c55e' : '#ef4444'}`
+                  : '3px solid rgba(0,212,255,0.7)',
+                color: selected
+                  ? isCorrect ? '#86efac' : '#fca5a5'
+                  : 'rgba(0,212,255,0.5)',
+                background: selected
+                  ? isCorrect ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)'
+                  : 'rgba(0,212,255,0.05)',
+              }}
+            >
+              {selected ?? '_ _ _ _ _ _'}
+            </span>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <span className="text-2xl font-bold text-white leading-relaxed">
+        {parts[0]}
+        <span
+          className="inline-block min-w-[80px] text-center font-black px-2 mx-1 rounded"
+          style={{
+            borderBottom: selected
+              ? `3px solid ${isCorrect ? '#22c55e' : '#ef4444'}`
+              : '3px solid rgba(0,212,255,0.7)',
+            color: selected
+              ? isCorrect ? '#86efac' : '#fca5a5'
+              : 'rgba(0,212,255,0.9)',
+            background: selected
+              ? isCorrect ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)'
+              : 'rgba(0,212,255,0.08)',
+          }}
+        >
+          {filledWord}
+        </span>
+        {parts[1]}
+      </span>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-3">
-          <h3 className="text-2xl font-bold text-white transition-opacity duration-300" key={showTranslation ? 'pt' : 'en'} style={{ animation: 'fadeIn 0.3s ease' }}>
-            {displayQuestion}
-          </h3>
+      <div className="text-center space-y-3">
+        <p className="text-xs font-black tracking-widest" style={{ color: 'rgba(0,212,255,0.6)' }}>
+          COMPLETE A FRASE
+        </p>
+        <div
+          className="flex items-center justify-center gap-3 px-4 py-5 rounded-2xl"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          key={showTranslation ? 'pt' : 'en'}
+        >
+          {renderSentence()}
           {mission.questionPt && (
             <button
               onClick={() => setShowTranslation(prev => !prev)}
@@ -264,36 +420,41 @@ export function CompleteMission({ mission, onComplete }: MissionProps) {
             </button>
           )}
         </div>
-        <p className="text-sm text-white/50">Complete a frase com a palavra correta</p>
       </div>
       <div className="grid grid-cols-1 gap-3">
         {mission.options?.map((option) => {
           const isSelected = selected === option
-          const isCorrect = !mission.correctAnswer || option === mission.correctAnswer
+          const optCorrect = !mission.correctAnswer || option === mission.correctAnswer
+          const highlightCorrect = isWrong && optCorrect
           return (
             <button
               key={option}
               onClick={() => handleSelect(option)}
               className="p-4 rounded-lg font-bold text-lg transition-all border-2 hover:scale-[1.02] hover:brightness-110"
               style={{
-                backgroundColor: isSelected ? (isCorrect ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.2)') : 'rgba(255,255,255,0.08)',
-                borderColor: isSelected ? (isCorrect ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.2)',
-                color: isSelected ? (isCorrect ? '#86efac' : '#fca5a5') : 'white',
+                backgroundColor: highlightCorrect ? 'rgba(22,163,74,0.25)' : isSelected ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
+                borderColor: highlightCorrect ? '#22c55e' : isSelected ? '#ef4444' : 'rgba(255,255,255,0.2)',
+                color: highlightCorrect ? '#86efac' : isSelected ? '#fca5a5' : 'white',
                 cursor: 'pointer',
-                opacity: selected && !isSelected ? 0.4 : 1,
+                opacity: selected && !isSelected && !highlightCorrect ? 0.3 : 1,
               }}
             >
-              {option}
+              {option}{highlightCorrect ? ' ✓' : ''}
             </button>
           )
         })}
       </div>
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      {isWrong && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => onComplete(0)}
+            className="font-bold tracking-wide px-6 py-2.5 rounded-lg text-white transition-all hover:scale-105 active:scale-95"
+            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)' }}
+          >
+            Continuar
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -302,7 +463,24 @@ export function CompleteMission({ mission, onComplete }: MissionProps) {
    5. OrderMission  –  arrange words into correct sentence
    ═══════════════════════════════════════════════════ */
 
-export function OrderMission({ mission, onComplete }: MissionProps) {
+export function OrderMission({ mission, onComplete, onError }: MissionProps) {
+  return (
+    <>
+      <EagleTip
+        storageKey="eagle_tutorial_order"
+        lines={[
+          '🔀 Missão: Ordene as Palavras!',
+          'Clique nas palavras para montar a frase na ordem correta.',
+          'Clique numa palavra já colocada para devolvê-la.',
+        ]}
+        buttonLabel="ENTENDIDO!"
+      />
+      <OrderMissionInner mission={mission} onComplete={onComplete} onError={onError} />
+    </>
+  )
+}
+
+function OrderMissionInner({ mission, onComplete, onError }: MissionProps) {
   const sourceWords = (mission.correctAnswer ?? '').split(' ')
   const shuffle = (arr: string[]) => [...arr].sort(() => Math.random() - 0.5)
 
@@ -328,6 +506,7 @@ export function OrderMission({ mission, onComplete }: MissionProps) {
       setTimeout(() => onComplete(mission.xp), 700)
     } else {
       setResult('wrong')
+      onError?.()
     }
   }
 
@@ -380,6 +559,22 @@ export function OrderMission({ mission, onComplete }: MissionProps) {
           Verificar
         </button>
       </div>
+      {result === 'wrong' && (
+        <div className="space-y-2">
+          <p className="text-center text-sm font-semibold" style={{ color: '#86efac' }}>
+            Resposta correta: <span className="font-black">{mission.correctAnswer}</span>
+          </p>
+          <div className="flex justify-center">
+            <button
+              onClick={() => onComplete(0)}
+              className="font-bold tracking-wide px-6 py-2.5 rounded-lg text-white transition-all hover:scale-105 active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)' }}
+            >
+              Continuar assim mesmo
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -389,6 +584,23 @@ export function OrderMission({ mission, onComplete }: MissionProps) {
    ═══════════════════════════════════════════════════ */
 
 export function SpeakMission({ mission, onComplete }: MissionProps) {
+  return (
+    <>
+      <EagleTip
+        storageKey="eagle_tutorial_speak"
+        lines={[
+          '🎤 Missão: Fale em Inglês!',
+          'Clique no microfone e leia a frase em voz alta.',
+          'Pronuncie devagar e com clareza. Você consegue!',
+        ]}
+        buttonLabel="ENTENDIDO!"
+      />
+      <SpeakMissionInner mission={mission} onComplete={onComplete} />
+    </>
+  )
+}
+
+function SpeakMissionInner({ mission, onComplete }: MissionProps) {
   type Stage = 'idle' | 'recording' | 'processing' | 'result'
 
   const [stage, setStage] = useState<Stage>('idle')

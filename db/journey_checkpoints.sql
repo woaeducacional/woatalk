@@ -86,9 +86,9 @@ INSERT INTO journey_checkpoints (
   'Qual esporte o homem gosta de jogar?',
   'Basketball|Soccer|Tennis', 'Soccer',
   -- Complete
-  'How often does the man play soccer?',
-  'Com que frequência o homem joga futebol?',
-  'Once a week|Twice a week|Every day', 'Twice a week',
+  'The man plays soccer ___ a week.',
+  'O homem joga futebol ___ por semana.',
+  'once|twice|every day', 'twice',
   -- Speak 1
   'I really like to play soccer',
   -- Q2

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { playClick } from '@/lib/sounds'
+import { EnergyBar } from '@/src/components/EnergyBar'
 
 const OCEAN_PHASES = [
   { id: 1,  name: 'Pacific Ocean',      depth: '4.280m', aula: 'The Alphabet' },
@@ -78,15 +79,7 @@ export default function JourneyPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {isAdmin && (
-              <button
-                onClick={() => { playClick(); router.push(`/admin/journey/${currentPhase}`) }}
-                className="text-xs font-bold tracking-widest px-4 py-2 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
-                style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', borderColor: 'rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
-              >
-                ✏️ EDITAR JORNADA
-              </button>
-            )}
+            <EnergyBar />
             <button
               onClick={() => { playClick(); router.push('/dashboard') }}
               className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all"
@@ -115,24 +108,7 @@ export default function JourneyPage() {
                   <p className="text-[11px] text-cyan-400/60 tracking-widest mb-2">🌊 {activePhase.depth} DE PROFUNDIDADE</p>
                   <p className="text-sm text-blue-200/70">📖 {activePhase.aula}</p>
                 </div>
-                <div className="flex flex-col gap-2 shrink-0">
-                  <button
-                    onClick={() => { playClick(); router.push(`/challenge/${currentPhase}`) }}
-                    className="px-6 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105 active:scale-95"
-                    style={{ background: 'linear-gradient(135deg,#CC4A00,#FF6B35)', boxShadow: '0 0 20px rgba(255,107,53,0.35)', border: '1px solid rgba(255,107,53,0.4)' }}
-                  >
-                    ⚔️ INICIAR
-                  </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { playClick(); router.push(`/admin/journey/${currentPhase}`) }}
-                      className="px-4 py-2 text-[10px] font-black tracking-widest rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
-                      style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
-                    >
-                      ✏️ EDITAR JORNADA
-                    </button>
-                  )}
-                </div>
+
               </div>
             </div>
           </section>
@@ -146,9 +122,9 @@ export default function JourneyPage() {
               <div className="absolute left-5 top-5 bottom-5 w-px" style={{ background: 'linear-gradient(to bottom, #00D4FF40, transparent)' }} />
 
               <div className="space-y-3">
-                {OCEAN_PHASES.map((phase, index) => {
+                {OCEAN_PHASES.filter(phase => phase.id <= currentPhase).map((phase, index) => {
                   const isCurrent = phase.id === currentPhase
-                  const isLocked = phase.id > currentPhase
+                  const isLocked = !isCurrent
 
                   return (
                     <div key={phase.id} className="flex items-center gap-4">
@@ -207,15 +183,24 @@ export default function JourneyPage() {
                           </p>
                         </div>
 
-                        {isCurrent && (
-                          <button
-                            onClick={() => { playClick(); router.push(`/challenge/${phase.id}`) }}
-                            className="shrink-0 text-[10px] font-black tracking-widest px-4 py-2 rounded-lg text-white transition-all hover:scale-105"
-                            style={{ background: 'linear-gradient(135deg,#CC4A00,#FF6B35)', boxShadow: '0 0 12px rgba(255,107,53,0.3)' }}
-                          >
-                            ▶ IR
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isAdmin && (
+                            <button
+                              onClick={() => { playClick(); router.push(`/admin/journey/${phase.id}`) }}
+                              className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
+                              style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.08)', boxShadow: '0 0 10px rgba(255,255,255,0.15)' }}
+                            >
+                              EDITAR
+                            </button>
+                          )}
+                          {isCurrent && (
+                            <button
+                              onClick={() => { playClick(); router.push(`/challenge/${phase.id}`) }}
+                              className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
+                              style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.08)', boxShadow: '0 0 10px rgba(255,255,255,0.15)' }}
+                            >PROSSEGUIR</button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )

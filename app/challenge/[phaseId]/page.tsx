@@ -14,6 +14,8 @@ import {
   SpeakMission,
 } from '@/src/components/Missions'
 import { MediaPalette, MediaPaletteButton } from '@/src/components/MediaPalette'
+import { EnergyBar } from '@/src/components/EnergyBar'
+import { EagleTip } from '@/src/components/EagleTip'
 import { checkpointsToMissions, type JourneyMission, type JourneyCheckpoint } from '@/lib/journey'
 import { playClick } from '@/lib/sounds'
 
@@ -64,6 +66,9 @@ export default function ChallengePage() {
   const [dbCheckpoint, setDbCheckpoint] = useState(0)
   const [celebrationData, setCelebrationData] = useState<{ checkpoint: number; xpEarned: number } | null>(null)
   const [showPalette, setShowPalette] = useState(false)
+  const [energyCharges, setEnergyCharges] = useState(3)
+  const [energySlots, setEnergySlots] = useState<(string | null)[]>([null, null, null])
+  const [showEnergyTip, setShowEnergyTip] = useState(false)
   const checkpointXpRef = useRef(0)
 
   useEffect(() => {
@@ -96,6 +101,18 @@ export default function ChallengePage() {
       .then(d => setDbCheckpoint(d.checkpoint ?? 0))
       .catch(() => {})
   }, [phaseId])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    fetch('/api/user/energy')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return
+        setEnergyCharges(d.charges ?? 3)
+        setEnergySlots(d.slots ?? [null, null, null])
+      })
+      .catch(() => {})
+  }, [status])
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
@@ -164,6 +181,22 @@ export default function ChallengePage() {
     }
   }
 
+  const handleError = () => {
+    // Show energy tutorial on very first error
+    if (typeof window !== 'undefined' && !localStorage.getItem('eagle_energy_tutorial')) {
+      setShowEnergyTip(true)
+    }
+
+    fetch('/api/user/energy', { method: 'POST' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return
+        setEnergyCharges(d.charges ?? 0)
+        setEnergySlots(d.slots ?? [null, null, null])
+      })
+      .catch(() => {})
+  }
+
   const handleCelebrationContinue = () => {
     const nextIdx = (celebrationData!.checkpoint) * 10
     setCelebrationData(null)
@@ -212,7 +245,7 @@ export default function ChallengePage() {
   }
 
   const renderMission = () => {
-    const props = { mission: currentMission, onComplete: handleMissionComplete }
+    const props = { mission: currentMission, onComplete: handleMissionComplete, onError: handleError }
     switch (currentMission.type) {
       case 'resource':   return <ResourceMission {...props} />
       case 'difficulty': return <DifficultyMission {...props} />
@@ -232,6 +265,19 @@ export default function ChallengePage() {
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
       </div>
       <div className="relative z-10 flex flex-col min-h-screen">
+      <EagleTip
+        storageKey="eagle_energy_tutorial"
+        show={showEnergyTip}
+        onDismiss={() => setShowEnergyTip(false)}
+        buttonLabel="ENTENDIDO!"
+        lines={[
+          '⚡ Sistema de Energia',
+          'Você tem 3 cargas de energia.',
+          'Cada resposta errada consome 1 carga.',
+          'Cada carga se restaura em 8 horas.',
+          'Pense bem antes de responder!',
+        ]}
+      />
       <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
         <div className="flex items-center gap-3">
           <button onClick={() => { playClick(); router.push('/journey') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
@@ -253,8 +299,8 @@ export default function ChallengePage() {
                 if (currentMissionIdx >= i * 10 && missions[i * 10]?.type === 'resource') count++
               }
               return count
-            })()}
-          />
+            })()} />
+          <EnergyBar charges={energyCharges} slots={energySlots} />
           <button onClick={() => { playClick(); router.push('/journey') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all">← VOLTAR</button>
         </div>
       </header>

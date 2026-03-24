@@ -5,6 +5,7 @@ const SFX = {
   wrong:    '/audio/respondeu%20errado.mp3',
   points:   '/audio/ganhando-pontos.mp3',
   dialog:   '/audio/dialog-exemplo.mp3',
+  eagle:    '/audio/som_da_aguia.mp3',
 } as const
 
 let _correctToggle = false
@@ -18,6 +19,7 @@ function play(src: string, volume = 0.75) {
 }
 
 export function playClick()   { play(SFX.click) }
+export function playEagle()   { play(SFX.eagle) }
 export function playCorrect() {
   _correctToggle = !_correctToggle
   play(_correctToggle ? SFX.correct1 : SFX.correct2)

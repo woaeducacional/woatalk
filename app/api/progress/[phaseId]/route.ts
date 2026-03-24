@@ -85,6 +85,29 @@ export async function POST(
           })
           .eq('id', userId)
       }
+
+      // Build description from phase/level names
+      let description = `Fase ${phaseId} · Checkpoint ${checkpoint}`
+      const { data: phaseData } = await supabase
+        .from('phases')
+        .select('name, levels(name)')
+        .eq('id', phaseId)
+        .maybeSingle()
+      if (phaseData) {
+        const levelName = (phaseData.levels as { name: string } | null)?.name ?? `Fase ${phaseId}`
+        description = `${levelName} — ${phaseData.name} · Checkpoint ${checkpoint}`
+      }
+
+      // Insert history record
+      await supabase.from('user_history').insert({
+        user_id: userId,
+        event_type: 'checkpoint',
+        xp_earned: xp_earned ?? 0,
+        coins_earned: coins_earned ?? 0,
+        description,
+        phase_id: phaseId,
+        checkpoint_number: checkpoint,
+      })
     }
 
     return NextResponse.json({ ok: true })
