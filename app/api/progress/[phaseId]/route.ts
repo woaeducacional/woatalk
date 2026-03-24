@@ -94,7 +94,8 @@ export async function POST(
         .eq('id', phaseId)
         .maybeSingle()
       if (phaseData) {
-        const levelName = (phaseData.levels as { name: string } | null)?.name ?? `Fase ${phaseId}`
+        const levels = phaseData.levels as { name: string }[] | null
+        const levelName = Array.isArray(levels) && levels.length > 0 ? levels[0].name : `Fase ${phaseId}`
         description = `${levelName} — ${phaseData.name} · Checkpoint ${checkpoint}`
       }
 
