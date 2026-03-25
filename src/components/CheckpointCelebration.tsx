@@ -97,7 +97,7 @@ export function CheckpointCelebration({
 
       {/* Card */}
       <div
-        className="relative mx-4 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+        className="relative mx-3 sm:mx-4 w-full max-w-sm rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl"
         style={{
           background: 'linear-gradient(155deg, #001a5c 0%, #0043BB 60%, #002a80 100%)',
           transform: show ? 'scale(1) translateY(0)' : 'scale(0.88) translateY(32px)',
@@ -107,7 +107,7 @@ export function CheckpointCelebration({
         {/* Top glow bar */}
         <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #CC4A00, #facc15, #CC4A00)' }} />
 
-        <div className="px-8 pt-8 pb-10 flex flex-col items-center gap-6 text-center">
+        <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-6 sm:pb-10 flex flex-col items-center gap-4 sm:gap-6 text-center">
 
           {/* Ocean icon */}
           <div
@@ -118,62 +118,63 @@ export function CheckpointCelebration({
             <Image
               src="/images/icon_atlantico.png"
               alt="Atlantic Ocean"
-              width={100}
-              height={100}
-              className="object-contain drop-shadow-xl"
+              width={80}
+              height={80}
+              className="object-contain drop-shadow-xl sm:w-[100px] sm:h-[100px]"
             />
           </div>
 
           {/* Checkpoint label */}
           <div>
-            <p className="text-xs font-bold tracking-[0.2em] uppercase text-blue-300 mb-1">
-              Checkpoint {checkpoint} / 10 desbloqueado
+            <p className="text-[9px] sm:text-xs font-bold tracking-[0.15em] sm:tracking-[0.2em] uppercase text-blue-300 mb-1">
+              Checkpoint {checkpoint} / 10
             </p>
-            <h2 className="text-3xl font-black text-white leading-tight">
-              Atlantic<br />Ocean
+            <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+              Atlantic<br />
+              Ocean
             </h2>
           </div>
 
           {/* Stats row */}
-          <div className="w-full grid grid-cols-3 gap-3">
+          <div className="w-full grid grid-cols-3 gap-2 sm:gap-3">
             {/* Missions */}
-            <div className="bg-white/10 rounded-2xl px-2 py-4 flex flex-col items-center gap-1">
-              <span className="text-2xl">🎯</span>
+            <div className="bg-white/10 rounded-xl sm:rounded-2xl px-2 py-3 sm:py-4 flex flex-col items-center gap-0.5 sm:gap-1">
+              <span className="text-lg sm:text-2xl">🎯</span>
               <span
-                className="text-2xl font-black text-white"
+                className="text-lg sm:text-2xl font-black text-white"
                 style={{ animation: show ? 'popIn 0.4s ease 0.3s both' : 'none' }}
               >
                 {missionsCompleted}
               </span>
-              <span className="text-[10px] font-semibold text-blue-200 uppercase tracking-wide">missões</span>
+              <span className="text-[8px] sm:text-[10px] font-semibold text-blue-200 uppercase tracking-wide">missões</span>
             </div>
 
             {/* XP */}
-            <div className="bg-white/10 rounded-2xl px-2 py-4 flex flex-col items-center gap-1">
-              <span className="text-2xl">⚡</span>
-              <span className="text-2xl font-black" style={{ color: '#facc15' }}>
+            <div className="bg-white/10 rounded-xl sm:rounded-2xl px-2 py-3 sm:py-4 flex flex-col items-center gap-0.5 sm:gap-1">
+              <span className="text-lg sm:text-2xl">⚡</span>
+              <span className="text-lg sm:text-2xl font-black" style={{ color: '#facc15' }}>
                 +{xpDisplay}
               </span>
-              <span className="text-[10px] font-semibold text-blue-200 uppercase tracking-wide">XP</span>
+              <span className="text-[8px] sm:text-[10px] font-semibold text-blue-200 uppercase tracking-wide">XP</span>
             </div>
 
             {/* WOA Coin */}
             <div
-              className="bg-white/10 rounded-2xl px-2 py-4 flex flex-col items-center gap-1"
+              className="bg-white/10 rounded-xl sm:rounded-2xl px-2 py-3 sm:py-4 flex flex-col items-center gap-0.5 sm:gap-1"
               style={{
                 transform: coinPop ? 'scale(1)' : 'scale(0.6)',
                 opacity: coinPop ? 1 : 0,
                 transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
               }}
             >
-              <Image src="/images/woa_coin.png" alt="WOA Coin" width={32} height={32} className="object-contain" />
-              <span className="text-2xl font-black text-yellow-300">+1</span>
-              <span className="text-[10px] font-semibold text-blue-200 uppercase tracking-wide">WOA Coin</span>
+              <Image src="/images/woa_coin.png" alt="WOA Coin" width={24} height={24} className="object-contain sm:w-8 sm:h-8" />
+              <span className="text-lg sm:text-2xl font-black text-yellow-300">+1</span>
+              <span className="text-[8px] sm:text-[10px] font-semibold text-blue-200 uppercase tracking-wide">WOA Coin</span>
             </div>
           </div>
 
           {/* Motivational message */}
-          <p className="text-blue-100 text-sm leading-relaxed">
+          <p className="text-blue-100 text-xs sm:text-sm leading-relaxed px-1">
             {checkpoint < 5
               ? 'Você está descendo nas profundezas. Continue mergulhando!'
               : checkpoint < 9
@@ -183,12 +184,12 @@ export function CheckpointCelebration({
               : 'Quase lá! Um último mergulho e você chega ao fundo!'}
           </p>
 
-          <p className="text-blue-200 text-sm font-semibold">Deseja continuar ou prefere voltar mais tarde?</p>
+          <p className="text-blue-200 text-xs sm:text-sm font-semibold px-1">Deseja continuar ou prefere voltar mais tarde?</p>
 
           {/* CTA */}
           <button
             onClick={() => { playClick(); onContinue() }}
-            className="w-full py-4 rounded-2xl font-black text-white text-lg tracking-wide transition-all active:scale-95 hover:opacity-90"
+            className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-black text-white text-base sm:text-lg tracking-wide transition-all active:scale-95 hover:opacity-90"
             style={{
               background: 'linear-gradient(90deg, #CC4A00, #e85d00)',
               boxShadow: '0 6px 24px rgba(204,74,0,0.45)',
@@ -201,7 +202,7 @@ export function CheckpointCelebration({
           {onLater && (
             <button
               onClick={() => { playClick(); onLater() }}
-              className="w-full py-3 rounded-2xl font-bold text-blue-200 text-base tracking-wide transition-all active:scale-95 hover:bg-white/10"
+              className="w-full py-2 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-blue-200 text-sm sm:text-base tracking-wide transition-all active:scale-95 hover:bg-white/10"
               style={{
                 border: '2px solid rgba(255,255,255,0.2)',
                 animation: show ? 'popIn 0.4s ease 1.4s both' : 'none',

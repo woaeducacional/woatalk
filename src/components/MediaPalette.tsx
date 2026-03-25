@@ -212,7 +212,6 @@ export function MediaPalette({ journeyMissions, currentMissionIdx, totalCheckpoi
         lines={[
           '🎬 Você abriu um recurso!',
           'Vídeos e áudios ficam salvos aqui para você rever a qualquer momento.',
-          'Dica: Cole o código de verificação direto com Ctrl+V nos campos de 6 dígitos! 📋',
         ]}
         buttonLabel="ENTENDIDO!"
       />
