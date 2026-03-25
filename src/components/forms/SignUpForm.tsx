@@ -20,6 +20,9 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/src
 import { EmailVerification } from './EmailVerification'
 import { playClick } from '@/lib/sounds'
 
+/** Altere para `true` para ativar verificação de email com código de 6 dígitos */
+const ENABLE_EMAIL_VERIFICATION = false
+
 export function SignUpForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -71,12 +74,12 @@ export function SignUpForm() {
 
       const responseData = await response.json()
 
-      // Conta criada — ir para verificação de email
-      if (responseData.requiresVerification) {
+      // Conta criada — ir para verificação de email (se habilitado)
+      if (ENABLE_EMAIL_VERIFICATION && responseData.requiresVerification) {
         setRegisteredEmail(data.email)
         setStep('verify')
       } else {
-        // Fallback: if verification not required (shouldn't happen)
+        // Desativado temporariamente: pula direto para signin
         router.push('/auth/signin?registered=true')
       }
     } catch (err) {
