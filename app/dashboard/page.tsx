@@ -79,21 +79,21 @@ export default function DashboardPage() {
       <div className="relative z-10 flex flex-col min-h-screen">
 
         {/* ── NAV ── */}
-        <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10">
+        <header className="sticky top-0 z-40 flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative w-8 sm:w-10 h-8 sm:h-10">
               <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/40" />
               <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/60 object-cover" />
             </div>
             <div>
-              <span className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>
+              <span className="text-sm sm:text-base font-black tracking-[0.12em] sm:tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>
                 WOA TALK
               </span>
-              <p className="text-[10px] text-cyan-400/50 tracking-widest">SUA JORNADA ÉPICA</p>
+              <p className="text-[8px] sm:text-[10px] text-cyan-400/50 tracking-widest">SUA JORNADA ÉPICA</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Player XP badge */}
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-[10px] text-cyan-400/60 tracking-widest">LVL {level} • {xpInLevel}/{xpPerLevel} XP</span>
@@ -104,14 +104,14 @@ export default function DashboardPage() {
             <EnergyBar />
             <button
               onClick={() => { playClick(); setSidebarOpen(true) }}
-              className="text-xs font-black tracking-widest px-4 py-2 rounded transition-all hover:scale-105"
+              className="text-[11px] sm:text-xs font-black tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded transition-all hover:scale-105"
               style={{ border: '1px solid rgba(0,212,255,0.35)', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
             >
               EXPLORADOR
             </button>
             <button
               onClick={() => { playClick(); (signOut({ redirect: true }) as any) }}
-              className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-red-500/30 text-red-400/70 hover:border-red-400/60 hover:text-red-300 transition-all"
+              className="text-[11px] sm:text-xs font-bold tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded border border-red-500/30 text-red-400/70 hover:border-red-400/60 hover:text-red-300 transition-all"
             >
               SAIR
             </button>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
       <div
         className="fixed top-0 right-0 h-full z-50 flex flex-col"
         style={{
-          width: '300px',
+          width: 'min(300px, 80vw)',
           background: 'rgba(5,14,26,0.97)',
           borderLeft: '1px solid rgba(0,212,255,0.2)',
           boxShadow: '-8px 0 40px rgba(0,0,0,0.6)',
@@ -316,8 +316,8 @@ export default function DashboardPage() {
         }}
       >
         {/* Close */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <span className="text-[10px] font-black tracking-[0.25em]" style={{ color: 'rgba(255,255,255,0.4)' }}>EXPLORADOR</span>
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <span className="text-[9px] sm:text-[10px] font-black tracking-[0.2em] sm:tracking-[0.25em]" style={{ color: 'rgba(255,255,255,0.4)' }}>EXPLORADOR</span>
           <button
             onClick={() => setSidebarOpen(false)}
             className="w-7 h-7 flex items-center justify-center rounded-full text-white/40 hover:text-white/80 transition-colors"
@@ -328,46 +328,46 @@ export default function DashboardPage() {
         </div>
 
         {/* Avatar placeholder */}
-        <div className="flex flex-col items-center pt-8 pb-6 px-6">
+        <div className="flex flex-col items-center pt-6 sm:pt-8 pb-4 sm:pb-6 px-4 sm:px-6">
           <div
-            className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+            className="w-16 sm:w-20 h-16 sm:h-20 rounded-full flex items-center justify-center mb-3 sm:mb-4"
             style={{
               background: 'linear-gradient(135deg, rgba(0,67,187,0.5), rgba(0,212,255,0.2))',
               border: '2px solid rgba(0,212,255,0.35)',
               boxShadow: '0 0 24px rgba(0,212,255,0.2)',
             }}
           >
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="sm:w-9 sm:h-9">
               <circle cx="12" cy="8" r="4" fill="rgba(0,212,255,0.6)" />
               <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(0,212,255,0.6)" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </div>
 
           {/* Name */}
-          <p className="text-base font-black text-white tracking-wide text-center">
+          <p className="text-sm sm:text-base font-black text-white tracking-wide text-center">
             {session?.user?.name ?? 'Herói'}
           </p>
-          <p className="text-[10px] mt-1 tracking-widest" style={{ color: 'rgba(0,212,255,0.55)' }}>
+          <p className="text-[9px] sm:text-[10px] mt-1 tracking-widest" style={{ color: 'rgba(0,212,255,0.55)' }}>
             {session?.user?.email ?? ''}
           </p>
         </div>
 
-        <div className="flex-1 px-6 space-y-6 overflow-y-auto">
+        <div className="flex-1 px-4 sm:px-6 space-y-4 sm:space-y-6 overflow-y-auto">
           {/* Level + XP bar */}
           <div
-            className="rounded-xl p-4"
+            className="rounded-xl p-3 sm:p-4"
             style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-black tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>NÍVEL</span>
-              <span className="text-2xl font-black" style={{ color: '#00D4FF', textShadow: '0 0 12px rgba(0,212,255,0.6)' }}>
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <span className="text-[9px] sm:text-[10px] font-black tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>NÍVEL</span>
+              <span className="text-xl sm:text-2xl font-black" style={{ color: '#00D4FF', textShadow: '0 0 12px rgba(0,212,255,0.6)' }}>
                 {level}
               </span>
             </div>
 
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold" style={{ color: '#00D4FF' }}>{xpInLevel} XP</span>
-              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{xpPerLevel} XP</span>
+              <span className="text-[11px] sm:text-xs font-bold" style={{ color: '#00D4FF' }}>{xpInLevel} XP</span>
+              <span className="text-[9px] sm:text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{xpPerLevel} XP</span>
             </div>
             <div
               className="w-full h-3 rounded-full overflow-hidden"
@@ -382,19 +382,19 @@ export default function DashboardPage() {
                 }}
               />
             </div>
-            <p className="text-[10px] mt-2 text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            <p className="text-[9px] sm:text-[10px] mt-2 text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>
               {Math.max(0, xpPerLevel - xpInLevel)} XP para o próximo nível
             </p>
 
-            <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-white/5 flex items-center justify-between">
               <div className="flex flex-col items-center gap-0.5">
-                <span className="text-sm font-black" style={{ color: '#00D4FF' }}>{xpTotal.toLocaleString('pt-BR')}</span>
-                <span className="text-[9px] tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>XP TOTAL</span>
+                <span className="text-xs sm:text-sm font-black" style={{ color: '#00D4FF' }}>{xpTotal.toLocaleString('pt-BR')}</span>
+                <span className="text-[8px] sm:text-[9px] tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>XP TOTAL</span>
               </div>
-              <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <div className="w-px h-7 sm:h-8" style={{ background: 'rgba(255,255,255,0.08)' }} />
               <div className="flex flex-col items-center gap-0.5">
-                <span className="text-sm font-black" style={{ color: '#FFA940' }}>{coinsBalance}</span>
-                <span className="text-[9px] tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>MOEDAS</span>
+                <span className="text-xs sm:text-sm font-black" style={{ color: '#FFA940' }}>{coinsBalance}</span>
+                <span className="text-[8px] sm:text-[9px] tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>MOEDAS</span>
               </div>
             </div>
           </div>
@@ -403,20 +403,20 @@ export default function DashboardPage() {
           <Link
             href="/history"
             onClick={() => setSidebarOpen(false)}
-            className="flex items-center justify-between w-full rounded-xl px-4 py-3.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center justify-between w-full rounded-xl px-3 sm:px-4 py-2.5 sm:py-3.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
             style={{
               background: 'rgba(192,132,252,0.1)',
               border: '1px solid rgba(192,132,252,0.25)',
             }}
           >
-            <div className="flex items-center gap-3">
-              <span className="text-xl">🏆</span>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-lg sm:text-xl">🏆</span>
               <div>
-                <p className="text-sm font-black tracking-wider text-white">HISTORY REWARDS</p>
-                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>XP, moedas e badges ganhos</p>
+                <p className="text-xs sm:text-sm font-black tracking-wider text-white">HISTORY REWARDS</p>
+                <p className="text-[8px] sm:text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>XP, moedas e badges ganhos</p>
               </div>
             </div>
-            <span style={{ color: 'rgba(192,132,252,0.7)', fontSize: '18px' }}>›</span>
+            <span style={{ color: 'rgba(192,132,252,0.7)', fontSize: '16px' }} className="sm:text-lg">›</span>
           </Link>
         </div>
 

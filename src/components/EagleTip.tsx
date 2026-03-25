@@ -83,7 +83,7 @@ export function EagleTip({ storageKey, lines, buttonLabel = 'VAMOS COMEÇAR', on
 
         {/* Speech bubble */}
         <div
-          className="relative sm:order-1 sm:flex-shrink-0 w-full sm:w-56 rounded-2xl sm:rounded-2xl sm:rounded-br-none rounded-t-2xl rounded-b-2xl p-5 sm:p-6 transition-all duration-300"
+          className="relative sm:order-1 sm:flex-shrink-0 w-full max-w-xs sm:max-w-none sm:w-56 rounded-2xl sm:rounded-2xl sm:rounded-br-none rounded-t-2xl rounded-b-2xl p-4 sm:p-6 transition-all duration-300"
           style={{
             background: 'rgba(5,14,26,0.97)',
             border: '1px solid rgba(0,212,255,0.35)',
@@ -111,11 +111,11 @@ export function EagleTip({ storageKey, lines, buttonLabel = 'VAMOS COMEÇAR', on
           />
 
           {/* Text */}
-          <div className="space-y-2 mb-5">
+          <div className="space-y-1 sm:space-y-2 mb-4 sm:mb-5">
             {lines.map((line, i) => (
               <p
                 key={i}
-                className="text-sm leading-relaxed transition-opacity duration-300"
+                className="text-xs sm:text-sm leading-relaxed sm:leading-relaxed transition-opacity duration-300"
                 style={{ color: i === 0 ? '#fff' : 'rgba(255,255,255,0.65)', opacity: isClosing ? 0.5 : 1 }}
               >
                 {line}
@@ -126,7 +126,7 @@ export function EagleTip({ storageKey, lines, buttonLabel = 'VAMOS COMEÇAR', on
           {/* Button */}
           <button
             onClick={dismiss}
-            className="w-full text-xs font-black tracking-widest py-3 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full text-[11px] sm:text-xs font-black tracking-widest py-2 sm:py-3 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
             style={{
               background: 'linear-gradient(135deg,#0043BB,#00D4FF)',
               color: '#fff',

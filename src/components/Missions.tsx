@@ -42,6 +42,7 @@ function ResourceMissionInner({ mission, onComplete }: MissionProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasListened, setHasListened] = useState(false)
   const [hasWatched, setHasWatched] = useState(false)
+  const [showResourceTip, setShowResourceTip] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const isVideo = mission.resourceType === 'video'
@@ -61,12 +62,32 @@ function ResourceMissionInner({ mission, onComplete }: MissionProps) {
   }
 
   const handleAdvance = () => {
+    // Mostrar dica na primeira vez que completa um recurso
+    if (!localStorage.getItem('eagle_resource_completed')) {
+      setShowResourceTip(true)
+      localStorage.setItem('eagle_resource_completed', '1')
+      return // Não avança ainda, espera o usuário fechar a dica
+    }
     onComplete(mission.xp)
   }
 
   if (isVideo && videoId) {
     return (
       <div className="space-y-6">
+        <EagleTip
+          storageKey="eagle_resource_completed"
+          show={showResourceTip}
+          onDismiss={() => {
+            setShowResourceTip(false)
+            onComplete(mission.xp)
+          }}
+          lines={[
+            '🎬 Recurso completado!',
+            'Parabéns! Este material agora está desbloqueado em RECURSOS.',
+            'Você pode rever a qualquer momento.',
+          ]}
+          buttonLabel="CONTINUAR"
+        />
         <div className="text-center space-y-4">
           <h3 className="text-2xl font-bold text-white">Assista e Descubra</h3>
           <p className="text-white/70">Não se preocupe em entender tudo. Apenas descubra.</p>
@@ -102,6 +123,20 @@ function ResourceMissionInner({ mission, onComplete }: MissionProps) {
   // Audio resource
   return (
     <div className="space-y-6">
+      <EagleTip
+        storageKey="eagle_resource_completed"
+        show={showResourceTip}
+        onDismiss={() => {
+          setShowResourceTip(false)
+          onComplete(mission.xp)
+        }}
+        lines={[
+          '🎬 Recurso completado!',
+          'Parabéns! Este material agora está desbloqueado em RECURSOS.',
+          'Você pode rever a qualquer momento.',
+        ]}
+        buttonLabel="CONTINUAR"
+      />
       <div className="text-center space-y-4">
         <h3 className="text-2xl font-bold text-white">Escute e Descubra</h3>
         <p className="text-white/70">Não se preocupe em entender tudo. Apenas descubra.</p>

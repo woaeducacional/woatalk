@@ -67,46 +67,46 @@ export default function JourneyPage() {
       <div className="relative z-10 flex flex-col min-h-screen">
 
         {/* NAV */}
-        <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
-          <div className="flex items-center gap-3">
-            <button onClick={() => { playClick(); router.push('/dashboard') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
+        <header className="sticky top-0 z-40 flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={() => { playClick(); router.push('/dashboard') }} className="relative w-8 sm:w-9 h-8 sm:h-9 hover:scale-110 transition-transform shrink-0">
               <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
               <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
             </button>
             <div>
-              <span className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>MAPA DA JORNADA</span>
-              <p className="text-[10px] text-cyan-400/50 tracking-widest">FASE {currentPhase} DE {OCEAN_PHASES.length}</p>
+              <span className="text-sm sm:text-base font-black tracking-[0.12em] sm:tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>MAPA</span>
+              <p className="text-[8px] sm:text-[10px] text-cyan-400/50 tracking-widest">FASE {currentPhase}/{OCEAN_PHASES.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <EnergyBar />
             <button
               onClick={() => { playClick(); router.push('/dashboard') }}
-              className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all"
+              className="text-[11px] sm:text-xs font-bold tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all"
             >
               ← VOLTAR
             </button>
           </div>
         </header>
 
-        <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-10 space-y-8">
+        <div className="flex-1 max-w-3xl mx-auto w-full px-3 sm:px-4 py-6 sm:py-10 space-y-6 sm:space-y-8">
 
           {/* Active phase hero */}
           <section className="relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(0,36,120,0.8), rgba(0,102,255,0.5))', border: '1px solid #00D4FF45', boxShadow: '0 0 40px rgba(0,102,255,0.15)' }}>
             <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
             <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,#00D4FF,transparent)' }} />
-            <div className="relative px-8 py-8">
-              <div className="flex items-start justify-between gap-6">
-                <div>
-                  <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 mb-3 border border-cyan-400/25 text-[10px] font-black tracking-widest" style={{ background: 'rgba(0,212,255,0.08)', color: '#00D4FF' }}>
+            <div className="relative px-4 sm:px-8 py-6 sm:py-8">
+              <div className="flex items-start justify-between gap-4 sm:gap-6">
+                <div className="min-w-0">
+                  <div className="inline-flex items-center gap-2 rounded-full px-2 sm:px-3 py-0.5 sm:py-1 mb-2 sm:mb-3 border border-cyan-400/25 text-[9px] sm:text-[10px] font-black tracking-widest" style={{ background: 'rgba(0,212,255,0.08)', color: '#00D4FF' }}>
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                     MISSÃO ATIVA
                   </div>
-                  <h2 className="text-3xl font-black text-white mb-1" style={{ textShadow: '0 0 20px rgba(0,212,255,0.35)' }}>
+                  <h2 className="text-xl sm:text-3xl font-black text-white mb-1 truncate" style={{ textShadow: '0 0 20px rgba(0,212,255,0.35)' }}>
                     {activePhase.name}
                   </h2>
-                  <p className="text-[11px] text-cyan-400/60 tracking-widest mb-2">🌊 {activePhase.depth} DE PROFUNDIDADE</p>
-                  <p className="text-sm text-blue-200/70">📖 {activePhase.aula}</p>
+                  <p className="text-[10px] sm:text-[11px] text-cyan-400/60 tracking-widest mb-1 sm:mb-2">🌊 {activePhase.depth} DE PROFUNDIDADE</p>
+                  <p className="text-xs sm:text-sm text-blue-200/70 line-clamp-2">📖 {activePhase.aula}</p>
                 </div>
 
               </div>
@@ -115,22 +115,22 @@ export default function JourneyPage() {
 
           {/* Journey list */}
           <section>
-            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-5">— TODAS AS FASES —</h3>
+            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4 sm:mb-5">— TODAS AS FASES —</h3>
 
             <div className="relative">
               {/* vertical line */}
-              <div className="absolute left-5 top-5 bottom-5 w-px" style={{ background: 'linear-gradient(to bottom, #00D4FF40, transparent)' }} />
+              <div className="absolute left-4 sm:left-5 top-5 bottom-5 w-px" style={{ background: 'linear-gradient(to bottom, #00D4FF40, transparent)' }} />
 
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {OCEAN_PHASES.filter(phase => phase.id <= currentPhase).map((phase, index) => {
                   const isCurrent = phase.id === currentPhase
                   const isLocked = !isCurrent
 
                   return (
-                    <div key={phase.id} className="flex items-center gap-4">
+                    <div key={phase.id} className="flex items-start sm:items-center gap-3 sm:gap-4">
 
                       {/* Node */}
-                      <div className="relative z-10 shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all"
+                      <div className="relative z-10 shrink-0 w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all mt-0.5 sm:mt-0"
                         style={{
                           borderColor: isCurrent ? '#00D4FF' : isLocked ? 'rgba(255,255,255,0.1)' : '#00F0C8',
                           background: isCurrent ? 'rgba(0,212,255,0.15)' : isLocked ? 'rgba(5,14,26,0.8)' : 'rgba(0,240,200,0.1)',
@@ -138,16 +138,16 @@ export default function JourneyPage() {
                         }}
                       >
                         {isLocked
-                          ? <span className="text-sm opacity-30">🔒</span>
+                          ? <span className="text-xs sm:text-sm opacity-30">🔒</span>
                           : isCurrent
-                            ? <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-                            : <span className="text-sm">✓</span>
+                            ? <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                            : <span className="text-xs sm:text-sm">✓</span>
                         }
                       </div>
 
                       {/* Card */}
                       <div
-                        className={`flex-1 flex items-center justify-between gap-4 px-5 py-4 rounded-xl backdrop-blur-md transition-all ${isCurrent ? 'hover:scale-[1.01]' : ''}`}
+                        className={`flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-5 py-3 sm:py-4 rounded-xl backdrop-blur-md transition-all ${isCurrent ? 'hover:scale-[1.01]' : ''}`}
                         style={{
                           background: isCurrent
                             ? 'rgba(0,68,187,0.25)'
@@ -162,32 +162,32 @@ export default function JourneyPage() {
                           opacity: isLocked ? 0.55 : 1,
                         }}
                       >
-                        <div>
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-[10px] font-black tracking-widest"
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                            <span className="text-[9px] sm:text-[10px] font-black tracking-widest shrink-0"
                               style={{ color: isCurrent ? '#00D4FF' : isLocked ? 'rgba(255,255,255,0.25)' : '#00F0C8' }}>
                               #{String(phase.id).padStart(2, '0')}
                             </span>
-                            <h4 className="text-sm font-black text-white" style={{ opacity: isLocked ? 0.4 : 1 }}>
+                            <h4 className="text-xs sm:text-sm font-black text-white truncate" style={{ opacity: isLocked ? 0.4 : 1 }}>
                               {phase.name}
                             </h4>
                             {isCurrent && (
-                              <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded border"
+                              <span className="text-[8px] sm:text-[9px] font-black tracking-widest px-1.5 sm:px-2 py-0.5 rounded border whitespace-nowrap"
                                 style={{ color: '#00D4FF', borderColor: '#00D4FF40', background: 'rgba(0,212,255,0.1)' }}>
                                 ATIVO
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px]" style={{ color: isLocked ? 'rgba(147,197,253,0.25)' : 'rgba(147,197,253,0.6)' }}>
+                          <p className="text-[9px] sm:text-[11px] line-clamp-1" style={{ color: isLocked ? 'rgba(147,197,253,0.25)' : 'rgba(147,197,253,0.6)' }}>
                             📖 {phase.aula} · 🌊 {phase.depth}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           {isAdmin && (
                             <button
                               onClick={() => { playClick(); router.push(`/admin/journey/${phase.id}`) }}
-                              className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
+                              className="text-[9px] sm:text-[10px] font-black tracking-widest px-2 sm:px-3 py-1 sm:py-1.5 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
                               style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.08)', boxShadow: '0 0 10px rgba(255,255,255,0.15)' }}
                             >
                               EDITAR
@@ -196,7 +196,7 @@ export default function JourneyPage() {
                           {isCurrent && (
                             <button
                               onClick={() => { playClick(); router.push(`/challenge/${phase.id}`) }}
-                              className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
+                              className="text-[9px] sm:text-[10px] font-black tracking-widest px-2 sm:px-3 py-1 sm:py-1.5 rounded border transition-all hover:scale-105 active:scale-95 uppercase"
                               style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.08)', boxShadow: '0 0 10px rgba(255,255,255,0.15)' }}
                             >PROSSEGUIR</button>
                           )}
@@ -211,18 +211,18 @@ export default function JourneyPage() {
 
           {/* Completion banner */}
           {currentPhase === OCEAN_PHASES.length && (
-            <section className="rounded-2xl px-8 py-8 text-center" style={{ background: 'rgba(0,212,255,0.07)', border: '1px solid #00D4FF40' }}>
-              <p className="text-2xl font-black text-white mb-2" style={{ textShadow: '0 0 20px rgba(0,212,255,0.4)' }}>
+            <section className="rounded-2xl px-4 sm:px-8 py-6 sm:py-8 text-center" style={{ background: 'rgba(0,212,255,0.07)', border: '1px solid #00D4FF40' }}>
+              <p className="text-xl sm:text-2xl font-black text-white mb-2" style={{ textShadow: '0 0 20px rgba(0,212,255,0.4)' }}>
                 🏆 JORNADA COMPLETA!
               </p>
-              <p className="text-sm text-blue-200/55">Em breve, novas fases estarão disponíveis.</p>
+              <p className="text-xs sm:text-sm text-blue-200/55">Em breve, novas fases estarão disponíveis.</p>
             </section>
           )}
 
         </div>
 
-        <footer className="py-5 text-center border-t border-cyan-400/10">
-          <p className="text-[11px] text-blue-200/30 tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
+        <footer className="py-4 sm:py-5 text-center border-t border-cyan-400/10">
+          <p className="text-[10px] sm:text-[11px] text-blue-200/30 tracking-[0.15em] sm:tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
         </footer>
       </div>
     </main>
