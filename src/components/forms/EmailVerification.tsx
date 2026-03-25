@@ -139,10 +139,10 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto px-4 sm:px-6">
       <CardHeader>
-        <CardTitle>Verifique seu Email</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-xl sm:text-2xl">Verifique seu Email</CardTitle>
+        <CardDescription className="text-xs sm:text-sm">
           Enviamos um código de 6 dígitos para <strong>{email}</strong>
         </CardDescription>
       </CardHeader>
@@ -155,7 +155,7 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
           )}
 
           {/* Inputs para OTP */}
-          <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+          <div className="flex gap-1 sm:gap-2 justify-center" onPaste={handlePaste}>
             {code.map((digit, index) => (
               <input
                 key={index}
@@ -169,7 +169,7 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 placeholder="•"
-                className="w-14 h-14 text-center text-3xl font-black text-white rounded-lg outline-none transition-all"
+                className="w-12 h-12 sm:w-14 sm:h-14 text-center text-2xl sm:text-3xl font-black text-white rounded-lg outline-none transition-all"
                 style={{
                   background: 'rgba(255,255,255,0.08)',
                   border: `2px solid ${digit ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)'}`,
@@ -183,7 +183,7 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
           {/* Botão de verificação */}
           <Button
             type="submit"
-            className="w-full"
+            className="w-full text-sm sm:text-base"
             disabled={isLoading || code.some((digit) => !digit)}
           >
             {isLoading ? 'Verificando...' : 'Verificar Código'}
@@ -191,12 +191,12 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
 
           {/* Reenviar código */}
           <div className="text-center space-y-2">
-            <p className="text-sm text-blue-300">Não recebeu o código?</p>
+            <p className="text-xs sm:text-sm text-blue-300">Não recebeu o código?</p>
             <button
               type="button"
               onClick={handleResendCode}
               disabled={resendLoading || resendCooldown > 0}
-              className="text-blue-400 hover:text-blue-300 disabled:text-blue-600 text-sm font-medium transition-colors"
+              className="text-blue-400 hover:text-blue-300 disabled:text-blue-600 text-xs sm:text-sm font-medium transition-colors"
             >
               {resendCooldown > 0
                 ? `Reenviar em ${resendCooldown}s`
@@ -211,7 +211,7 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
             <button
               type="button"
               onClick={onBackClick}
-              className="w-full text-center text-sm text-blue-300 hover:text-blue-200 transition-colors"
+              className="w-full text-center text-xs sm:text-sm text-blue-300 hover:text-blue-200 transition-colors"
             >
               Voltar
             </button>
