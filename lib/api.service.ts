@@ -229,6 +229,34 @@ class ApiService {
   }
 
   /**
+   * Atualizar senha do usuário (para redefinição via OTP)
+   */
+  async updateUserPassword(email: string, newPassword: string): Promise<boolean> {
+    const user = await this.getUserByEmail(email)
+    if (!user) return false
+
+    const password_hash = await hashPassword(newPassword)
+    const updatedData = { password_hash, updated_at: new Date().toISOString() }
+
+    if (this.isSupabaseAvailable()) {
+      try {
+        const { error } = await (supabaseClient! as any)
+          .from('users')
+          .update(updatedData)
+          .eq('email', email.toLowerCase().trim())
+
+        if (error) console.warn('Supabase update password error:', error)
+      } catch (error) {
+        console.warn('Supabase exception updating password:', error)
+      }
+    } else {
+      inMemoryDB.updateUser(user.id, updatedData)
+    }
+
+    return true
+  }
+
+  /**
    * Obter status do banco de dados
    */
   getDBStatus(): 'supabase' | 'fallback' {

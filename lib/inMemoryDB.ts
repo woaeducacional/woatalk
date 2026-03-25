@@ -38,6 +38,14 @@ class InMemoryDB {
     return user
   }
 
+  updateUser(id: string, data: Partial<InMemoryUser>): InMemoryUser | null {
+    const user = this.users.get(id)
+    if (!user) return null
+    const updated = { ...user, ...data }
+    this.users.set(id, updated)
+    return updated
+  }
+
   getAllUsers(): InMemoryUser[] {
     return Array.from(this.users.values())
   }

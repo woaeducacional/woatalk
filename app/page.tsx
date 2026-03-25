@@ -45,9 +45,9 @@ export default function Home() {
       <div className="relative z-10 flex flex-col min-h-screen">
 
         {/* NAV */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md bg-[#050E1A]/50">
-          <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11">
+        <header className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-cyan-400/20 backdrop-blur-md bg-[#050E1A]/50">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative w-8 h-8 sm:w-11 sm:h-11 shrink-0">
               <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/50" />
               <Image
                 src="/images/logo.png"
@@ -56,24 +56,24 @@ export default function Home() {
                 className="relative rounded-full border-2 border-cyan-400/70 object-cover"
               />
             </div>
-            <span className="text-lg font-black tracking-[0.2em] text-white"
+            <span className="text-sm sm:text-lg font-black tracking-[0.15em] sm:tracking-[0.2em] text-white"
               style={{ textShadow: '0 0 12px rgba(0,212,255,0.6)' }}>
               WOA TALK
             </span>
           </div>
 
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/auth/signin"
               onClick={() => playBubble()}
-              className="text-cyan-300 text-sm font-semibold tracking-widest px-4 py-2 rounded border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all"
+              className="text-cyan-300 text-xs sm:text-sm font-semibold tracking-wider sm:tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all whitespace-nowrap"
             >
               ENTRAR
             </Link>
             <Link
               href="/auth/signup"
               onClick={() => playBubble()}
-              className="text-sm font-black tracking-widest px-5 py-2 rounded border-2 transition-all"
+              className="text-xs sm:text-sm font-black tracking-wider sm:tracking-widest px-3 sm:px-5 py-1.5 sm:py-2 rounded border-2 transition-all whitespace-nowrap"
               style={{
                 borderColor: '#FFD700',
                 color: '#FFD700',
@@ -110,19 +110,6 @@ export default function Home() {
             Mergulhe nas profundezas do oceano e conquiste o inglês
             através de missões, batalhas e recompensas épicas.
           </p>
-
-          {/* XP bar */}
-          <div className="w-full max-w-xs mb-10">
-            <div className="flex justify-between text-[11px] font-semibold tracking-widest text-cyan-400/60 mb-1.5">
-              <span>LVL 1 · MERGULHADOR</span>
-              <span>0 / 100 XP</span>
-            </div>
-            <div className="h-2.5 rounded-full border border-cyan-500/30 overflow-hidden"
-              style={{ background: 'rgba(0,212,255,0.08)' }}>
-              <div className="h-full w-px rounded-full"
-                style={{ background: 'linear-gradient(90deg, #00D4FF, #00F0C8)' }} />
-            </div>
-          </div>
 
           {/* CTA */}
           <div className="flex flex-col sm:flex-row gap-4 mb-16">

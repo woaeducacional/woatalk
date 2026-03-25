@@ -182,12 +182,17 @@ export default function SignInPage() {
                 ⚔️ ENTRAR NA MISSÃO
               </Button>
 
-              <p className="text-center text-sm text-blue-300/70">
-                Não tem uma conta?{' '}
-                <a href="/auth/signup" className="font-bold text-cyan-400 hover:text-cyan-300 transition-colors">
-                  Criar conta
+              <div className="flex items-center justify-between text-sm">
+                <p className="text-blue-300/70">
+                  Não tem uma conta?{' '}
+                  <a href="/auth/signup" className="font-bold text-cyan-400 hover:text-cyan-300 transition-colors">
+                    Criar conta
+                  </a>
+                </p>
+                <a href="/auth/forgot-password" className="text-blue-300/50 hover:text-cyan-400 transition-colors text-xs">
+                  Esqueci a senha
                 </a>
-              </p>
+              </div>
             </Form>
           </CardContent>
         </Card>

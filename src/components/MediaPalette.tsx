@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { JourneyMission } from '@/lib/journey'
+import { EagleTip } from './EagleTip'
 
 /* ──────────────────────────────────────────────────────────────
    MediaPalette — sidebar card with 10 slots (one per checkpoint)
@@ -31,6 +32,7 @@ interface MediaPaletteProps {
 
 export function MediaPalette({ journeyMissions, currentMissionIdx, totalCheckpoints, isOpen, onClose }: MediaPaletteProps) {
   const [playingSlot, setPlayingSlot] = useState<number | null>(null)
+  const [showMediaTip, setShowMediaTip] = useState(false)
 
   // Build the 10 slots from first mission of each checkpoint group
   const slots: MediaSlot[] = Array.from({ length: totalCheckpoints }).map((_, i) => {
@@ -106,6 +108,11 @@ export function MediaPalette({ journeyMissions, currentMissionIdx, totalCheckpoi
                   key={idx}
                   onClick={() => {
                     if (!hasContent) return
+                    // Mostrar dica sempre na primeira vez que abre um slot
+                    if (!localStorage.getItem('eagle_media_revisit')) {
+                      setShowMediaTip(true)
+                      localStorage.setItem('eagle_media_revisit', '1')
+                    }
                     setPlayingSlot(isActive ? null : idx)
                   }}
                   className={`
@@ -197,6 +204,18 @@ export function MediaPalette({ journeyMissions, currentMissionIdx, totalCheckpoi
           </div>
         </div>
       </aside>
+
+      <EagleTip
+        storageKey="eagle_media_revisit"
+        show={showMediaTip}
+        onDismiss={() => setShowMediaTip(false)}
+        lines={[
+          '🎬 Você abriu um recurso!',
+          'Vídeos e áudios ficam salvos aqui para você rever a qualquer momento.',
+          'Dica: Cole o código de verificação direto com Ctrl+V nos campos de 6 dígitos! 📋',
+        ]}
+        buttonLabel="ENTENDIDO!"
+      />
     </>
   )
 }

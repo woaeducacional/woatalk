@@ -60,6 +60,10 @@ function ResourceMissionInner({ mission, onComplete }: MissionProps) {
     setHasListened(true)
   }
 
+  const handleAdvance = () => {
+    onComplete(mission.xp)
+  }
+
   if (isVideo && videoId) {
     return (
       <div className="space-y-6">
@@ -83,7 +87,7 @@ function ResourceMissionInner({ mission, onComplete }: MissionProps) {
         {hasWatched && (
           <div className="flex justify-center gap-4 pt-2">
             <button
-              onClick={() => onComplete(mission.xp)}
+              onClick={handleAdvance}
               className="text-white font-bold tracking-wide px-6 py-3 rounded-lg transition-all hover:scale-105 active:scale-95"
               style={{ background: 'linear-gradient(135deg, #CC4A00, #FF6B35)', border: '2px solid #FF6B35', boxShadow: '0 0 15px rgba(255,107,53,0.3)', cursor: 'pointer' }}
             >
@@ -118,7 +122,7 @@ function ResourceMissionInner({ mission, onComplete }: MissionProps) {
           <button onClick={handlePlay} disabled={isPlaying} className="font-semibold px-6 py-2 rounded-lg border-2 transition-opacity" style={{ borderColor: '#0043BB', color: '#0043BB', backgroundColor: 'white', cursor: isPlaying ? 'not-allowed' : 'pointer', opacity: isPlaying ? 0.6 : 1 }}>
             🔁 Repetir
           </button>
-          <button onClick={() => onComplete(mission.xp)} className="text-white font-semibold px-6 py-2 rounded-lg transition-opacity" style={{ backgroundColor: '#CC4A00', cursor: 'pointer' }}>
+          <button onClick={handleAdvance} className="text-white font-semibold px-6 py-2 rounded-lg transition-opacity" style={{ backgroundColor: '#CC4A00', cursor: 'pointer' }}>
             Avançar →
           </button>
         </div>
@@ -254,20 +258,21 @@ function QuestionMissionInner({ mission, onComplete, onError }: MissionProps) {
           const isSelected = selected === option
           const isCorrect = !mission.correctAnswer || option === mission.correctAnswer
           const highlightCorrect = isWrong && isCorrect
+          const showGreen = highlightCorrect || (isSelected && !isWrong)
           return (
             <button
               key={option}
               onClick={() => handleSelect(option)}
               className="p-4 rounded-lg font-bold text-lg transition-all border-2 hover:scale-[1.02] hover:brightness-110"
               style={{
-                backgroundColor: highlightCorrect ? 'rgba(22,163,74,0.25)' : isSelected ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
-                borderColor: highlightCorrect ? '#22c55e' : isSelected ? '#ef4444' : 'rgba(255,255,255,0.2)',
-                color: highlightCorrect ? '#86efac' : isSelected ? '#fca5a5' : 'white',
+                backgroundColor: showGreen ? 'rgba(22,163,74,0.25)' : isSelected ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
+                borderColor: showGreen ? '#22c55e' : isSelected ? '#ef4444' : 'rgba(255,255,255,0.2)',
+                color: showGreen ? '#86efac' : isSelected ? '#fca5a5' : 'white',
                 cursor: 'pointer',
-                opacity: selected && !isSelected && !highlightCorrect ? 0.3 : 1,
+                opacity: selected && !isSelected && !showGreen ? 0.3 : 1,
               }}
             >
-              {option}{highlightCorrect ? ' ✓' : ''}
+              {option}{showGreen ? ' ✓' : ''}
             </button>
           )
         })}      </div>
@@ -345,27 +350,6 @@ function CompleteMissionInner({ mission, onComplete, onError }: MissionProps) {
       return (
         <div className="space-y-4 w-full">
           <span className="text-2xl font-bold text-white">{rawQuestion}</span>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-xs font-bold tracking-widest" style={{ color: 'rgba(0,212,255,0.5)' }}>
-              RESPOSTA
-            </span>
-            <span
-              className="inline-block min-w-[180px] text-center font-black text-xl px-4 py-2 rounded-lg"
-              style={{
-                borderBottom: selected
-                  ? `3px solid ${isCorrect ? '#22c55e' : '#ef4444'}`
-                  : '3px solid rgba(0,212,255,0.7)',
-                color: selected
-                  ? isCorrect ? '#86efac' : '#fca5a5'
-                  : 'rgba(0,212,255,0.5)',
-                background: selected
-                  ? isCorrect ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)'
-                  : 'rgba(0,212,255,0.05)',
-              }}
-            >
-              {selected ?? '_ _ _ _ _ _'}
-            </span>
-          </div>
         </div>
       )
     }
@@ -375,9 +359,6 @@ function CompleteMissionInner({ mission, onComplete, onError }: MissionProps) {
         <span
           className="inline-block min-w-[80px] text-center font-black px-2 mx-1 rounded"
           style={{
-            borderBottom: selected
-              ? `3px solid ${isCorrect ? '#22c55e' : '#ef4444'}`
-              : '3px solid rgba(0,212,255,0.7)',
             color: selected
               ? isCorrect ? '#86efac' : '#fca5a5'
               : 'rgba(0,212,255,0.9)',
@@ -399,11 +380,7 @@ function CompleteMissionInner({ mission, onComplete, onError }: MissionProps) {
         <p className="text-xs font-black tracking-widest" style={{ color: 'rgba(0,212,255,0.6)' }}>
           COMPLETE A FRASE
         </p>
-        <div
-          className="flex items-center justify-center gap-3 px-4 py-5 rounded-2xl"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-          key={showTranslation ? 'pt' : 'en'}
-        >
+        <div className="flex items-center justify-center gap-3">
           {renderSentence()}
           {mission.questionPt && (
             <button
@@ -426,20 +403,21 @@ function CompleteMissionInner({ mission, onComplete, onError }: MissionProps) {
           const isSelected = selected === option
           const optCorrect = !mission.correctAnswer || option === mission.correctAnswer
           const highlightCorrect = isWrong && optCorrect
+          const showGreen = highlightCorrect || (isSelected && !isWrong)
           return (
             <button
               key={option}
               onClick={() => handleSelect(option)}
               className="p-4 rounded-lg font-bold text-lg transition-all border-2 hover:scale-[1.02] hover:brightness-110"
               style={{
-                backgroundColor: highlightCorrect ? 'rgba(22,163,74,0.25)' : isSelected ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
-                borderColor: highlightCorrect ? '#22c55e' : isSelected ? '#ef4444' : 'rgba(255,255,255,0.2)',
-                color: highlightCorrect ? '#86efac' : isSelected ? '#fca5a5' : 'white',
+                backgroundColor: showGreen ? 'rgba(22,163,74,0.25)' : isSelected ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
+                borderColor: showGreen ? '#22c55e' : isSelected ? '#ef4444' : 'rgba(255,255,255,0.2)',
+                color: showGreen ? '#86efac' : isSelected ? '#fca5a5' : 'white',
                 cursor: 'pointer',
-                opacity: selected && !isSelected && !highlightCorrect ? 0.3 : 1,
+                opacity: selected && !isSelected && !showGreen ? 0.3 : 1,
               }}
             >
-              {option}{highlightCorrect ? ' ✓' : ''}
+              {option}{showGreen ? ' ✓' : ''}
             </button>
           )
         })}

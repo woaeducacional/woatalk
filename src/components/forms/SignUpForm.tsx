@@ -69,8 +69,16 @@ export function SignUpForm() {
         return
       }
 
-      // Conta criada — ir direto para o login (verificação de email desativada)
-      router.push('/auth/signin?registered=true')
+      const responseData = await response.json()
+
+      // Conta criada — ir para verificação de email
+      if (responseData.requiresVerification) {
+        setRegisteredEmail(data.email)
+        setStep('verify')
+      } else {
+        // Fallback: if verification not required (shouldn't happen)
+        router.push('/auth/signin?registered=true')
+      }
     } catch (err) {
       setError('Erro ao conectar ao servidor')
     } finally {
@@ -79,8 +87,8 @@ export function SignUpForm() {
   }
 
   const handleVerificationComplete = () => {
-    // Redirecionar para dashboard ou signin
-    router.push('/auth/signin?verified=true')
+    // Email verificado — redirecionar para signin
+    router.push('/auth/signin?registered=true')
   }
 
   const handleBackToSignUp = () => {

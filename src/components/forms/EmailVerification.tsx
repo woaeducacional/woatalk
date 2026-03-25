@@ -49,7 +49,15 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
     }
   }
 
-  // Verificar código
+  // Lidar com cola de código
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6).split('')
+    if (digits.length === 6) {
+      setCode(digits)
+      inputRefs.current[5]?.focus()
+      e.preventDefault()
+    }
+  }
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     const fullCode = code.join('')
@@ -147,7 +155,7 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
           )}
 
           {/* Inputs para OTP */}
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center" onPaste={handlePaste}>
             {code.map((digit, index) => (
               <input
                 key={index}
@@ -155,12 +163,18 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
                   inputRefs.current[index] = el
                 }}
                 type="text"
+                inputMode="numeric"
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                placeholder="0"
-                className="w-12 h-12 text-center text-2xl font-bold border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400"
+                placeholder="•"
+                className="w-14 h-14 text-center text-3xl font-black text-white rounded-lg outline-none transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  border: `2px solid ${digit ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)'}`,
+                  boxShadow: digit ? '0 0 16px rgba(255,255,255,0.4), inset 0 0 8px rgba(255,255,255,0.1)' : 'none',
+                }}
                 disabled={isLoading}
               />
             ))}
