@@ -34,13 +34,63 @@ const OCEAN_PHASES = [
 export default function JourneyPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [currentPhase] = useState<number>(2)
+  const [currentPhase, setCurrentPhase] = useState<number>(1)
+  const [completedPhases, setCompletedPhases] = useState<number[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Load user's progress
+  useEffect(() => {
+    const loadProgress = async () => {
+      try {
+        // Clear old localStorage data (migrated to DB)
+        localStorage.removeItem('woatalk_completed_phases')
+
+        // Load completed phases from database
+        const response = await fetch('/api/phases/completed')
+        const completedPhaseIds: number[] = await response.json()
+        
+        // For phase 2 (Talking About Hobbies), check mission groups instead
+        // Only mark phase 2 as complete if ALL 5 mission groups are done
+        let filteredCompleted = Array.isArray(completedPhaseIds) ? completedPhaseIds.filter(id => id !== 2) : []
+        
+        try {
+          const missionResponse = await fetch('/api/mission-groups/2/completed')
+          const missionGroupIds: number[] = await missionResponse.json()
+          if (Array.isArray(missionGroupIds) && missionGroupIds.length === 5) {
+            // All 5 mission groups completed, phase 2 is truly complete
+            filteredCompleted.push(2)
+          }
+        } catch {
+          // If mission groups API fails, don't mark phase 2 as complete
+        }
+
+        if (filteredCompleted.length > 0) {
+          setCompletedPhases(filteredCompleted)
+          const lastCompleted = Math.max(...filteredCompleted)
+          setCurrentPhase(Math.min(lastCompleted + 1, OCEAN_PHASES.length))
+        } else {
+          setCurrentPhase(1)
+          setCompletedPhases([])
+        }
+      } catch (error) {
+        console.error('Failed to load progress:', error)
+        setCurrentPhase(1)
+        setCompletedPhases([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (status === 'authenticated') {
+      loadProgress()
+    }
+  }, [status])
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#050E1A' }}>
         <div className="flex flex-col items-center gap-4">
@@ -122,9 +172,10 @@ export default function JourneyPage() {
               <div className="absolute left-4 sm:left-5 top-5 bottom-5 w-px" style={{ background: 'linear-gradient(to bottom, #00D4FF40, transparent)' }} />
 
               <div className="space-y-2 sm:space-y-3">
-                {OCEAN_PHASES.filter(phase => phase.id <= currentPhase).map((phase, index) => {
+                {OCEAN_PHASES.map((phase) => {
+                  const isCompleted = completedPhases.includes(phase.id)
                   const isCurrent = phase.id === currentPhase
-                  const isLocked = !isCurrent
+                  const isLocked = !isCurrent && !isCompleted
 
                   return (
                     <div key={phase.id} className="flex items-start sm:items-center gap-3 sm:gap-4">
@@ -132,16 +183,18 @@ export default function JourneyPage() {
                       {/* Node */}
                       <div className="relative z-10 shrink-0 w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all mt-0.5 sm:mt-0"
                         style={{
-                          borderColor: isCurrent ? '#00D4FF' : isLocked ? 'rgba(255,255,255,0.1)' : '#00F0C8',
-                          background: isCurrent ? 'rgba(0,212,255,0.15)' : isLocked ? 'rgba(5,14,26,0.8)' : 'rgba(0,240,200,0.1)',
-                          boxShadow: isCurrent ? '0 0 14px rgba(0,212,255,0.5)' : 'none',
+                          borderColor: isCurrent ? '#00D4FF' : isCompleted ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                          background: isCurrent ? 'rgba(0,212,255,0.15)' : isCompleted ? 'rgba(34,197,94,0.15)' : 'rgba(5,14,26,0.8)',
+                          boxShadow: isCurrent ? '0 0 14px rgba(0,212,255,0.5)' : isCompleted ? '0 0 14px rgba(34,197,94,0.3)' : 'none',
                         }}
                       >
                         {isLocked
                           ? <span className="text-xs sm:text-sm opacity-30">🔒</span>
                           : isCurrent
                             ? <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-                            : <span className="text-xs sm:text-sm">✓</span>
+                            : isCompleted
+                              ? <span className="text-xs sm:text-sm">✅</span>
+                              : <span className="text-xs sm:text-sm">✓</span>
                         }
                       </div>
 
@@ -151,21 +204,25 @@ export default function JourneyPage() {
                         style={{
                           background: isCurrent
                             ? 'rgba(0,68,187,0.25)'
-                            : isLocked
-                              ? 'rgba(5,14,26,0.45)'
-                              : 'rgba(0,240,200,0.06)',
+                            : isCompleted
+                              ? 'rgba(34,197,94,0.1)'
+                              : isLocked
+                                ? 'rgba(5,14,26,0.45)'
+                                : 'rgba(0,240,200,0.06)',
                           border: isCurrent
                             ? '1px solid #00D4FF45'
-                            : isLocked
-                              ? '1px solid rgba(255,255,255,0.06)'
-                              : '1px solid rgba(0,240,200,0.2)',
+                            : isCompleted
+                              ? '1px solid rgba(34,197,94,0.3)'
+                              : isLocked
+                                ? '1px solid rgba(255,255,255,0.06)'
+                                : '1px solid rgba(0,240,200,0.2)',
                           opacity: isLocked ? 0.55 : 1,
                         }}
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                             <span className="text-[9px] sm:text-[10px] font-black tracking-widest shrink-0"
-                              style={{ color: isCurrent ? '#00D4FF' : isLocked ? 'rgba(255,255,255,0.25)' : '#00F0C8' }}>
+                              style={{ color: isCurrent ? '#00D4FF' : isCompleted ? '#22c55e' : isLocked ? 'rgba(255,255,255,0.25)' : '#00F0C8' }}>
                               #{String(phase.id).padStart(2, '0')}
                             </span>
                             <h4 className="text-xs sm:text-sm font-black text-white truncate" style={{ opacity: isLocked ? 0.4 : 1 }}>
@@ -175,6 +232,12 @@ export default function JourneyPage() {
                               <span className="text-[8px] sm:text-[9px] font-black tracking-widest px-1.5 sm:px-2 py-0.5 rounded border whitespace-nowrap"
                                 style={{ color: '#00D4FF', borderColor: '#00D4FF40', background: 'rgba(0,212,255,0.1)' }}>
                                 ATIVO
+                              </span>
+                            )}
+                            {isCompleted && (
+                              <span className="text-[8px] sm:text-[9px] font-black tracking-widest px-1.5 sm:px-2 py-0.5 rounded border whitespace-nowrap"
+                                style={{ color: '#22c55e', borderColor: 'rgba(34,197,94,0.4)', background: 'rgba(34,197,94,0.1)' }}>
+                                COMPLETO
                               </span>
                             )}
                           </div>

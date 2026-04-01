@@ -16,6 +16,9 @@ import {
 import { MediaPalette, MediaPaletteButton } from '@/src/components/MediaPalette'
 import { EnergyBar } from '@/src/components/EnergyBar'
 import { EagleTip } from '@/src/components/EagleTip'
+import { JourneyCoverImage } from '@/src/components/JourneyCoverImage'
+import { JourneyTheme } from '@/src/components/JourneyTheme'
+import { HobbiesActivityFlow } from '@/src/components/HobbiesActivityFlow'
 import { checkpointsToMissions, type JourneyMission, type JourneyCheckpoint } from '@/lib/journey'
 import { playClick } from '@/lib/sounds'
 
@@ -64,11 +67,14 @@ export default function ChallengePage() {
   const [totalXp, setTotalXp] = useState(0)
   const [isCompleted, setIsCompleted] = useState(false)
   const [dbCheckpoint, setDbCheckpoint] = useState(0)
+  const [phaseCompleted, setPhaseCompleted] = useState(false)
   const [celebrationData, setCelebrationData] = useState<{ checkpoint: number; xpEarned: number } | null>(null)
   const [showPalette, setShowPalette] = useState(false)
   const [energyCharges, setEnergyCharges] = useState(3)
   const [energySlots, setEnergySlots] = useState<(string | null)[]>([null, null, null])
   const [showEnergyTip, setShowEnergyTip] = useState(false)
+  const [showCover, setShowCover] = useState(true)
+  const [showTheme, setShowTheme] = useState(false)
   const checkpointXpRef = useRef(0)
 
   useEffect(() => {
@@ -92,6 +98,39 @@ export default function ChallengePage() {
       const saved = parseInt(match.split('=')[1])
       if (!isNaN(saved) && saved > 0) setCurrentMissionIdx(saved)
     }
+  }, [phaseId])
+
+  // Check if phase is completed (for activity-based phases with mission groups)
+  useEffect(() => {
+    if (!phaseId) return
+    
+    // For phaseId 2 (Talking About Hobbies), check mission groups instead of phase completion
+    if (phaseId === 2) {
+      fetch(`/api/mission-groups/${phaseId}/completed`)
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+          // Phase is complete only if ALL 5 mission groups are done
+          const allCompleted = Array.isArray(data) && data.length === 5
+          setPhaseCompleted(allCompleted)
+        })
+        .catch(() => setPhaseCompleted(false))
+      return
+    }
+    
+    // For other phases, check the old system
+    const localCompleted = JSON.parse(localStorage.getItem('woatalk_completed_phases') || '[]')
+    if (localCompleted.includes(phaseId)) {
+      setPhaseCompleted(true)
+      return
+    }
+    
+    fetch('/api/phases/completed')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        const isCompleted = Array.isArray(data) && data.includes(phaseId)
+        setPhaseCompleted(isCompleted || false)
+      })
+      .catch(() => setPhaseCompleted(false))
   }, [phaseId])
 
   useEffect(() => {
@@ -119,6 +158,37 @@ export default function ChallengePage() {
   }, [status, router])
 
   const phase = OCEAN_PHASES.find(p => p.id === phaseId)
+
+  // For Hobbies phase (phaseId 2), always use the activity-based system
+  // HobbiesActivityFlow handles its own completion state via mission groups
+  if (phaseId === 2) {
+    return (
+      <main className="min-h-screen relative" style={{ background: '#050E1A' }}>
+        <div className="fixed inset-0 z-0">
+          <Image src="/images/fundo_do_mar.png" alt="Fundo do Mar" fill className="object-cover object-bottom" priority />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(5,14,26,0.90) 0%, rgba(5,14,26,0.70) 40%, rgba(5,14,26,0.88) 100%)' }} />
+        </div>
+        <div className="relative z-10 flex flex-col min-h-screen">
+          <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
+            <div className="flex items-center gap-3">
+              <button onClick={() => { playClick(); router.push('/journey') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
+                <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
+                <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
+              </button>
+              <div>
+                <h1 className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>TALKING ABOUT HOBBIES</h1>
+                <p className="text-[10px] text-cyan-400/50 tracking-widest">Aprender & Praticar</p>
+              </div>
+            </div>
+            <button onClick={() => { playClick(); router.push('/journey') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all">← VOLTAR</button>
+          </header>
+          <div className="max-w-4xl mx-auto px-4 py-12 flex-1">
+            <HobbiesActivityFlow phaseId={phaseId} />
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   if (loading || !phase) {
     return (
@@ -265,6 +335,24 @@ export default function ChallengePage() {
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
       </div>
       <div className="relative z-10 flex flex-col min-h-screen">
+      {showCover && currentMissionIdx === 0 && (
+        <JourneyCoverImage
+          phaseId={phaseId}
+          onDismiss={() => {
+            setShowCover(false)
+            setShowTheme(true)
+          }}
+        />
+      )}
+      {showTheme && currentMissionIdx === 0 && (
+        <JourneyTheme
+          phaseId={phaseId}
+          phaseName={phase?.name ?? ''}
+          onDismiss={() => {
+            setShowTheme(false)
+          }}
+        />
+      )}
       <EagleTip
         storageKey="eagle_energy_tutorial"
         show={showEnergyTip}

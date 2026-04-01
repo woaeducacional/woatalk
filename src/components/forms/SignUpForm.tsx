@@ -21,7 +21,7 @@ import { EmailVerification } from './EmailVerification'
 import { playClick } from '@/lib/sounds'
 
 /** Altere para `true` para ativar verificação de email com código de 6 dígitos */
-const ENABLE_EMAIL_VERIFICATION = false
+const ENABLE_EMAIL_VERIFICATION = true
 
 export function SignUpForm() {
   const router = useRouter()
