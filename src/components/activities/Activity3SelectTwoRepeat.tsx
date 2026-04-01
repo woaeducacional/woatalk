@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { getSpeechRecognition } from '@/src/lib/speechRecognition';
 
 interface Activity3Props {
   onComplete: (xp: number) => void;
@@ -104,7 +105,7 @@ export const Activity3SelectTwoRepeat: React.FC<Activity3Props> = ({ onComplete,
   const handleRepeat = async () => {
     if (isRecording) return;
 
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionAPI = getSpeechRecognition();
     if (!SpeechRecognitionAPI) {
       alert('Speech Recognition not supported in your browser.');
       return;
@@ -160,7 +161,7 @@ export const Activity3SelectTwoRepeat: React.FC<Activity3Props> = ({ onComplete,
       setIsRecording(false);
     };
 
-    recognition.start();
+    await recognition.start();
   };
 
   // Check accuracy and move forward

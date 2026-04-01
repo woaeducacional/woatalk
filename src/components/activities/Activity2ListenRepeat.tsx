@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { playClick, playCorrect, playWrong } from '@/lib/sounds'
+import { getSpeechRecognition } from '@/src/lib/speechRecognition'
 
 interface Activity2ListenRepeatProps {
   onComplete: (xp: number) => void
@@ -96,12 +97,11 @@ export function Activity2ListenRepeat({ onComplete }: Activity2ListenRepeatProps
     }
   }
 
-  const handleRepeat = () => {
+  const handleRepeat = async () => {
     playClick()
     setError('')
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const SpeechRecognitionAPI = getSpeechRecognition()
     if (!SpeechRecognitionAPI) {
       setError('Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.')
       return
@@ -165,7 +165,7 @@ export function Activity2ListenRepeat({ onComplete }: Activity2ListenRepeatProps
     }
 
     recognitionRef.current = rec
-    rec.start()
+    await rec.start()
     resetSilenceTimeout() // Iniciar timeout ao começar a gravação
     setRecordingStage('recording')
   }

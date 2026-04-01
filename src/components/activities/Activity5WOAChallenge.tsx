@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { getSpeechRecognition } from '@/src/lib/speechRecognition';
 
 interface Activity5Props {
   selectedSentences: Set<string>;
@@ -63,7 +64,7 @@ export const Activity5WOAChallenge: React.FC<Activity5Props> = ({ selectedSenten
   const handleSpeak = async () => {
     if (isRecording) return;
 
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionAPI = getSpeechRecognition();
     if (!SpeechRecognitionAPI) {
       alert('Speech Recognition not supported in your browser.');
       return;
@@ -123,7 +124,7 @@ export const Activity5WOAChallenge: React.FC<Activity5Props> = ({ selectedSenten
       setIsRecording(false);
     };
 
-    recognition.start();
+    await recognition.start();
   };
 
   // Success screen

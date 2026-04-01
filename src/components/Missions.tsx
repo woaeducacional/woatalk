@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { JourneyMission } from '@/lib/journey'
 import { EagleTip } from '@/src/components/EagleTip'
+import { getSpeechRecognition } from '@/src/lib/speechRecognition'
 
 interface MissionProps {
   mission: JourneyMission
@@ -686,10 +687,9 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
     setStage('result')
   }
 
-  const handleStartRecording = () => {
+  const handleStartRecording = async () => {
     setError('')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const SpeechRecognitionAPI = getSpeechRecognition()
     if (!SpeechRecognitionAPI) {
       setError('Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.')
       return
@@ -729,7 +729,7 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
       }
     }
     recognitionRef.current = rec
-    rec.start()
+    await rec.start()
     setStage('recording')
   }
 

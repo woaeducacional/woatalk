@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { getSpeechRecognition } from '@/src/lib/speechRecognition';
 
 interface Activity4Props {
   selectedSentences: Set<string>;
@@ -58,7 +59,7 @@ export const Activity4SpeakOnly: React.FC<Activity4Props> = ({ selectedSentences
   const handleRepeat = async () => {
     if (isRecording) return;
 
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionAPI = getSpeechRecognition();
     if (!SpeechRecognitionAPI) {
       alert('Speech Recognition not supported in your browser.');
       return;
@@ -114,7 +115,7 @@ export const Activity4SpeakOnly: React.FC<Activity4Props> = ({ selectedSentences
       setIsRecording(false);
     };
 
-    recognition.start();
+    await recognition.start();
   };
 
   // Check accuracy and move forward
