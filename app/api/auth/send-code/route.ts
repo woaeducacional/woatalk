@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se já há um código pendente (limitar spam)
-    if (hasOTPPending(validatedData.email)) {
+    if (await hasOTPPending(validatedData.email)) {
       return NextResponse.json(
         { 
           error: 'Um código já foi enviado recentemente. Aguarde alguns minutos.' 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Gerar código OTP
     const code = generateOTP()
-    storeOTP(validatedData.email, code)
+    await storeOTP(validatedData.email, code)
 
     // Enviar email com Resend
     const emailResult = await sendOTPEmail(validatedData.email, code)

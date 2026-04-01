@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, code, password } = schema.parse(body)
 
-    const otpResult = verifyOTP(`reset:${email}`, code)
+    const otpResult = await verifyOTP(`reset:${email}`, code)
     if (!otpResult.valid) {
       return NextResponse.json({ error: otpResult.message }, { status: 400 })
     }

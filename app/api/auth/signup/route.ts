@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
       // Gerar e enviar código OTP para verificação de email
       const code = generateOTP()
-      storeOTP(validatedData.email, code, 10) // Válido por 10 minutos
+      await storeOTP(validatedData.email, code, 10) // Válido por 10 minutos
 
       const emailResult = await sendOTPEmail(validatedData.email, code)
       if (!emailResult.success) {

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Se esse email estiver cadastrado, você receberá o código.' }, { status: 200 })
     }
 
-    if (hasOTPPending(`reset:${email}`)) {
+    if (await hasOTPPending(`reset:${email}`)) {
       return NextResponse.json(
         { error: 'Um código já foi enviado. Aguarde alguns minutos antes de tentar novamente.' },
         { status: 429 }
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const code = generateOTP()
-    storeOTP(`reset:${email}`, code, 10)
+    await storeOTP(`reset:${email}`, code, 10)
 
     const emailResult = await sendPasswordResetEmail(email, code)
     if (!emailResult.success) {

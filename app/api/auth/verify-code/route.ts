@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const validatedData = await verifyEmailSchema.parseAsync(body)
 
     // Verificar código OTP
-    const otpResult = verifyOTP(validatedData.email, validatedData.code)
+    const otpResult = await verifyOTP(validatedData.email, validatedData.code)
 
     if (!otpResult.valid) {
       return NextResponse.json(
