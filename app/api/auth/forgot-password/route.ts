@@ -15,11 +15,16 @@ export async function POST(request: NextRequest) {
 
     // Always respond with success to avoid email enumeration
     const user = await getUserByEmail(email)
+    console.log('🔑 [FORGOT] Usuário encontrado:', !!user, '| email:', email)
+    
     if (!user) {
       return NextResponse.json({ message: 'Se esse email estiver cadastrado, você receberá o código.' }, { status: 200 })
     }
 
-    if (await hasOTPPending(`reset:${email}`)) {
+    const pending = await hasOTPPending(`reset:${email}`)
+    console.log('🔑 [FORGOT] OTP pendente:', pending)
+    
+    if (pending) {
       return NextResponse.json(
         { error: 'Um código já foi enviado. Aguarde alguns minutos antes de tentar novamente.' },
         { status: 429 }
@@ -27,9 +32,14 @@ export async function POST(request: NextRequest) {
     }
 
     const code = generateOTP()
+    console.log('🔑 [FORGOT] OTP gerado:', code, '| chave:', `reset:${email}`)
+    
     await storeOTP(`reset:${email}`, code, 10)
+    console.log('🔑 [FORGOT] OTP salvo no Supabase')
 
     const emailResult = await sendPasswordResetEmail(email, code)
+    console.log('🔑 [FORGOT] Resultado envio email:', JSON.stringify(emailResult))
+    
     if (!emailResult.success) {
       return NextResponse.json({ error: 'Erro ao enviar o código. Tente novamente.' }, { status: 500 })
     }

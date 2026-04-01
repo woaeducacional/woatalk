@@ -155,9 +155,11 @@ export async function sendPasswordResetEmail(email: string, code: string) {
     })
 
     if (error) {
+      console.error('🔑 [RESET EMAIL] Erro Resend:', error)
       return { success: false, error: error.message }
     }
 
+    console.log('🔑 [RESET EMAIL] Enviado com sucesso! ID:', data?.id)
     return { success: true, id: data?.id }
   } catch (error: any) {
     return { success: false, error: error.message }
