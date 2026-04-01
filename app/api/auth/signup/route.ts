@@ -30,9 +30,14 @@ export async function POST(request: NextRequest) {
 
       // Gerar e enviar código OTP para verificação de email
       const code = generateOTP()
+      console.log('📧 [SIGNUP] OTP gerado para:', validatedData.email, '| código:', code)
+      
       await storeOTP(validatedData.email, code, 10) // Válido por 10 minutos
+      console.log('📧 [SIGNUP] OTP salvo no Supabase')
 
       const emailResult = await sendOTPEmail(validatedData.email, code)
+      console.log('📧 [SIGNUP] Resultado do envio:', JSON.stringify(emailResult))
+      
       if (!emailResult.success) {
         console.warn('⚠️ Código OTP gerado mas email não foi enviado:', emailResult.error)
         // Não retorna erro — o código está armazenado e o usuário pode pedir para reenviar

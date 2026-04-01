@@ -18,10 +18,14 @@ function validateResendConfig(): { valid: boolean; error?: string } {
 export async function sendOTPEmail(email: string, code: string) {
   try {
     const validation = validateResendConfig()
+    console.log('📧 [EMAIL] Config válida:', validation.valid, '| API_KEY existe:', !!process.env.RESEND_API_KEY, '| FROM:', process.env.RESEND_FROM_EMAIL)
+    
     if (!validation.valid) {
       console.error('❌', validation.error)
       return { success: false, error: 'Email service not configured' }
     }
+
+    console.log('📧 [EMAIL] Enviando para:', email, '| from:', process.env.RESEND_FROM_EMAIL)
 
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
@@ -80,9 +84,11 @@ export async function sendOTPEmail(email: string, code: string) {
     })
 
     if (error) {
+      console.error('📧 [EMAIL] Erro Resend:', error)
       return { success: false, error: error.message }
     }
 
+    console.log('📧 [EMAIL] Enviado com sucesso! ID:', data?.id)
     return { success: true, id: data?.id }
   } catch (error: any) {
     return { success: false, error: error.message }
