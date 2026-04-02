@@ -243,7 +243,7 @@ export const MissionGroupsFlow: React.FC<MissionGroupsFlowProps> = ({ phaseId, o
 
             <div className="space-y-2 pt-4">
               <button
-                onClick={() => (window.location.href = '/journey')}
+                onClick={() => (window.location.href = '/dashboard')}
                 className="w-full px-6 py-3 rounded-lg font-bold text-white transition-all hover:scale-105 active:scale-95"
                 style={{
                   background: 'linear-gradient(135deg, #003AB0, #0066FF)',

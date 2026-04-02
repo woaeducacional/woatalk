@@ -9,28 +9,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ phaseId: string }> }
 ) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-  if (!token?.id || !supabaseUrl || !supabaseKey) {
-    return NextResponse.json({ checkpoint: 0, missions_completed: 0 })
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey)
-  const userId = token.id as string
-  const phaseId = parseInt((await params).phaseId)
-
-  try {
-    const { data, error } = await supabase
-      .from('phase_checkpoints')
-      .select('checkpoint, missions_completed, xp_earned, coins_earned')
-      .eq('user_id', userId)
-      .eq('phase_id', phaseId)
-      .maybeSingle()
-
-    if (error) return NextResponse.json({ checkpoint: 0, missions_completed: 0, xp_earned: 0, coins_earned: 0 })
-    return NextResponse.json(data ?? { checkpoint: 0, missions_completed: 0, xp_earned: 0, coins_earned: 0 })
-  } catch {
-    return NextResponse.json({ checkpoint: 0, missions_completed: 0, xp_earned: 0, coins_earned: 0 })
-  }
+  await params // consume params
+  return NextResponse.json({ checkpoint: 0, missions_completed: 0, xp_earned: 0, coins_earned: 0 })
 }
 
 export async function POST(
@@ -43,32 +23,12 @@ export async function POST(
 
   const supabase = createClient(supabaseUrl, supabaseKey)
   const userId = token.id as string
-  const phaseId = parseInt((await params).phaseId)
+  await params // consume params
 
-  const { checkpoint, missions_completed, xp_earned, coins_earned } = await request.json()
+  const { xp_earned, coins_earned } = await request.json()
 
   try {
-    // Upsert checkpoint record
-    const { error: cpError } = await supabase
-      .from('phase_checkpoints')
-      .upsert(
-        {
-          user_id: userId,
-          phase_id: phaseId,
-          checkpoint,
-          missions_completed,
-          xp_earned: xp_earned ?? 0,
-          coins_earned: coins_earned ?? 0,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,phase_id' }
-      )
-
-    if (cpError) return NextResponse.json({ error: cpError.message }, { status: 500 })
-
-    // Increment xp_total and coins_balance on the users table
     if (xp_earned || coins_earned) {
-      // Read current values first
       const { data: userRow } = await supabase
         .from('users')
         .select('xp_total, coins_balance')
@@ -85,30 +45,6 @@ export async function POST(
           })
           .eq('id', userId)
       }
-
-      // Build description from phase/level names
-      let description = `Fase ${phaseId} · Checkpoint ${checkpoint}`
-      const { data: phaseData } = await supabase
-        .from('phases')
-        .select('name, levels(name)')
-        .eq('id', phaseId)
-        .maybeSingle()
-      if (phaseData) {
-        const levels = phaseData.levels as { name: string }[] | null
-        const levelName = Array.isArray(levels) && levels.length > 0 ? levels[0].name : `Fase ${phaseId}`
-        description = `${levelName} — ${phaseData.name} · Checkpoint ${checkpoint}`
-      }
-
-      // Insert history record
-      await supabase.from('user_history').insert({
-        user_id: userId,
-        event_type: 'checkpoint',
-        xp_earned: xp_earned ?? 0,
-        coins_earned: coins_earned ?? 0,
-        description,
-        phase_id: phaseId,
-        checkpoint_number: checkpoint,
-      })
     }
 
     return NextResponse.json({ ok: true })

@@ -8,53 +8,31 @@ export async function GET(
   { params }: { params: Promise<{ phaseId: string }> }
 ) {
   try {
-    if (!supabase) {
-      return NextResponse.json([])
-    }
+    if (!supabase) return NextResponse.json([])
 
     const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { phaseId: phaseIdStr } = await params
     const phaseId = parseInt(phaseIdStr)
+    if (isNaN(phaseId)) return NextResponse.json([])
 
-    if (isNaN(phaseId)) {
-      return NextResponse.json([])
-    }
-
-    // Get user ID from email
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error } = await supabase
       .from('users')
-      .select('id')
+      .select('current_phase')
       .eq('email', session.user.email)
       .single()
 
-    if (userError || !userData) {
-      return NextResponse.json([])
-    }
+    if (error || !userData) return NextResponse.json([])
 
-    const userId = userData.id
-
-    // Get all completed mission groups for this phase
-    const { data: completedData, error: dataError } = await supabase
-      .from('user_mission_group_completion')
-      .select('mission_group_id')
-      .eq('user_id', userId)
-      .eq('phase_id', phaseId)
-      .order('mission_group_id', { ascending: true })
-
-    if (dataError) {
-      console.error('Error fetching mission groups:', dataError)
-      return NextResponse.json([])
-    }
-
-    const completedGroups = (completedData || []).map((row: any) => row.mission_group_id)
+    const currentPhase = userData.current_phase ?? 1
+    // Each group index corresponds to a phase (group 0 = phase 1, group 1 = phase 2, ...)
+    // Groups 0..(current_phase-2) are completed
+    const completedCount = Math.max(0, Math.min(currentPhase - 1, 5))
+    const completedGroups = Array.from({ length: completedCount }, (_, i) => i)
 
     return NextResponse.json(completedGroups)
-  } catch (error) {
-    console.error('Error fetching completed mission groups:', error)
+  } catch {
     return NextResponse.json([])
   }
 }

@@ -14,8 +14,6 @@ export interface User {
   xp_total: number
   coins_balance: number
   current_phase: number
-  errors_today: number
-  last_error_reset: string
   created_at: string
   updated_at: string
 }
@@ -110,8 +108,6 @@ class ApiService {
       xp_total: 0,
       coins_balance: 0,
       current_phase: 1,
-      errors_today: 0,
-      last_error_reset: now,
       created_at: now,
       updated_at: now,
     }

@@ -14,7 +14,6 @@ import {
   SpeakMission,
 } from '@/src/components/Missions'
 import { MediaPalette, MediaPaletteButton } from '@/src/components/MediaPalette'
-import { EnergyBar } from '@/src/components/EnergyBar'
 import { EagleTip } from '@/src/components/EagleTip'
 import { JourneyCoverImage } from '@/src/components/JourneyCoverImage'
 import { JourneyTheme } from '@/src/components/JourneyTheme'
@@ -70,9 +69,6 @@ export default function ChallengePage() {
   const [phaseCompleted, setPhaseCompleted] = useState(false)
   const [celebrationData, setCelebrationData] = useState<{ checkpoint: number; xpEarned: number } | null>(null)
   const [showPalette, setShowPalette] = useState(false)
-  const [energyCharges, setEnergyCharges] = useState(3)
-  const [energySlots, setEnergySlots] = useState<(string | null)[]>([null, null, null])
-  const [showEnergyTip, setShowEnergyTip] = useState(false)
   const [showCover, setShowCover] = useState(true)
   const [showTheme, setShowTheme] = useState(false)
   const checkpointXpRef = useRef(0)
@@ -142,53 +138,41 @@ export default function ChallengePage() {
   }, [phaseId])
 
   useEffect(() => {
-    if (status !== 'authenticated') return
-    fetch('/api/user/energy')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (!d) return
-        setEnergyCharges(d.charges ?? 3)
-        setEnergySlots(d.slots ?? [null, null, null])
-      })
-      .catch(() => {})
-  }, [status])
-
-  useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status, router])
 
   const phase = OCEAN_PHASES.find(p => p.id === phaseId)
 
-  // For Hobbies phase (phaseId 2), always use the activity-based system
-  // HobbiesActivityFlow handles its own completion state via mission groups
-  if (phaseId === 2) {
-    return (
-      <main className="min-h-screen relative" style={{ background: '#050E1A' }}>
-        <div className="fixed inset-0 z-0">
-          <Image src="/images/fundo_do_mar.png" alt="Fundo do Mar" fill className="object-cover object-bottom" priority />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(5,14,26,0.90) 0%, rgba(5,14,26,0.70) 40%, rgba(5,14,26,0.88) 100%)' }} />
-        </div>
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
-            <div className="flex items-center gap-3">
-              <button onClick={() => { playClick(); router.push('/journey') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
-                <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
-                <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
-              </button>
-              <div>
-                <h1 className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>TALKING ABOUT HOBBIES</h1>
-                <p className="text-[10px] text-cyan-400/50 tracking-widest">Aprender & Praticar</p>
-              </div>
+  // Helper: renders the mission-groups layout for any phase without DB checkpoint content
+  const renderMissionGroupsFlow = () => (
+    <main className="min-h-screen relative" style={{ background: '#050E1A' }}>
+      <div className="fixed inset-0 z-0">
+        <Image src="/images/fundo_do_mar.png" alt="Fundo do Mar" fill className="object-cover object-bottom" priority />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(5,14,26,0.90) 0%, rgba(5,14,26,0.70) 40%, rgba(5,14,26,0.88) 100%)' }} />
+      </div>
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
+          <div className="flex items-center gap-3">
+            <button onClick={() => { playClick(); router.push('/dashboard') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
+              <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
+              <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
+            </button>
+            <div>
+              <h1 className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>{phase?.name?.toUpperCase() ?? 'MISSÕES'}</h1>
+              <p className="text-[10px] text-cyan-400/50 tracking-widest">Aprender & Praticar</p>
             </div>
-            <button onClick={() => { playClick(); router.push('/journey') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all">← VOLTAR</button>
-          </header>
-          <div className="max-w-4xl mx-auto px-4 py-12 flex-1">
-            <HobbiesActivityFlow phaseId={phaseId} />
           </div>
+          <button onClick={() => { playClick(); router.push('/dashboard') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all">← VOLTAR</button>
+        </header>
+        <div className="max-w-4xl mx-auto px-4 py-12 flex-1">
+          <HobbiesActivityFlow phaseId={phaseId} />
         </div>
-      </main>
-    )
-  }
+      </div>
+    </main>
+  )
+
+  // Phase 2 always uses mission groups (no need to wait for DB fetch)
+  if (phaseId === 2) return renderMissionGroupsFlow()
 
   if (loading || !phase) {
     return (
@@ -201,15 +185,9 @@ export default function ChallengePage() {
     )
   }
 
+  // Any phase with no DB checkpoint content → use mission groups flow
   if (missions.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#050E1A' }}>
-        <div className="text-center space-y-4">
-          <p className="text-cyan-300/60 text-sm tracking-widest">NENHUMA MISSÃO ENCONTRADA</p>
-          <button onClick={() => router.push('/journey')} className="text-cyan-400 underline text-sm">Voltar à jornada</button>
-        </div>
-      </div>
-    )
+    return renderMissionGroupsFlow()
   }
 
   const currentMission = missions[currentMissionIdx]
@@ -251,21 +229,7 @@ export default function ChallengePage() {
     }
   }
 
-  const handleError = () => {
-    // Show energy tutorial on very first error
-    if (typeof window !== 'undefined' && !localStorage.getItem('eagle_energy_tutorial')) {
-      setShowEnergyTip(true)
-    }
-
-    fetch('/api/user/energy', { method: 'POST' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (!d) return
-        setEnergyCharges(d.charges ?? 0)
-        setEnergySlots(d.slots ?? [null, null, null])
-      })
-      .catch(() => {})
-  }
+  const handleError = () => {}
 
   const handleCelebrationContinue = () => {
     const nextIdx = (celebrationData!.checkpoint) * 10
@@ -283,13 +247,13 @@ export default function ChallengePage() {
         <div className="relative z-10 flex flex-col min-h-screen">
           <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
             <div className="flex items-center gap-3">
-              <button onClick={() => { playClick(); router.push('/journey') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
+              <button onClick={() => { playClick(); router.push('/dashboard') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
                 <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
                 <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
               </button>
               <span className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>WOA TALK</span>
             </div>
-            <button onClick={() => { playClick(); router.push('/journey') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70">← VOLTAR</button>
+            <button onClick={() => { playClick(); router.push('/dashboard') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70">← VOLTAR</button>
           </header>
           <div className="max-w-2xl mx-auto px-4 py-20 flex-1 flex items-center">
             <div className="text-center space-y-8 w-full">
@@ -304,7 +268,7 @@ export default function ChallengePage() {
                 <p className="text-5xl font-black" style={{ color: '#FFD700', textShadow: '0 0 20px rgba(255,215,0,0.5)' }}>+{totalXp} XP</p>
               </div>
               <div className="space-y-3">
-                <button onClick={() => { playClick(); router.push('/journey') }} className="w-full font-black tracking-widest px-8 py-4 rounded-lg text-lg text-white hover:scale-105 active:scale-95 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>⚔️ VOLTAR À JORNADA</button>
+                <button onClick={() => { playClick(); router.push('/dashboard') }} className="w-full font-black tracking-widest px-8 py-4 rounded-lg text-lg text-white hover:scale-105 active:scale-95 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>⚔️ VOLTAR À JORNADA</button>
                 <button onClick={() => { playClick(); setCurrentMissionIdx(0); setTotalXp(0); setIsCompleted(false) }} className="w-full font-bold tracking-widest px-8 py-4 rounded-lg text-lg text-cyan-300 hover:bg-cyan-500/10 hover:scale-105 transition-all" style={{ border: '2px solid rgba(0,212,255,0.3)' }}>🔄 REPETIR LIÇÃO</button>
               </div>
             </div>
@@ -353,22 +317,9 @@ export default function ChallengePage() {
           }}
         />
       )}
-      <EagleTip
-        storageKey="eagle_energy_tutorial"
-        show={showEnergyTip}
-        onDismiss={() => setShowEnergyTip(false)}
-        buttonLabel="ENTENDIDO!"
-        lines={[
-          '⚡ Sistema de Energia',
-          'Você tem 3 cargas de energia.',
-          'Cada resposta errada consome 1 carga.',
-          'Cada carga se restaura em 8 horas.',
-          'Pense bem antes de responder!',
-        ]}
-      />
       <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
         <div className="flex items-center gap-3">
-          <button onClick={() => { playClick(); router.push('/journey') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
+          <button onClick={() => { playClick(); router.push('/dashboard') }} className="relative w-9 h-9 hover:scale-110 transition-transform">
             <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
             <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
           </button>
@@ -388,8 +339,7 @@ export default function ChallengePage() {
               }
               return count
             })()} />
-          <EnergyBar charges={energyCharges} slots={energySlots} />
-          <button onClick={() => { playClick(); router.push('/journey') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all">← VOLTAR</button>
+          <button onClick={() => { playClick(); router.push('/dashboard') }} className="text-xs font-bold tracking-widest px-4 py-2 rounded border border-cyan-500/25 text-cyan-300/70 hover:border-cyan-400/50 hover:text-cyan-300 transition-all">← VOLTAR</button>
         </div>
       </header>
       <div className="border-b border-cyan-400/15 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.60)' }}>
@@ -446,7 +396,7 @@ export default function ChallengePage() {
       </div>
       <MediaPalette journeyMissions={missions} currentMissionIdx={currentMissionIdx} totalCheckpoints={Math.ceil(missions.length / 10)} isOpen={showPalette} onClose={() => setShowPalette(false)} />
       {celebrationData && (
-        <CheckpointCelebration checkpoint={celebrationData.checkpoint} xpEarned={celebrationData.xpEarned} missionsCompleted={10} onContinue={handleCelebrationContinue} onLater={() => { playClick(); router.push('/journey') }} />
+        <CheckpointCelebration checkpoint={celebrationData.checkpoint} xpEarned={celebrationData.xpEarned} missionsCompleted={10} onContinue={handleCelebrationContinue} onLater={() => { playClick(); router.push('/dashboard') }} />
       )}
     </main>
   )

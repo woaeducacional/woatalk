@@ -8,7 +8,6 @@ import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
 import { playClick } from '@/lib/sounds'
 import { EagleTip } from '@/src/components/EagleTip'
-import { EnergyBar } from '@/src/components/EnergyBar'
 
 const xpPerLevel = 250
 
@@ -101,7 +100,6 @@ export default function DashboardPage() {
                 <div className="h-full rounded-full transition-all" style={{ width: `${xpProgress}%`, background: 'linear-gradient(90deg,#00D4FF,#00F0C8)' }} />
               </div>
             </div>
-            <EnergyBar />
             <button
               onClick={() => { playClick(); setSidebarOpen(true) }}
               className="text-[11px] sm:text-xs font-black tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded transition-all hover:scale-105"
@@ -133,7 +131,7 @@ export default function DashboardPage() {
               <p className="text-blue-200/55 text-sm mt-2">Continue sua jornada e desbloqueie novos oceanos.</p>
             </div>
             <Link
-              href="/journey"
+              href="/challenge/1"
               onClick={() => playClick()}
               className="shrink-0 px-7 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105"
               style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.4)' }}
@@ -276,7 +274,7 @@ export default function DashboardPage() {
               </h3>
               <p className="text-blue-100/80 text-sm mb-6">Desbloqueie novos oceanos e conquiste novos desafios épicos</p>
               <Link
-                href="/journey"
+                href="/challenge/1"
                 onClick={() => playClick()}
                 className="inline-block px-8 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105"
                 style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.45)' }}

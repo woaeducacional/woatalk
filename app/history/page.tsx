@@ -188,7 +188,7 @@ export default function HistoryPage() {
               NENHUMA ATIVIDADE AINDA
             </p>
             <Link
-              href="/journey"
+              href="/dashboard"
               className="text-xs font-black tracking-widest px-4 py-2 rounded"
               style={{ color: '#00D4FF', border: '1px solid rgba(0,212,255,0.3)', background: 'rgba(0,212,255,0.08)' }}
             >

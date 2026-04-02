@@ -11,8 +11,6 @@ interface InMemoryUser {
   xp_total: number
   coins_balance: number
   current_phase: number
-  errors_today: number
-  last_error_reset: string
   created_at: string
   updated_at: string
 }
