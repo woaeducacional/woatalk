@@ -83,7 +83,8 @@ export function Activity4Conversation({ onComplete }: Activity4ConversationProps
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.05)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-1">🏆 CONVERSATION CHALLENGE</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🏆 CONVERSATION CHALLENGE</p>
+          <p className="text-white/40 text-[10px] mb-1">Desafio de Conversão</p>
           <p className="text-blue-200/60 text-xs mb-4">👉 🇺🇸 What do you like to do in your free time?  |  🇧🇷 O que você gosta de fazer no seu tempo livre?</p>
 
           <p className="text-blue-200/80 mb-1 text-sm">✍️ <strong>Step 1 — Escreva em Português</strong> (3–4 linhas):</p>
@@ -134,7 +135,8 @@ export function Activity4Conversation({ onComplete }: Activity4ConversationProps
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-1">🔄 STEP 2 — TRANSLATE WITH AI</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🔄 STEP 2 — TRANSLATE WITH AI</p>
+          <p className="text-white/40 text-[10px] mb-1">Traduza com Inteligência Artificial</p>
           <p className="text-blue-200/50 text-xs mb-4">Seu texto será traduzido para o inglês 🇺🇸</p>
 
           <div className="p-3 rounded-lg bg-white/5 border border-white/10 mb-4">
@@ -190,7 +192,8 @@ export function Activity4Conversation({ onComplete }: Activity4ConversationProps
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-cyan-400/30 text-center" style={{ background: 'rgba(0,212,255,0.06)' }}>
-          <p className="text-cyan-300 font-bold text-sm mb-1">🎧 WOA — LISTEN ({repeatIdx + 1}/{sentences.length})</p>
+          <p className="text-cyan-300 font-bold text-sm mb-0.5">🎧 WOA — LISTEN ({repeatIdx + 1}/{sentences.length})</p>
+          <p className="text-white/40 text-[10px] mb-1">Ouça com atenção</p>
           <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 0 ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
           <p className="text-white text-lg font-semibold mb-6">{sent}</p>
@@ -214,7 +217,8 @@ export function Activity4Conversation({ onComplete }: Activity4ConversationProps
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.06)' }}>
-          <p className="text-green-300 font-bold text-sm mb-1">🎤 WOA — REPEAT ({repeatIdx + 1}/{sentences.length})</p>
+          <p className="text-green-300 font-bold text-sm mb-0.5">🎤 WOA — REPEAT ({repeatIdx + 1}/{sentences.length})</p>
+          <p className="text-white/40 text-[10px] mb-1">Repita em voz alta</p>
           <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 1 ? 'bg-green-500/30 text-green-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
           <p className="text-white text-lg font-semibold mb-4">{sent}</p>
@@ -249,7 +253,8 @@ export function Activity4Conversation({ onComplete }: Activity4ConversationProps
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30 text-center" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm mb-1">💡 WOA — UNDERSTAND</p>
+          <p className="text-yellow-300 font-bold text-sm mb-0.5">💡 WOA — UNDERSTAND</p>
+          <p className="text-white/40 text-[10px] mb-1">Entenda o significado</p>
           <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 2 ? 'bg-yellow-500/30 text-yellow-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
           <div className="p-4 rounded-lg bg-white/5 border border-white/10 mb-4 text-left">
@@ -280,7 +285,8 @@ export function Activity4Conversation({ onComplete }: Activity4ConversationProps
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-red-400/30 text-center" style={{ background: 'rgba(239,68,68,0.06)' }}>
-          <p className="text-red-300 font-bold text-sm mb-1">🔥 WOA — SPEAK ({speakFreeIdx + 1}/{sentences.length})</p>
+          <p className="text-red-300 font-bold text-sm mb-0.5">🔥 WOA — SPEAK ({speakFreeIdx + 1}/{sentences.length})</p>
+          <p className="text-white/40 text-[10px] mb-1">Fale livremente</p>
           <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 3 ? 'bg-red-500/30 text-red-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
           {showText && <p className="text-white/30 text-sm mb-2 italic">Hint: {sent}</p>}

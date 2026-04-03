@@ -11,7 +11,7 @@ const MISSION_GROUPS = [
   {
     id: 0,
     icon: '🎬',
-    title: 'Watch & Learn',
+    title: 'Video Insight Challenge',
     description: 'Watch a video introduction to the topic',
     color: '#00D4FF',
     activities: 1,
@@ -19,7 +19,7 @@ const MISSION_GROUPS = [
   {
     id: 1,
     icon: '✍️',
-    title: 'Choose & Select',
+    title: "Let's Reflect",
     description: 'Select the correct sentences about hobbies',
     color: '#00FF88',
     activities: 1,
@@ -27,7 +27,7 @@ const MISSION_GROUPS = [
   {
     id: 2,
     icon: '🎧',
-    title: 'Listen & Repeat',
+    title: 'Related Vocabulary',
     description: 'Practice pronunciation with 8 sentences',
     color: '#FFD700',
     activities: 1,
@@ -35,7 +35,7 @@ const MISSION_GROUPS = [
   {
     id: 3,
     icon: '🎤',
-    title: 'Review & Master',
+    title: 'Practice & Speak',
     description: 'Master 2 selected sentences',
     color: '#FF6B9D',
     activities: 2,

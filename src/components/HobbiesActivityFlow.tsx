@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Activity0VideoInsight } from '@/src/components/activities'
 import { Activity1Quote } from '@/src/components/activities/Activity1Quote'
 import { Activity2Vocabulary } from '@/src/components/activities/Activity2Vocabulary'
@@ -19,6 +19,14 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
   const [totalXp, setTotalXp] = useState(0)
   const [completed, setCompleted] = useState(false)
   const [phaseAlreadyCompleted, setPhaseAlreadyCompleted] = useState(false)
+
+  // Refs that are always fresh — prevent stale-closure bugs in callbacks
+  const currentGroupRef = useRef(0)
+  const totalXpRef = useRef(0)
+  const isSavingRef = useRef(false)   // guard against double-calls
+
+  useEffect(() => { currentGroupRef.current = currentGroup }, [currentGroup])
+  useEffect(() => { totalXpRef.current = totalXp }, [totalXp])
 
   // Check if phase is already completed (all 5 mission groups done)
   useEffect(() => {
@@ -39,22 +47,6 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
     checkPhaseCompletion()
   }, [phaseId])
 
-  const handleGroupComplete = (xp: number) => {
-    const newTotal = totalXp + xp
-    setTotalXp(newTotal)
-
-    // Save mission group completion
-    saveMissionGroupCompletion(currentGroup, newTotal)
-
-    if (currentGroup === 4) {
-      // Last group → show phase completion
-      setTimeout(() => setCompleted(true), 600)
-    } else {
-      // Return to groups view
-      setTimeout(() => setShowGroups(true), 600)
-    }
-  }
-
   const saveMissionGroupCompletion = async (missionGroupId: number, currentTotalXp: number) => {
     try {
       const isLastGroup = missionGroupId === 4
@@ -73,8 +65,38 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
     }
   }
 
+  // ─── Called ONLY by the final CONTINUAR button of each group's last activity ───
+  const handleGroupComplete = (xp: number) => {
+    // Prevent double-calls (double-tap, fast click, stale event)
+    if (isSavingRef.current) return
+    isSavingRef.current = true
+
+    // Use refs — always the real current values, not stale closures
+    const groupId = currentGroupRef.current
+    const newTotal = totalXpRef.current + xp
+
+    setTotalXp(newTotal)
+
+    // Save to DB — current_phase advances ONLY here, once per group completion
+    saveMissionGroupCompletion(groupId, newTotal).finally(() => {
+      isSavingRef.current = false
+    })
+
+    if (groupId === 4) {
+      // Last group → phase complete screen
+      setTimeout(() => setCompleted(true), 600)
+    } else {
+      // Advance explicitly to next group — no stale `prev => prev + 1`
+      setTimeout(() => {
+        setCurrentGroup(groupId + 1)
+        currentGroupRef.current = groupId + 1
+      }, 600)
+    }
+  }
+
   const handleStartMissionGroup = (groupIndex: number) => {
     setCurrentGroup(groupIndex)
+    currentGroupRef.current = groupIndex
     setShowGroups(false)
   }
 
@@ -134,7 +156,7 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
     )
   }
 
-  const GROUP_NAMES = ['Watch & Learn', "Let's Reflect", 'Learn & Speak', 'Practice & Speak', 'Conversation Challenge']
+  const GROUP_NAMES = ['Video Insight Challenge', "Let's Reflect", 'Related Vocabulary', 'Practice & Speak', 'WOA Challenge']
 
   return (
     <div className="space-y-8">

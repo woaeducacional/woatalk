@@ -8,19 +8,22 @@ interface Activity1QuoteProps {
 }
 
 const QUOTE = '"Do what you love, and you will never have to work a day in your life." — Confucius'
+const QUOTE_PT = '"Faça o que você ama e nunca terá que trabalhar um dia na sua vida." — Confúcio'
 
 const CHOICES = [
-  { id: 'A', text: 'I love spending time with my family.' },
-  { id: 'B', text: 'I love listening to music.' },
-  { id: 'C', text: 'I love watching movies.' },
+  { id: 'A', text: 'I love spending time with my family.', pt: 'Eu adoro passar tempo com minha família.' },
+  { id: 'B', text: 'I love listening to music.', pt: 'Eu adoro ouvir música.' },
+  { id: 'C', text: 'I love watching movies.', pt: 'Eu adoro assistir filmes.' },
 ]
 
 const MODEL_SENTENCE = 'I love dancing because it makes me feel free.'
+const MODEL_SENTENCE_PT = 'Eu adoro dançar porque me sinto livre.'
 
 const FIRST_BLANKS = ['listening to music', 'spending time with my family', 'watching movies']
 const SECOND_BLANKS = ['it helps me relax', 'it makes me happy', 'I feel good when I do it']
 
 const BOOST_SENTENCE = 'I want to do what I love every day.'
+const BOOST_SENTENCE_PT = 'Eu quero fazer o que amo todos os dias.'
 
 type Stage =
   | 'quote'
@@ -52,6 +55,7 @@ function speak(text: string, rate = 0.85): Promise<void> {
 export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
   const [stage, setStage] = useState<Stage>('quote')
   const [chosenSentence, setChosenSentence] = useState('')
+  const [chosenSentencePt, setChosenSentencePt] = useState('')
   const [firstBlank, setFirstBlank] = useState('')
   const [secondBlank, setSecondBlank] = useState('')
   const [builtSentence, setBuiltSentence] = useState('')
@@ -85,52 +89,44 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
 
   const handleRecord = async (targetSentence: string, nextStage: Stage, xp: number) => {
     if (isRecording) return
-    setError('')
-    setTranscript('')
+    setError(''); setTranscript(''); setScore(0)
+    const API = getSpeechRecognition()
+    if (!API) { setError('Seu navegador não suporta reconhecimento de voz.'); return }
 
-    const SpeechRecognitionAPI = getSpeechRecognition()
-    if (!SpeechRecognitionAPI) {
-      setError('Seu navegador não suporta reconhecimento de voz.')
-      return
-    }
-
-    const rec = new SpeechRecognitionAPI()
-    rec.lang = 'en-US'
-    rec.continuous = true
-    rec.interimResults = true
-
-    setIsRecording(true)
-    transcriptRef.current = ''
+    const rec = new API()
+    rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true
+    setIsRecording(true); transcriptRef.current = ''
 
     let silenceTimer: ReturnType<typeof setTimeout> | null = null
+    let graceTimer: ReturnType<typeof setTimeout> | null = null
+
     const resetSilence = () => {
       if (silenceTimer) clearTimeout(silenceTimer)
-      silenceTimer = setTimeout(() => rec.stop(), 3000)
+      silenceTimer = setTimeout(() => rec.stop(), 5000)
     }
 
-    rec.onresult = (event: any) => {
+    rec.onresult = (e: any) => {
+      // Cancel grace period the moment speech is detected
+      if (graceTimer) { clearTimeout(graceTimer); graceTimer = null }
       resetSilence()
-      const t = Array.from(event.results).map((r: any) => r[0].transcript).join('')
-      transcriptRef.current = t
-      setTranscript(t)
+      const t = Array.from(e.results).map((r: any) => r[0].transcript).join('')
+      transcriptRef.current = t; setTranscript(t)
     }
 
     rec.onend = () => {
-      setIsRecording(false)
+      if (graceTimer) clearTimeout(graceTimer)
       if (silenceTimer) clearTimeout(silenceTimer)
+      setIsRecording(false)
       const s = calculateScore(transcriptRef.current, targetSentence)
       setScore(s)
-      if (s >= 70) {
-        setXpEarned((prev) => prev + xp)
-        setTimeout(() => setStage(nextStage), 800)
-      } else {
-        setError(`Score: ${s}%. Tente novamente (mínimo 70%).`)
-      }
+      if (s >= 70) { setXpEarned((prev) => prev + xp); setTimeout(() => setStage(nextStage), 800) }
+      else { setError(`Score: ${s}%. Tente novamente (mínimo 70%).`) }
     }
 
     rec.onerror = (e: any) => {
-      setIsRecording(false)
+      if (graceTimer) clearTimeout(graceTimer)
       if (silenceTimer) clearTimeout(silenceTimer)
+      setIsRecording(false)
       if (e.error === 'no-speech') setError('Nenhuma fala detectada.')
       else if (e.error === 'not-allowed') setError('Microfone bloqueado.')
       else setError(`Erro: ${e.error}`)
@@ -138,7 +134,9 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
 
     recognitionRef.current = rec
     await rec.start()
-    resetSilence()
+    // 2-second grace period before the silence timer starts — gives the student
+    // time to compose themselves before speaking (same patient approach as other groups)
+    graceTimer = setTimeout(() => { graceTimer = null; resetSilence() }, 2000)
   }
 
   // ─── STAGE: Quote + Choose ───
@@ -146,19 +144,22 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.08)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-2">💬 LET&apos;S REFLECT</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">💬 LET&apos;S REFLECT</p>
+          <p className="text-white/40 text-[10px] mb-2">Vamos refletir</p>
           <p className="text-white text-lg italic">{QUOTE}</p>
+          <p className="text-white/35 text-xs italic mt-1">{QUOTE_PT}</p>
         </div>
         <p className="text-blue-200/80 text-center">👉 What do you love to do? Choose one:</p>
         <div className="space-y-3">
           {CHOICES.map((c) => (
             <button
               key={c.id}
-              onClick={() => { setChosenSentence(c.text); setStage('listenChoice') }}
+              onClick={() => { setChosenSentence(c.text); setChosenSentencePt(c.pt); setStage('listenChoice') }}
               className="w-full p-4 rounded-xl text-left text-white font-medium transition-all hover:scale-[1.02] active:scale-95 border"
               style={{ background: 'rgba(0,212,255,0.08)', borderColor: 'rgba(0,212,255,0.3)' }}
             >
               <span className="text-cyan-400 font-bold mr-2">{c.id})</span> {c.text}
+              <p className="text-white/35 text-xs mt-0.5 ml-5">{c.pt}</p>
             </button>
           ))}
         </div>
@@ -171,8 +172,10 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-cyan-400/30 text-center" style={{ background: 'rgba(0,212,255,0.06)' }}>
-          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-3">🎧 LISTEN</p>
-          <p className="text-white text-xl font-semibold mb-6">{chosenSentence}</p>
+          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-0.5">🎧 LISTEN</p>
+          <p className="text-white/40 text-[10px] mb-3">Ouça</p>
+          <p className="text-white text-xl font-semibold mb-1">{chosenSentence}</p>
+          <p className="text-white/35 text-xs mb-6">{chosenSentencePt}</p>
           <button
             onClick={async () => { await handleListen(chosenSentence); setStage('repeatChoice') }}
             disabled={isPlaying}
@@ -191,8 +194,10 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.06)' }}>
-          <p className="text-green-300 font-bold text-sm tracking-widest mb-3">🎤 REPEAT</p>
-          <p className="text-white text-xl font-semibold mb-2">{chosenSentence}</p>
+          <p className="text-green-300 font-bold text-sm tracking-widest mb-0.5">🎤 REPEAT</p>
+          <p className="text-white/40 text-[10px] mb-3">Repita</p>
+          <p className="text-white text-xl font-semibold mb-0.5">{chosenSentence}</p>
+          <p className="text-white/35 text-xs mb-2">{chosenSentencePt}</p>
           {transcript && <p className="text-blue-200/60 text-sm mb-2">Você disse: &quot;{transcript}&quot;</p>}
           {score > 0 && <p className={`text-sm font-bold ${score >= 70 ? 'text-green-400' : 'text-red-400'}`}>Score: {score}%</p>}
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
@@ -215,9 +220,11 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-purple-400/30 text-center" style={{ background: 'rgba(147,51,234,0.06)' }}>
-          <p className="text-purple-300 font-bold text-sm tracking-widest mb-3">🎧 LISTEN & THINK</p>
+          <p className="text-purple-300 font-bold text-sm tracking-widest mb-0.5">🎧 LISTEN & THINK</p>
+          <p className="text-white/40 text-[10px] mb-3">Ouça e pense</p>
           <p className="text-blue-200/80 mb-4">👉 Listen to the sentence. Don&apos;t focus on details — just understand the idea.</p>
-          <p className="text-white text-xl font-semibold mb-6">🎧 {MODEL_SENTENCE}</p>
+          <p className="text-white text-xl font-semibold mb-1">🎧 {MODEL_SENTENCE}</p>
+          <p className="text-white/35 text-xs mb-6">{MODEL_SENTENCE_PT}</p>
           <button
             onClick={async () => { await handleListen(MODEL_SENTENCE); setStage('yourTurn') }}
             disabled={isPlaying}
@@ -236,7 +243,8 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-3">🎤 YOUR TURN</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 YOUR TURN</p>
+          <p className="text-white/40 text-[10px] mb-3">Sua vez</p>
           <p className="text-blue-200/80 mb-4">👉 Build your sentence: <span className="text-white font-bold">I love ______ because ______.</span></p>
           
           <p className="text-cyan-300 text-sm font-bold mb-2">Choose your activity:</p>
@@ -297,7 +305,8 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-cyan-400/30 text-center" style={{ background: 'rgba(0,212,255,0.06)' }}>
-          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-3">🎧 LISTEN → 🎤 REPEAT</p>
+          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-0.5">🎧 LISTEN → 🎤 REPEAT</p>
+          <p className="text-white/40 text-[10px] mb-3">Ouça → Repita</p>
           <p className="text-blue-200/80 mb-2">👉 Listen to your sentence</p>
           <p className="text-white text-xl font-semibold mb-6">{builtSentence}</p>
           <button
@@ -366,9 +375,11 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-3">⚡ QUICK BOOST</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">⚡ QUICK BOOST</p>
+          <p className="text-white/40 text-[10px] mb-3">Um impulso extra</p>
           <p className="text-blue-200/80 mb-2">👉 Add one more sentence:</p>
-          <p className="text-white text-xl font-semibold mb-4">{BOOST_SENTENCE}</p>
+          <p className="text-white text-xl font-semibold mb-1">{BOOST_SENTENCE}</p>
+          <p className="text-white/35 text-xs mb-4">{BOOST_SENTENCE_PT}</p>
 
           <button
             onClick={async () => {
@@ -391,8 +402,10 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.06)' }}>
-          <p className="text-green-300 font-bold text-sm tracking-widest mb-3">🎤 REPEAT</p>
-          <p className="text-white text-xl font-semibold mb-2">{BOOST_SENTENCE}</p>
+          <p className="text-green-300 font-bold text-sm tracking-widest mb-0.5">🎤 REPEAT</p>
+          <p className="text-white/40 text-[10px] mb-3">Repita</p>
+          <p className="text-white text-xl font-semibold mb-0.5">{BOOST_SENTENCE}</p>
+          <p className="text-white/35 text-xs mb-2">{BOOST_SENTENCE_PT}</p>
           {transcript && <p className="text-blue-200/60 text-sm mb-2">Você disse: &quot;{transcript}&quot;</p>}
           {score > 0 && <p className={`text-sm font-bold ${score >= 70 ? 'text-green-400' : 'text-red-400'}`}>Score: {score}%</p>}
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
@@ -414,7 +427,8 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-orange-400/30 text-center" style={{ background: 'rgba(249,115,22,0.06)' }}>
-          <p className="text-orange-300 font-bold text-sm tracking-widest mb-3">🧠 SAY WITHOUT LISTENING</p>
+          <p className="text-orange-300 font-bold text-sm tracking-widest mb-0.5">🧠 SAY WITHOUT LISTENING</p>
+          <p className="text-white/40 text-[10px] mb-3">Diga sem ouvir</p>
           <p className="text-blue-200/80 mb-4">👉 Diga as duas frases completas sem olhar:</p>
           {transcript && <p className="text-blue-200/60 text-sm mb-2">Você disse: &quot;{transcript}&quot;</p>}
           {score > 0 && <p className={`text-sm font-bold ${score >= 70 ? 'text-green-400' : 'text-red-400'}`}>Score: {score}%</p>}

@@ -103,7 +103,8 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-purple-400/30" style={{ background: 'rgba(168,85,247,0.06)' }}>
-          <p className="text-purple-300 font-bold text-sm tracking-widest mb-3">✨ STEP 1 — CHOOSE 2 EXPRESSIONS</p>
+          <p className="text-purple-300 font-bold text-sm tracking-widest mb-0.5">✨ STEP 1 — CHOOSE 2 EXPRESSIONS</p>
+          <p className="text-white/40 text-[10px] mb-3">Escolha 2 expressões</p>
           <p className="text-blue-200/80 mb-4">Escolha 2 expressões para praticar:</p>
           <div className="grid gap-2">
             {EXPRESSIONS.map((exp) => {
@@ -139,7 +140,8 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-purple-400/30 text-center" style={{ background: 'rgba(168,85,247,0.06)' }}>
-          <p className="text-purple-300 font-bold text-sm mb-3">🎧 LISTEN & REPEAT ({repeatIdx + 1}/2)</p>
+          <p className="text-purple-300 font-bold text-sm mb-0.5">🎧 LISTEN & REPEAT ({repeatIdx + 1}/2)</p>
+          <p className="text-white/40 text-[10px] mb-3">Ouça e repita</p>
           <p className="text-white text-xl font-semibold mb-2">{exp.text}</p>
           <p className="text-blue-200/60 text-sm mb-6">{exp.example}</p>
 
@@ -176,7 +178,8 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm mb-3">✍️ STEP 2 — COMPLETE ({completeSentences.length + 1}/2)</p>
+          <p className="text-yellow-300 font-bold text-sm mb-0.5">✍️ STEP 2 — COMPLETE ({completeSentences.length + 1}/2)</p>
+          <p className="text-white/40 text-[10px] mb-3">Complete a expressão</p>
           <p className="text-blue-200/80 mb-2">Complete sobre você:</p>
           <p className="text-white text-xl font-semibold mb-4">{exp.text}</p>
 
@@ -207,7 +210,8 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.06)' }}>
-          <p className="text-green-300 font-bold text-sm mb-3">🎤 STEP 3a — SPEAK (with text) ({speakIdx + 1}/2)</p>
+          <p className="text-green-300 font-bold text-sm mb-0.5">🎤 STEP 3a — SPEAK (with text) ({speakIdx + 1}/2)</p>
+          <p className="text-white/40 text-[10px] mb-3">Fale com o texto à vista</p>
           <p className="text-white text-xl font-semibold mb-6">{sent}</p>
 
           <button onClick={async () => { setIsPlaying(true); await tts(sent); setIsPlaying(false) }} disabled={isPlaying} className="px-6 py-2 rounded-xl font-bold text-white mb-4 hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
@@ -271,7 +275,8 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-cyan-400/30" style={{ background: 'rgba(0,212,255,0.06)' }}>
-          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-3">⬆️ UPGRADE — CHOOSE 3 MORE</p>
+          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-0.5">⬆️ UPGRADE — CHOOSE 3 MORE</p>
+          <p className="text-white/40 text-[10px] mb-3">Escolha mais 3 expressões</p>
           <p className="text-blue-200/80 mb-4">Escolha mais 3 expressões:</p>
           <div className="grid gap-2">
             {remaining.map((exp) => {
@@ -307,7 +312,8 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-cyan-400/30 text-center" style={{ background: 'rgba(0,212,255,0.06)' }}>
-          <p className="text-cyan-300 font-bold text-sm mb-3">🎧 UPGRADE — REPEAT ({upgradeRepeatIdx + 1}/3)</p>
+          <p className="text-cyan-300 font-bold text-sm mb-0.5">🎧 UPGRADE — REPEAT ({upgradeRepeatIdx + 1}/3)</p>
+          <p className="text-white/40 text-[10px] mb-3">Repita as expressões novas</p>
           <p className="text-white text-xl font-semibold mb-2">{exp.text}</p>
           <p className="text-blue-200/60 text-sm mb-6">{exp.example}</p>
 

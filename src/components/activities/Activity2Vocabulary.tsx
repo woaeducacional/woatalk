@@ -103,7 +103,8 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-cyan-400/30" style={{ background: 'rgba(0,212,255,0.06)' }}>
-          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-3">🧩 STEP 1 — MATCH</p>
+          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-0.5">🧩 STEP 1 — MATCH</p>
+          <p className="text-white/40 text-[10px] mb-3">Combine as palavras</p>
           <p className="text-blue-200/80 mb-4">Learn 8 vocabulary words. Listen to each word and repeat!</p>
           <div className="grid gap-2">
             {VOCABULARY.map((v, i) => (
@@ -175,7 +176,8 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="flex justify-between items-center">
-          <p className="text-green-300 text-sm font-bold">⚡ STEP 2 — CHOOSE & SPEAK ({fillIdx + 1}/{FILL_SENTENCES.length})</p>
+          <p className="text-green-300 text-sm font-bold mb-0.5">⚡ STEP 2 — CHOOSE & SPEAK ({fillIdx + 1}/{FILL_SENTENCES.length})</p>
+          <p className="text-white/40 text-[10px] mb-3">Escolha e fale</p>
         </div>
         <div className="p-6 rounded-xl border border-green-400/30" style={{ background: 'rgba(34,197,94,0.06)' }}>
           <p className="text-white text-xl font-semibold mb-6">{q.sentence}</p>
@@ -233,7 +235,8 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-3">🎤 STEP 3 — SPEAK</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 STEP 3 — SPEAK</p>
+          <p className="text-white/40 text-[10px] mb-3">Fale as frases completas</p>
           <p className="text-blue-200/80 mb-4">👉 Complete and say ({speakIdx + 1}/{SPEAK_PROMPTS.length}):</p>
           <p className="text-white text-xl font-semibold mb-6">{SPEAK_PROMPTS[speakIdx]}</p>
           {transcript && <p className="text-blue-200/60 text-sm mb-1">&quot;{transcript}&quot;</p>}
@@ -270,7 +273,8 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-orange-400/30 text-center" style={{ background: 'rgba(249,115,22,0.06)' }}>
-          <p className="text-orange-300 font-bold text-sm tracking-widest mb-3">🧠 STEP 4 — MEMORY BOOST ({memoryIdx + 1}/{MEMORY_SENTENCES.length})</p>
+          <p className="text-orange-300 font-bold text-sm tracking-widest mb-0.5">🧠 STEP 4 — MEMORY BOOST ({memoryIdx + 1}/{MEMORY_SENTENCES.length})</p>
+          <p className="text-white/40 text-[10px] mb-3">Teste sua memória</p>
           <p className="text-blue-200/80 mb-4">👉 Say this sentence WITHOUT listening:</p>
           {transcript && <p className="text-blue-200/60 text-sm mb-1">&quot;{transcript}&quot;</p>}
           {score > 0 && <p className={`text-sm font-bold mb-2 ${score >= 70 ? 'text-green-400' : 'text-red-400'}`}>{score}%</p>}
