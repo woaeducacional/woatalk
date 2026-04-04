@@ -66,6 +66,8 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
   const [error, setError] = useState('')
   const [xpEarned, setXpEarned] = useState(0)
   const [boostCount, setBoostCount] = useState(0)
+  const [attemptCount, setAttemptCount] = useState(0)  // Track failed attempts per stage
+  const [nextStageOnSkip, setNextStageOnSkip] = useState<Stage>('quote')  // When user skips (via pular button)
   const recognitionRef = useRef<any>(null)
   const transcriptRef = useRef('')
 
@@ -87,9 +89,9 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
     setIsPlaying(false)
   }
 
-  const handleRecord = async (targetSentence: string, nextStage: Stage, xp: number) => {
+  const handleRecord = async (targetSentence: string, nextStage: Stage, xp: number, isMemoryTask?: boolean) => {
     if (isRecording) return
-    setError(''); setTranscript(''); setScore(0)
+    setError(''); setTranscript(''); setScore(0); setNextStageOnSkip(nextStage)
     const API = getSpeechRecognition()
     if (!API) { setError('Seu navegador não suporta reconhecimento de voz.'); return }
 
@@ -119,8 +121,19 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
       setIsRecording(false)
       const s = calculateScore(transcriptRef.current, targetSentence)
       setScore(s)
-      if (s >= 70) { setXpEarned((prev) => prev + xp); setTimeout(() => setStage(nextStage), 800) }
-      else { setError(`Score: ${s}%. Tente novamente (mínimo 70%).`) }
+      if (isMemoryTask) {
+        // Memory tasks: auto-advance regardless of score (no second chance)
+        if (s >= 70) { setXpEarned((prev) => prev + xp); setTimeout(() => setStage(nextStage), 800) }
+        else { setTimeout(() => setStage(nextStage), 800) }
+      } else {
+        // Regular tasks: show error if below threshold
+        if (s >= 70) { setXpEarned((prev) => prev + xp); setAttemptCount(0); setTimeout(() => setStage(nextStage), 800) }
+        else { 
+          const newAttempts = attemptCount + 1
+          setAttemptCount(newAttempts)
+          setError(`Score: ${s}%. Tente novamente (mínimo 70%).${newAttempts >= 3 ? ' Você pode pular esta questão.' : ''}`) 
+        }
+      }
     }
 
     rec.onerror = (e: any) => {
@@ -209,7 +222,14 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
           >
             {isRecording ? '🔴 Gravando...' : '🎤 Falar'}
           </button>
-          <p className="text-blue-200/40 text-xs mt-2">+10 XP</p>
+          {attemptCount >= 3 && !isRecording && (
+            <button
+              onClick={() => setStage(nextStageOnSkip)}
+              className="mt-3 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+            >
+              ⏭️ Pular
+            </button>
+          )}
         </div>
       </div>
     )
@@ -339,7 +359,21 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
             style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #22c55e, #16a34a)' }}
           >
             {isRecording ? '🔴 Gravando...' : '🎤 Repetir'}
-          </button>
+          </button>          {attemptCount >= 3 && !isRecording && (
+            <button
+              onClick={() => setStage(nextStageOnSkip)}
+              className="mt-3 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+            >
+              ⏭️ Pular
+            </button>
+          )}          {attemptCount >= 3 && !isRecording && (
+            <button
+              onClick={() => setStage(nextStageOnSkip)}
+              className="mt-3 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+            >
+              ⏭️ Pular
+            </button>
+          )}
           <p className="text-blue-200/40 text-xs mt-2">+20 XP</p>
         </div>
       </div>
@@ -357,14 +391,20 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
           {score > 0 && <p className={`text-sm font-bold ${score >= 70 ? 'text-green-400' : 'text-red-400'}`}>Score: {score}%</p>}
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
           <button
-            onClick={() => handleRecord(builtSentence, 'quickBoost', 25)}
+            onClick={() => handleRecord(builtSentence, 'quickBoost', 25, true)}
             disabled={isRecording}
             className="mt-4 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
             style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #f97316, #ea580c)' }}
           >
             {isRecording ? '🔴 Gravando...' : '🧠 Falar de memória'}
-          </button>
-          <p className="text-blue-200/40 text-xs mt-2">+25 XP</p>
+          </button>          {attemptCount >= 3 && !isRecording && (
+            <button
+              onClick={() => setStage(nextStageOnSkip)}
+              className="mt-3 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+            >
+              ⏭️ Pular
+            </button>
+          )}          <p className="text-blue-200/40 text-xs mt-2">+25 XP</p>
         </div>
       </div>
     )
@@ -434,13 +474,21 @@ export function Activity1Quote({ onComplete }: Activity1QuoteProps) {
           {score > 0 && <p className={`text-sm font-bold ${score >= 70 ? 'text-green-400' : 'text-red-400'}`}>Score: {score}%</p>}
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
           <button
-            onClick={() => handleRecord(`${builtSentence} ${BOOST_SENTENCE}`, 'complete', 15)}
+            onClick={() => handleRecord(`${builtSentence} ${BOOST_SENTENCE}`, 'complete', 15, true)}
             disabled={isRecording}
             className="mt-4 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
             style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #f97316, #ea580c)' }}
           >
             {isRecording ? '🔴 Gravando...' : '🧠 Falar tudo'}
           </button>
+          {attemptCount >= 3 && !isRecording && (
+            <button
+              onClick={() => setStage(nextStageOnSkip)}
+              className="mt-3 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+            >
+              ⏭️ Pular
+            </button>
+          )}
           <p className="text-blue-200/40 text-xs mt-2">+15 XP bônus</p>
         </div>
       </div>
