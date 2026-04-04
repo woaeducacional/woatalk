@@ -51,6 +51,8 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
   const [score, setScore] = useState(0)
   const [error, setError] = useState('')
   const [xpEarned, setXpEarned] = useState(0)
+  const [attemptCount, setAttemptCount] = useState(0)  // Track failed attempts per stage
+  const [nextStageOnSkip, setNextStageOnSkip] = useState<(() => void) | null>(null)  // When user skips
   const transcriptRef = useRef('')
 
   const calcScore = (spoken: string, target: string): number => {
@@ -61,9 +63,9 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     return Math.round((m / b.length) * 100)
   }
 
-  const record = async (target: string, onPass: () => void, threshold = 70) => {
+  const record = async (target: string, onPass: () => void, threshold = 70, isMemoryTask?: boolean) => {
     if (isRecording) return
-    setError(''); setTranscript(''); setScore(0)
+    setError(''); setTranscript(''); setScore(0); setNextStageOnSkip(() => onPass)
     const API = getSpeechRecognition()
     if (!API) { setError('Speech Recognition not supported.'); return }
 
@@ -75,7 +77,23 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
     const resetT = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => rec.stop(), 3000) }
 
     rec.onresult = (e: any) => { resetT(); const t = Array.from(e.results).map((r: any) => r[0].transcript).join(''); transcriptRef.current = t; setTranscript(t) }
-    rec.onend = () => { setIsRecording(false); if (timer) clearTimeout(timer); const s = calcScore(transcriptRef.current, target); setScore(s); if (s >= threshold) { setTimeout(onPass, 500) } else { setError(`Score: ${s}%. Mínimo ${threshold}%. Tente de novo.`) } }
+    rec.onend = () => { 
+      setIsRecording(false); 
+      if (timer) clearTimeout(timer); 
+      const s = calcScore(transcriptRef.current, target); 
+      setScore(s); 
+      if (isMemoryTask) {
+        // Memory tasks: auto-advance regardless of score (no second chance)
+        setTimeout(onPass, 500)
+      } else {
+        // Regular tasks: show error if below threshold
+        if (s >= threshold) { setAttemptCount(0); setTimeout(onPass, 500) } 
+        else { 
+          setAttemptCount((prev) => prev + 1)
+          setError(`Score: ${s}%. Mínimo ${threshold}%. Tente de novo.`) 
+        }
+      }
+    }
     rec.onerror = (e: any) => { setIsRecording(false); if (timer) clearTimeout(timer); setError(e.error === 'no-speech' ? 'Nenhuma fala detectada.' : `Erro: ${e.error}`) }
 
     await rec.start(); resetT()
@@ -165,6 +183,14 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
             >
               {isRecording ? '🔴 Gravando...' : '🎤 Repetir'}
             </button>
+            {attemptCount >= 3 && !isRecording && (
+              <button
+                onClick={() => { setAttemptCount(0); setTranscript(''); setScore(0); setXpEarned(p => p + 10); if (repeatIdx < 1) setRepeatIdx(1); else setStage('completeStep') }}
+                className="mt-3 px-6 py-2 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+              >
+                ⏭️ Pular
+              </button>
+            )}
           </div>
         </div>
         <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
@@ -361,7 +387,7 @@ export function Activity3Expressions({ onComplete }: Activity3ExpressionsProps) 
               setTranscript(''); setScore(0)
               if (finalIdx < allSelected.length - 1) setFinalIdx(finalIdx + 1)
               else { setXpEarned(p => p + 25); setStage('complete') }
-            }, 80)}
+            }, 80, true)}
             disabled={isRecording}
             className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all"
             style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #ef4444, #dc2626)' }}

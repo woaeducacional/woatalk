@@ -68,6 +68,8 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
   const [score, setScore] = useState(0)
   const [error, setError] = useState('')
   const [xpEarned, setXpEarned] = useState(0)
+  const [attemptCount, setAttemptCount] = useState(0)  // Track failed attempts per stage
+  const [nextStageOnSkip, setNextStageOnSkip] = useState<(() => void) | null>(null)  // When user skips
   const transcriptRef = useRef('')
 
   const calcScore = (spoken: string, target: string): number => {
@@ -78,9 +80,9 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
     return Math.round((m / b.length) * 100)
   }
 
-  const record = async (target: string, onPass: () => void, xp: number) => {
+  const record = async (target: string, onPass: () => void, xp: number, isMemoryTask?: boolean) => {
     if (isRecording) return
-    setError(''); setTranscript(''); setScore(0)
+    setError(''); setTranscript(''); setScore(0); setNextStageOnSkip(() => onPass)
     const API = getSpeechRecognition()
     if (!API) { setError('Speech Recognition not supported.'); return }
 
@@ -92,7 +94,23 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
     const resetT = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => rec.stop(), 3000) }
 
     rec.onresult = (e: any) => { resetT(); const t = Array.from(e.results).map((r: any) => r[0].transcript).join(''); transcriptRef.current = t; setTranscript(t) }
-    rec.onend = () => { setIsRecording(false); if (timer) clearTimeout(timer); const s = calcScore(transcriptRef.current, target); setScore(s); if (s >= 70) { setXpEarned(p => p + xp); setTimeout(onPass, 600) } else { setError(`Score: ${s}%. Tente de novo (mínimo 70%).`) } }
+    rec.onend = () => { 
+      setIsRecording(false); 
+      if (timer) clearTimeout(timer); 
+      const s = calcScore(transcriptRef.current, target); 
+      setScore(s); 
+      if (isMemoryTask) {
+        // Memory tasks: auto-advance regardless of score (no second chance)
+        setTimeout(onPass, 600)
+      } else {
+        // Regular tasks: show error if below threshold
+        if (s >= 70) { setXpEarned(p => p + xp); setAttemptCount(0); setTimeout(onPass, 600) } 
+        else { 
+          setAttemptCount((prev) => prev + 1)
+          setError(`Score: ${s}%. Tente de novo (mínimo 70%).`) 
+        }
+      }
+    }
     rec.onerror = (e: any) => { setIsRecording(false); if (timer) clearTimeout(timer); setError(e.error === 'no-speech' ? 'Nenhuma fala detectada.' : `Erro: ${e.error}`) }
 
     await rec.start(); resetT()
@@ -162,6 +180,14 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
               >
                 {isRecording ? '🔴 Gravando...' : '🎤 Repetir'}
               </button>
+              {attemptCount >= 3 && !isRecording && (
+                <button
+                  onClick={() => { setAttemptCount(0); setMatchRepeated(false); setTranscript(''); setScore(0); if (matchIdx < VOCABULARY.length - 1) { setMatchIdx(matchIdx + 1) } else { setXpEarned(p => p + 10); setStage('fillBlank') } }}
+                  className="mt-3 px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+                >
+                  ⏭️ Pular
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -218,8 +244,14 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
                 style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #22c55e, #16a34a)' }}
               >
                 {isRecording ? '🔴 Gravando...' : '🎤 Repetir agora'}
-              </button>
-            </div>
+              </button>              {attemptCount >= 3 && !isRecording && (
+                <button
+                  onClick={() => { setAttemptCount(0); setFillAnswer(''); setFillCorrect(null); setFillRepeatDone(false); setTranscript(''); setScore(0); if (fillIdx < FILL_SENTENCES.length - 1) setFillIdx(fillIdx + 1); else { setXpEarned(p => p + 20); setStage('speak') } }}
+                  className="mt-3 px-6 py-2 rounded-xl font-bold text-white transition-all hover:scale-105 bg-orange-600 hover:bg-orange-700"
+                >
+                  ⏭️ Pular
+                </button>
+              )}            </div>
           )}
           {fillCorrect === false && (
             <p className="text-red-400 text-center mt-3">❌ Tente outra opção</p>
@@ -284,7 +316,7 @@ export function Activity2Vocabulary({ onComplete }: Activity2VocabularyProps) {
               setTranscript(''); setScore(0)
               if (memoryIdx < MEMORY_SENTENCES.length - 1) setMemoryIdx(memoryIdx + 1)
               else { setXpEarned(p => p + 25); setStage('complete') }
-            }, 0)}
+            }, 0, true)}
             disabled={isRecording}
             className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all"
             style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #f97316, #ea580c)' }}

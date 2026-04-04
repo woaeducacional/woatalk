@@ -19,6 +19,7 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
   const [totalXp, setTotalXp] = useState(0)
   const [completed, setCompleted] = useState(false)
   const [phaseAlreadyCompleted, setPhaseAlreadyCompleted] = useState(false)
+  const [groupCompleted, setGroupCompleted] = useState<number | null>(null)  // Track completed group for celebration screen
 
   // Refs that are always fresh — prevent stale-closure bugs in callbacks
   const currentGroupRef = useRef(0)
@@ -47,17 +48,29 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
     checkPhaseCompletion()
   }, [phaseId])
 
-  const saveMissionGroupCompletion = async (missionGroupId: number, currentTotalXp: number) => {
+  // XP e moedas por grupo
+  const getGroupRewards = (groupId: number): { xp: number; coins: number } => {
+    const rewards: Record<number, { xp: number; coins: number }> = {
+      0: { xp: 10, coins: 0 },      // Video Insight
+      1: { xp: 80, coins: 5 },      // Quote & Reflect
+      2: { xp: 85, coins: 5 },      // Learn & Speak (Vocabulary)
+      3: { xp: 95, coins: 5 },      // Practice & Speak (Expressions)
+      4: { xp: 100, coins: 15 },    // Conversation Challenge
+    }
+    return rewards[groupId] || { xp: 0, coins: 0 }
+  }
+
+  const saveMissionGroupCompletion = async (missionGroupId: number, groupXpEarned: number) => {
     try {
-      const isLastGroup = missionGroupId === 4
+      const rewards = getGroupRewards(missionGroupId)
       await fetch(`/api/mission-groups/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phaseId,
           missionGroupId,
-          totalXp: isLastGroup ? currentTotalXp : undefined,
-          woaCoins: isLastGroup ? 5 : undefined,
+          totalXp: groupXpEarned,  // XP earned in THIS group
+          woaCoins: rewards.coins,  // Coins for THIS group
         }),
       })
     } catch (e) {
@@ -78,19 +91,28 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
     setTotalXp(newTotal)
 
     // Save to DB — current_phase advances ONLY here, once per group completion
-    saveMissionGroupCompletion(groupId, newTotal).finally(() => {
+    // Pass the XP earned in THIS group (xp), not the cumulative total
+    saveMissionGroupCompletion(groupId, xp).finally(() => {
       isSavingRef.current = false
     })
 
+    // Show group completion celebration screen
+    setTimeout(() => {
+      setGroupCompleted(groupId)
+    }, 600)
+
     if (groupId === 4) {
-      // Last group → phase complete screen
-      setTimeout(() => setCompleted(true), 600)
-    } else {
-      // Advance explicitly to next group — no stale `prev => prev + 1`
+      // Last group completed → after celebration, phase complete screen will show
       setTimeout(() => {
-        setCurrentGroup(groupId + 1)
-        currentGroupRef.current = groupId + 1
-      }, 600)
+        setCompleted(true)
+        setGroupCompleted(null)
+      }, 3600)  // 3 seconds after celebration starts
+    } else {
+      // Back to groups list after celebration
+      setTimeout(() => {
+        setShowGroups(true)
+        setGroupCompleted(null)
+      }, 3600)  // 3 seconds after celebration starts
     }
   }
 
@@ -135,6 +157,38 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
           >
             ← BACK TO JOURNEY
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show group completion celebration (but not if phase is already complete)
+  if (groupCompleted !== null && !completed) {
+    const groupRewards = getGroupRewards(groupCompleted)
+    const GROUP_NAMES = ['Video Insight Challenge', "Let's Reflect", 'Related Vocabulary', 'Practice & Speak', 'WOA Challenge']
+    
+    return (
+      <div className="space-y-8">
+        <div
+          className="p-12 rounded-3xl backdrop-blur-md text-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(0,212,255,0.1))',
+            border: '1px solid #22c55e',
+          }}
+        >
+          <div className="text-6xl mb-4">🎉</div>
+          <h2 className="text-4xl font-black text-white mb-2">{GROUP_NAMES[groupCompleted]} Completo!</h2>
+          <p className="text-xl text-blue-200/80 mb-6">
+            Você ganhou <span className="text-yellow-400 font-bold">+{groupRewards.xp} XP</span>
+          </p>
+          {groupRewards.coins > 0 && (
+            <div className="inline-block px-8 py-4 rounded-lg bg-yellow-500/20 border border-yellow-400 mb-6">
+              <p className="text-lg text-yellow-300 tracking-widest font-bold">
+                🪙 +{groupRewards.coins} WOA COINS
+              </p>
+            </div>
+          )}
+          <p className="text-blue-200/80 mt-8">Voltando aos grupos...</p>
         </div>
       </div>
     )
