@@ -115,6 +115,8 @@ export function ListenRepeatQuestion({
   const [passed, setPassed] = useState(false)
   const [listenCount, setListenCount] = useState(0)
   const recognitionRef = useRef<any>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
 
   const LISTEN_REQUIRED = 3
   const speakUnlocked = listenCount >= LISTEN_REQUIRED
@@ -165,68 +167,111 @@ export function ListenRepeatQuestion({
     }
   }
 
-  // Função para gravar a voz do usuário
-  const handleSpeak = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech Recognition não é suportada neste navegador')
-      return
+  // Processa o texto reconhecido e calcula o score
+  const processTranscript = (text: string) => {
+    const score = calculateScore(text, sentences[repeatIndex])
+    setLastScore(score)
+    console.log(`Tentativa ${attemptCount + 1}: "${text}" - Score: ${score}%`)
+    if (score >= 80) {
+      setPassed(true)
+    } else {
+      new Audio('/audio/falou-errado.mp3').play().catch(() => {})
+      setAttemptCount((c) => c + 1)
     }
+  }
 
-    if (isRecording) {
-      // Parar gravação
-      if (recognitionRef.current) {
-        recognitionRef.current.stop()
-      }
-      setIsRecording(false)
-      return
-    }
-
-    // Iniciar gravação
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
-    recognitionRef.current = new SpeechRecognition()
-    recognitionRef.current.continuous = false
-    recognitionRef.current.interimResults = false
-    recognitionRef.current.lang = 'en-US'
-
-    recognitionRef.current.onstart = () => {
-      setIsRecording(true)
-      setPassed(false)
-    }
-
-    recognitionRef.current.onresult = (event: any) => {
+  // Reconhecimento via Web Speech API (Chrome/Android)
+  function startBrowserRecognition(SpeechRecognitionAPI: any) {
+    const rec = new SpeechRecognitionAPI()
+    rec.lang = 'en-US'
+    rec.interimResults = false
+    rec.continuous = false
+    rec.maxAlternatives = 1
+    rec.onstart = () => { setIsRecording(true); setPassed(false) }
+    rec.onresult = (event: any) => {
       let transcript = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          transcript += event.results[i][0].transcript
-        }
+        if (event.results[i].isFinal) transcript += event.results[i][0].transcript
       }
-
-      const score = calculateScore(transcript, sentences[repeatIndex])
-      setLastScore(score)
-      console.log(`Tentativa ${attemptCount + 1}: "${transcript}" - Score: ${score}%`)
-
-      // Se acertou 80% ou mais, permite avançar
-      if (score >= 80) {
-        setPassed(true)
-      } else {
-        new Audio('/audio/falou-errado.mp3').play().catch(() => {})
-        const newAttempts = attemptCount + 1
-        setAttemptCount(newAttempts)
-      }
+      processTranscript(transcript)
     }
-
-    recognitionRef.current.onerror = (event: any) => {
+    rec.onerror = (event: any) => {
       console.error('Erro na gravação:', event.error)
       new Audio('/audio/falou-errado.mp3').play().catch(() => {})
-      const newAttempts = attemptCount + 1
-      setAttemptCount(newAttempts)
-    }
-
-    recognitionRef.current.onend = () => {
+      setAttemptCount((c) => c + 1)
       setIsRecording(false)
     }
+    rec.onend = () => setIsRecording(false)
+    recognitionRef.current = rec
+    rec.start()
+  }
 
-    recognitionRef.current.start()
+  // Gravação via MediaRecorder + /api/transcribe (fallback para iOS)
+  async function startRecordingWithMediaRecorder() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      chunksRef.current = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop())
+        handleMediaRecorderStop()
+      }
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+      setPassed(false)
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao acessar microfone')
+    }
+  }
+
+  async function handleMediaRecorderStop() {
+    if (chunksRef.current.length === 0) {
+      new Audio('/audio/falou-errado.mp3').play().catch(() => {})
+      setAttemptCount((c) => c + 1)
+      setIsRecording(false)
+      return
+    }
+    const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
+    const blob = new Blob(chunksRef.current, { type: mimeType })
+    const formData = new FormData()
+    formData.append('audio', blob, 'recording.webm')
+    try {
+      const res = await fetch('/api/transcribe', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
+      if (!data.transcript) throw new Error('Transcrição vazia')
+      processTranscript(data.transcript)
+    } catch (err: any) {
+      console.error(err)
+      new Audio('/audio/falou-errado.mp3').play().catch(() => {})
+      setAttemptCount((c) => c + 1)
+    } finally {
+      setIsRecording(false)
+    }
+  }
+
+  // Função para gravar a voz do usuário
+  const handleSpeak = () => {
+    if (isRecording) {
+      if (recognitionRef.current) recognitionRef.current.stop()
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      }
+      setIsRecording(false)
+      return
+    }
+
+    const SpeechRecognitionAPI =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+
+    if (SpeechRecognitionAPI) {
+      startBrowserRecognition(SpeechRecognitionAPI)
+    } else {
+      startRecordingWithMediaRecorder()
+    }
   }
 
   // Função para resetar e ir para próxima sentença
