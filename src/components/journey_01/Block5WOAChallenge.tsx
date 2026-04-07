@@ -100,7 +100,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
           <p className="text-white/40 text-[10px] mb-1">Desafio de Conversão</p>
           <p className="text-blue-200/60 text-xs mb-4">👉 🇺🇸 What do you like to do in your free time?  |  🇧🇷 O que você gosta de fazer no seu tempo livre?</p>
 
-          <p className="text-blue-200/80 mb-1 text-sm">✍️ <strong>Step 1 — Escreva em Português</strong> (3–4 linhas):</p>
+          <p className="text-blue-200/80 mb-1 text-sm">✍️ <strong>Passo 1 — Escreva em Português</strong> (3–4 linhas):</p>
           <ul className="text-blue-200/50 text-xs mb-3 space-y-0.5 pl-4 list-disc">
             <li>O que você gosta de fazer</li>
             <li>Por que você gosta</li>
@@ -148,7 +148,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🔄 STEP 2 — TRANSLATE WITH AI</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🔄 PASSO 2 — TRADUZIR COM IA</p>
           <p className="text-white/40 text-[10px] mb-1">Traduza com Inteligência Artificial</p>
           <p className="text-blue-200/50 text-xs mb-4">Seu texto será traduzido para o inglês 🇺🇸</p>
 
@@ -184,7 +184,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
           ) : (
             <div>
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-400/30 mb-4">
-                <p className="text-green-300 text-xs mb-1">🇺🇸 English version:</p>
+                <p className="text-green-300 text-xs mb-1">🇺🇸 Em inglês:</p>
                 <p className="text-white text-sm">{englishText}</p>
               </div>
               <p className="text-blue-200/40 text-xs mb-3">+10 XP pela tradução</p>
@@ -207,12 +207,12 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
         <div className="p-6 rounded-xl border border-cyan-400/30 text-center" style={{ background: 'rgba(0,212,255,0.06)' }}>
           <p className="text-cyan-300 font-bold text-sm mb-0.5">🎧 WOA — LISTEN ({repeatIdx + 1}/{sentences.length})</p>
           <p className="text-white/40 text-[10px] mb-1">Ouça com atenção</p>
-          <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 0 ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
+          <div className="flex justify-center gap-1 mb-4">{['Ouça', 'Repita', 'Entenda', 'Fale'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 0 ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
           <p className="text-white text-lg font-semibold mb-6">{sent}</p>
 
           <button onClick={async () => { setIsPlaying(true); await tts(sent, 0.8); setIsPlaying(false) }} disabled={isPlaying} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
-            {isPlaying ? '🔊 Playing...' : '🎧 Ouvir'}
+            {isPlaying ? '🔊 Tocando...' : '🎧 Ouvir'}
           </button>
 
           <button onClick={() => { if (repeatIdx < sentences.length - 1) { setRepeatIdx(repeatIdx + 1) } else { setRepeatIdx(0); setStage('repeat') } }} className="block mx-auto mt-4 px-6 py-2 text-sm text-cyan-300 underline">
@@ -232,7 +232,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
         <div className="p-6 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.06)' }}>
           <p className="text-green-300 font-bold text-sm mb-0.5">🎤 WOA — REPEAT ({repeatIdx + 1}/{sentences.length})</p>
           <p className="text-white/40 text-[10px] mb-1">Repita em voz alta</p>
-          <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 1 ? 'bg-green-500/30 text-green-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
+          <div className="flex justify-center gap-1 mb-4">{['Ouça', 'Repita', 'Entenda', 'Fale'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 1 ? 'bg-green-500/30 text-green-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
           <p className="text-white text-lg font-semibold mb-4">{sent}</p>
 
@@ -268,7 +268,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
         <div className="p-6 rounded-xl border border-yellow-400/30 text-center" style={{ background: 'rgba(250,204,21,0.06)' }}>
           <p className="text-yellow-300 font-bold text-sm mb-0.5">💡 WOA — UNDERSTAND</p>
           <p className="text-white/40 text-[10px] mb-1">Entenda o significado</p>
-          <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 2 ? 'bg-yellow-500/30 text-yellow-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
+          <div className="flex justify-center gap-1 mb-4">{['Ouça', 'Repita', 'Entenda', 'Fale'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 2 ? 'bg-yellow-500/30 text-yellow-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
           <div className="p-4 rounded-lg bg-white/5 border border-white/10 mb-4 text-left">
             <p className="text-blue-200/60 text-xs mb-1">Seu texto (PT):</p>
@@ -277,10 +277,10 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
             <p className="text-green-300 text-sm">{englishText}</p>
           </div>
 
-          <p className="text-blue-200/60 text-sm mb-4">Compare the sentences. Can you understand each one?</p>
+          <p className="text-blue-200/60 text-sm mb-4">Compare as frases. Você consegue entender cada uma?</p>
 
           <button onClick={async () => { setIsPlaying(true); await tts(englishText, 0.75); setIsPlaying(false) }} disabled={isPlaying} className="px-6 py-2 rounded-xl font-bold text-white mb-4 hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
-            {isPlaying ? '🔊 Playing...' : '🎧 Ouvir tudo'}
+            {isPlaying ? '🔊 Tocando...' : '🎧 Ouvir tudo'}
           </button>
 
           <button onClick={() => { setRepeatIdx(0); setStage('speakFree') }} className="block mx-auto mt-2 px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
@@ -300,9 +300,9 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
         <div className="p-6 rounded-xl border border-red-400/30 text-center" style={{ background: 'rgba(239,68,68,0.06)' }}>
           <p className="text-red-300 font-bold text-sm mb-0.5">🔥 WOA — SPEAK ({speakFreeIdx + 1}/{sentences.length})</p>
           <p className="text-white/40 text-[10px] mb-1">Fale livremente</p>
-          <div className="flex justify-center gap-1 mb-4">{['Listen', 'Repeat', 'Understand', 'Speak'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 3 ? 'bg-red-500/30 text-red-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
+          <div className="flex justify-center gap-1 mb-4">{['Ouça', 'Repita', 'Entenda', 'Fale'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 3 ? 'bg-red-500/30 text-red-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
 
-          {showText && <p className="text-white/30 text-sm mb-2 italic">Hint: {sent}</p>}
+          {showText && <p className="text-white/30 text-sm mb-2 italic">Dica: {sent}</p>}
           <button onClick={() => setShowText(!showText)} className="text-xs text-blue-200/40 underline mb-4 block mx-auto">
             {showText ? 'Esconder dica' : 'Mostrar dica'}
           </button>
@@ -335,7 +335,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
     <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
         <div className="text-5xl mb-4">🏆</div>
-        <h3 className="text-2xl font-black text-white mb-2">Conversation Challenge Complete!</h3>
+        <h3 className="text-2xl font-black text-white mb-2">Desafio de Conversação Concluído!</h3>
         <p className="text-blue-200/80 mb-2">Parabéns! Você completou o WOA Method!</p>
         <div className="flex justify-center gap-4 mb-6">
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
