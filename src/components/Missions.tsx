@@ -638,6 +638,9 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
   const scoreLabel = score >= 75 ? '🏆 Excelente!' : score >= 50 ? '💪 Bom esforço!' : '🔁 Tente novamente'
   const canContinue = !hasExpected || score >= 50
 
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+
   useEffect(() => {
     if (stage !== 'result') return
     const end = score
@@ -687,34 +690,36 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
     setStage('result')
   }
 
-  const handleStartRecording = async () => {
+  const handleStartRecording = () => {
     setError('')
-    const SpeechRecognitionAPI = getSpeechRecognition()
-    if (!SpeechRecognitionAPI) {
-      setError('Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.')
-      return
+    const SpeechRecognitionAPI =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+
+    if (SpeechRecognitionAPI) {
+      startBrowserRecognition(SpeechRecognitionAPI)
+    } else {
+      startRecordingWithMediaRecorder()
     }
+  }
+
+  function startBrowserRecognition(SpeechRecognitionAPI: any) {
     resultReceivedRef.current = false
     transcriptPartsRef.current = []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rec = new SpeechRecognitionAPI() as any
+    const rec = new SpeechRecognitionAPI()
     rec.lang = 'en-US'
     rec.interimResults = false
     rec.continuous = true
     rec.maxAlternatives = 1
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onstart = () => setStage('recording')
     rec.onresult = (event: any) => {
       resultReceivedRef.current = true
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          transcriptPartsRef.current.push(event.results[i][0].transcript)
-        }
+        if (event.results[i].isFinal) transcriptPartsRef.current.push(event.results[i][0].transcript)
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onerror = (event: any) => {
       if (event.error === 'no-speech') setError('Nenhuma fala detectada. Tente novamente.')
-      else if (event.error === 'not-allowed') setError('Permissão de microfone negada. Verifique as configurações do browser.')
+      else if (event.error === 'not-allowed') setError('Permissão de microfone negada.')
       else setError(`Erro de reconhecimento: ${event.error}`)
       setStage('idle')
     }
@@ -729,12 +734,59 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
       }
     }
     recognitionRef.current = rec
-    await rec.start()
-    setStage('recording')
+    rec.start()
+  }
+
+  async function startRecordingWithMediaRecorder() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      chunksRef.current = []
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data)
+      }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop())
+        handleMediaRecorderStop()
+      }
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setStage('recording')
+    } catch (err) {
+      console.error(err)
+      setError('Erro ao acessar microfone')
+    }
   }
 
   const handleStopRecording = () => {
     if (recognitionRef.current && stage === 'recording') recognitionRef.current.stop()
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      setStage('processing')
+    }
+  }
+
+  async function handleMediaRecorderStop() {
+    if (chunksRef.current.length === 0) {
+      setError('Nenhum áudio capturado')
+      setStage('idle')
+      return
+    }
+    const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
+    const blob = new Blob(chunksRef.current, { type: mimeType })
+    const formData = new FormData()
+    formData.append('audio', blob, 'recording.webm')
+    try {
+      const res = await fetch('/api/transcribe', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
+      if (!data.transcript) throw new Error('Transcrição vazia')
+      processTranscript(data.transcript)
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message)
+      setStage('idle')
+    }
   }
 
   const handleRetry = () => {
@@ -742,6 +794,8 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
       try { recognitionRef.current.abort() } catch { /* ignore */ }
       recognitionRef.current = null
     }
+    mediaRecorderRef.current = null
+    chunksRef.current = []
     setStage('idle')
     setTranscript('')
     setWordResults([])
