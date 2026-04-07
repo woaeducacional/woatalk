@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
+import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 
 interface Block2LetsReflectProps {
   onComplete: (xp: number) => void
+  onActivityChange?: (current: number, total: number) => void
 }
 
 const QUOTE = '"Do what you love, and you will never have to work a day in your life." — Confucius'
@@ -49,16 +51,26 @@ function speak(text: string, rate = 0.85): Promise<void> {
   })
 }
 
-export function Block2LetsReflect({ onComplete }: Block2LetsReflectProps) {
-  const [stage, setStage] = useState<Stage>('quote')
+export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsReflectProps) {
+  const [stage, setStage] = useState<Stage>(() => {
+    const RESTORE: Partial<Record<Stage, Stage>> = { repeatNoAudio: 'yourTurn', boostNoAudio: 'quickBoost' }
+    const s = getCookie('woa_b2_stage') as Stage | null
+    if (s && s !== 'complete') return RESTORE[s] ?? s
+    return 'quote'
+  })
   const [chosenSentence, setChosenSentence] = useState('')
   const [chosenSentencePt, setChosenSentencePt] = useState('')
   const [firstBlank, setFirstBlank] = useState('')
   const [secondBlank, setSecondBlank] = useState('')
-  const [builtSentence, setBuiltSentence] = useState('')
+  const [builtSentence, setBuiltSentence] = useState(() => getCookie('woa_b2_built') ?? '')
   const [isPlaying, setIsPlaying] = useState(false)
   const [xpEarned, setXpEarned] = useState(0)
 
+  const STAGE_INDEX: Record<Stage, number> = { quote:1, listenChoice:2, listenThink:3, yourTurn:4, listenBuilt:5, repeatNoAudio:6, quickBoost:7, boostNoAudio:8, complete:8 }
+  useEffect(() => {
+    onActivityChange?.(STAGE_INDEX[stage], 8)
+    if (stage !== 'complete') setCookie('woa_b2_stage', stage)
+  }, [stage])
   const handleListen = async (text: string) => {
     setIsPlaying(true)
     await speak(text)
@@ -189,6 +201,7 @@ export function Block2LetsReflect({ onComplete }: Block2LetsReflectProps) {
                 onClick={() => {
                   const s = `I love ${firstBlank} because ${secondBlank}.`
                   setBuiltSentence(s)
+                  setCookie('woa_b2_built', s)
                   setXpEarned((prev) => prev + 10)
                   setStage('listenBuilt')
                 }}
@@ -256,7 +269,7 @@ export function Block2LetsReflect({ onComplete }: Block2LetsReflectProps) {
       <SpeakFromMemoryQuestion
         sentences={[builtSentence, BOOST_SENTENCE]}
         stepLabel="Sem Áudio — Bônus"
-        title="Fale Tudo!"
+        title="Fale em Inglês!"
         icon="🔥"
         instruction="Diga uma das duas frases que você praticou — sem ouvir!"
         xpReward={15}
@@ -281,7 +294,7 @@ export function Block2LetsReflect({ onComplete }: Block2LetsReflectProps) {
           </div>
         </div>
         <button
-          onClick={() => onComplete(xpEarned)}
+          onClick={() => { deleteCookie('woa_b2_stage'); deleteCookie('woa_b2_built'); onComplete(xpEarned) }}
           className="px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
           style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}
         >

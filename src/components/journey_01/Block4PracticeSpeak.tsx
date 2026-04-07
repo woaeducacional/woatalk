@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
+import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 
 interface Block4PracticeSpeakProps {
   onComplete: (xp: number) => void
+  onActivityChange?: (current: number, total: number) => void
 }
 
 const COMPLETIONS: Record<number, { label: string; full: string }[]> = {
@@ -75,13 +77,23 @@ type Stage =
   | 'upgrade' | 'upgradeRepeat'
   | 'final' | 'complete'
 
-export function Block4PracticeSpeak({ onComplete }: Block4PracticeSpeakProps) {
-  const [stage, setStage] = useState<Stage>('choose')
+export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4PracticeSpeakProps) {
+  const [stage, setStage] = useState<Stage>(() => {
+    const RESTORE: Partial<Record<Stage, Stage>> = { listenRepeat: 'choose', completeStep: 'choose', speakWithText: 'choose', speakNoText: 'choose', upgrade: 'choose', upgradeRepeat: 'choose', final: 'choose' }
+    const s = getCookie('woa_b4_stage') as Stage | null
+    if (s && s !== 'complete') return RESTORE[s] ?? s
+    return 'choose'
+  })
   const [selected, setSelected] = useState<number[]>([])
   const [completeSentences, setCompleteSentences] = useState<string[]>([])
   const [upgradeSelected, setUpgradeSelected] = useState<number[]>([])
   const [xpEarned, setXpEarned] = useState(0)
 
+  const STAGE_INDEX: Record<Stage, number> = { choose:1, listenRepeat:2, completeStep:3, speakWithText:4, speakNoText:5, upgrade:6, upgradeRepeat:7, final:8, complete:8 }
+  useEffect(() => {
+    onActivityChange?.(STAGE_INDEX[stage], 8)
+    if (stage !== 'complete') setCookie('woa_b4_stage', stage)
+  }, [stage])
   const allSelected = [...selected, ...upgradeSelected]
 
   const handleListenRepeatComplete = (xpGained: number) => {
@@ -305,7 +317,7 @@ export function Block4PracticeSpeak({ onComplete }: Block4PracticeSpeakProps) {
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +5 WOA Coins</p></div>
         </div>
-        <button onClick={() => onComplete(xpEarned)} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
+        <button onClick={() => { deleteCookie('woa_b4_stage'); onComplete(xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

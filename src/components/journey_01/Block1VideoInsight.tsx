@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { VideoWatchQuestion, MultipleChoiceQuestion, ListenRepeatQuestion, type ChoiceOption } from '../questions_structs'
+import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 
 interface Block1VideoInsightProps {
   onComplete: (xp: number) => void
+  onActivityChange?: (current: number, total: number) => void
 }
 
 // Dados das sentenças para escolha (com ids e marcação de correto)
@@ -32,9 +34,18 @@ const LISTEN_REPEAT_SENTENCES = [
 
 type Stage = 'video' | 'choose' | 'listenRepeat' | 'complete'
 
-export function Block1VideoInsight({ onComplete }: Block1VideoInsightProps) {
-  const [stage, setStage] = useState<Stage>('video')
+export function Block1VideoInsight({ onComplete, onActivityChange }: Block1VideoInsightProps) {
+  const [stage, setStage] = useState<Stage>(() => {
+    const s = getCookie('woa_b1_stage') as Stage | null
+    return (s && s !== 'complete') ? s : 'video'
+  })
   const [xpEarned, setXpEarned] = useState(10) // Video = 10 XP
+
+  const STAGE_INDEX: Record<Stage, number> = { video: 1, choose: 2, listenRepeat: 3, complete: 3 }
+  useEffect(() => {
+    onActivityChange?.(STAGE_INDEX[stage], 3)
+    if (stage !== 'complete') setCookie('woa_b1_stage', stage)
+  }, [stage])
 
   // Handler de conclusão do vídeo
   const handleVideoComplete = (xpGained: number) => {
@@ -109,7 +120,7 @@ export function Block1VideoInsight({ onComplete }: Block1VideoInsightProps) {
             </div>
           </div>
           <button
-            onClick={() => onComplete(xpEarned)}
+            onClick={() => { deleteCookie('woa_b1_stage'); onComplete(xpEarned) }}
             className="w-full font-bold tracking-widest px-8 py-4 rounded-lg text-white transition-all hover:scale-105 active:scale-95"
             style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)' }}
           >

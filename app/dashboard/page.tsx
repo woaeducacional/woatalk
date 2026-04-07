@@ -8,28 +8,32 @@ import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
 import { playClick } from '@/lib/sounds'
 import { EagleTip } from '@/src/components/EagleTip'
+import { BadgesModal } from '@/src/components/BadgesModal'
 
 const xpPerLevel = 250
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [atlanticCheckpoint, setAtlanticCheckpoint] = useState(0)
   const [xpTotal, setXpTotal] = useState(0)
   const [coinsBalance, setCoinsBalance] = useState(0)
+  const [streakCount, setStreakCount] = useState(0)
+  const [badgeCount, setBadgeCount] = useState(0)
+  const [badgesOpen, setBadgesOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    fetch('/api/progress/2')
-      .then(r => r.ok ? r.json() : { checkpoint: 0 })
-      .then(d => setAtlanticCheckpoint(d.checkpoint ?? 0))
-      .catch(() => {})
     fetch('/api/user/stats')
       .then(r => r.ok ? r.json() : { xp_total: 0, coins_balance: 0 })
       .then(d => {
         setXpTotal(d.xp_total ?? 0)
         setCoinsBalance(d.coins_balance ?? 0)
+        setStreakCount(d.streak_count ?? 0)
       })
+      .catch(() => {})
+    fetch('/api/user/badges')
+      .then(r => r.ok ? r.json() : { badges: [] })
+      .then(d => setBadgeCount((d.badges ?? []).length))
       .catch(() => {})
   }, [])
 
@@ -157,23 +161,27 @@ export default function DashboardPage() {
               {/* Streaks */}
               <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #FF6B3535', boxShadow: '0 4px 24px rgba(255,107,53,0.06)' }}>
                 <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#FF6B35' }}>🔥 STREAK</p>
-                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #FF6B35' }}>0</p>
+                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #FF6B35' }}>{streakCount}</p>
                 <p className="text-[10px] text-blue-100/80 mt-2">Dias consecutivos</p>
               </div>
 
               {/* Badges */}
-              <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #A855F735', boxShadow: '0 4px 24px rgba(168,85,247,0.06)' }}>
+              <button
+                onClick={() => { playClick(); setBadgesOpen(true) }}
+                className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform text-left w-full"
+                style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #A855F735', boxShadow: '0 4px 24px rgba(168,85,247,0.06)' }}
+              >
                 <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#A855F7' }}>🏅 BADGES</p>
-                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #A855F7' }}>0</p>
+                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #A855F7' }}>{badgeCount}</p>
                 <p className="text-[10px] text-blue-100/80 mt-2">Conquistas desbloqueadas</p>
-              </div>
+              </button>
 
               {/* WOA Coins */}
               <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform flex items-center gap-3" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #FFD70035', boxShadow: '0 4px 24px rgba(255,215,0,0.06)' }}>
                 <div className="flex-1">
                   <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#FFD700' }}>💰 WOA COINS</p>
                   <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #FFD700' }}>{coinsBalance}</p>
-                  <p className="text-[10px] text-blue-100/80 mt-2">1 coin por checkpoint</p>
+                  <p className="text-[10px] text-blue-100/80 mt-2">Moedas acumuladas</p>
                 </div>
                 <Image src="/images/woa_coin.png" alt="WOA Coin" width={52} height={52} className="object-contain drop-shadow-lg" />
               </div>
@@ -223,20 +231,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-5">
                   <h4 className="font-black text-white text-sm tracking-wider mb-1" style={{ textShadow: '0 0 10px rgba(0,212,255,0.4)' }}>ATLANTIC OCEAN</h4>
-                  <p className="text-[10px] text-blue-100/80 mb-3">3.339m de profundidade</p>
-
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black tracking-widest" style={{ color: '#00D4FF' }}>CHECKPOINT {atlanticCheckpoint}/10</span>
-                    <span className="text-[10px] text-blue-100/80">🌊 {Math.round(3339 * (1 - atlanticCheckpoint / 10))}m</span>
-                  </div>
-
-                  <div className="flex gap-0.5 mb-4">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="flex-1 h-2 rounded-sm overflow-hidden" style={{ background: 'rgba(0,212,255,0.12)' }}>
-                        <div className="h-full transition-all duration-500 rounded-sm" style={{ width: i < atlanticCheckpoint ? '100%' : '0%', background: 'linear-gradient(90deg,#00D4FF,#00F0C8)' }} />
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-[10px] text-blue-100/80 mb-4">3.339m de profundidade</p>
 
                   <Link href="/challenge/2" onClick={() => playClick()} className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg,#CC4A00,#FF6B35)', boxShadow: '0 0 16px rgba(255,107,53,0.3)' }}>
                     ▶ CONTINUAR MISSÃO
@@ -291,6 +286,9 @@ export default function DashboardPage() {
           <p className="text-[11px] text-blue-200/30 tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
         </footer>
       </div>
+      {/* ── BADGES MODAL ── */}
+      {badgesOpen && <BadgesModal onClose={() => setBadgesOpen(false)} />}
+
       {/* ── SIDEBAR EXPLORADOR ── */}
       {/* Backdrop */}
       {sidebarOpen && (

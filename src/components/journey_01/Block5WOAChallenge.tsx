@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { getSpeechRecognition } from '@/src/lib/speechRecognition'
+import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 
 interface Block5WOAChallengeProps {
   onComplete: (xp: number) => void
+  onActivityChange?: (current: number, total: number) => void
 }
 
 type Stage = 'write' | 'translate' | 'listen' | 'repeat' | 'understand' | 'speakFree' | 'complete'
@@ -20,8 +22,15 @@ function tts(text: string, rate = 0.85): Promise<void> {
   })
 }
 
-export function Block5WOAChallenge({ onComplete }: Block5WOAChallengeProps) {
-  const [stage, setStage] = useState<Stage>('write')
+const STAGE_INDEX: Record<Stage, number> = { write:1, translate:2, listen:3, repeat:4, understand:5, speakFree:6, complete:6 }
+
+export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOAChallengeProps) {
+  const [stage, setStage] = useState<Stage>(() => {
+    const RESTORE: Partial<Record<Stage, Stage>> = { listen: 'write', repeat: 'write', understand: 'write', speakFree: 'write' }
+    const s = getCookie('woa_b5_stage') as Stage | null
+    if (s && s !== 'complete') return RESTORE[s] ?? s
+    return 'write'
+  })
   const [portugueseText, setPortugueseText] = useState('')
   const [englishText, setEnglishText] = useState('')
   const [isTranslating, setIsTranslating] = useState(false)
@@ -37,6 +46,10 @@ export function Block5WOAChallenge({ onComplete }: Block5WOAChallengeProps) {
   const [speakFreeIdx, setSpeakFreeIdx] = useState(0)
   const transcriptRef = useRef('')
 
+  useEffect(() => {
+    onActivityChange?.(STAGE_INDEX[stage], 6)
+    if (stage !== 'complete') setCookie('woa_b5_stage', stage)
+  }, [stage])
   const calcScore = (spoken: string, target: string): number => {
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/)
     const a = norm(spoken), b = norm(target)
@@ -328,7 +341,7 @@ export function Block5WOAChallenge({ onComplete }: Block5WOAChallengeProps) {
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +15 WOA Coins</p></div>
         </div>
-        <button onClick={() => onComplete(xpEarned)} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>FINALIZAR →</button>
+        <button onClick={() => { deleteCookie('woa_b5_stage'); onComplete(xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>FINALIZAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

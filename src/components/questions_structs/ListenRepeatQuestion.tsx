@@ -209,7 +209,7 @@ export function ListenRepeatQuestion({
       if (score >= 80) {
         setPassed(true)
       } else {
-        // Senão, incrementa tentativas
+        new Audio('/audio/falou-errado.mp3').play().catch(() => {})
         const newAttempts = attemptCount + 1
         setAttemptCount(newAttempts)
       }
@@ -217,6 +217,7 @@ export function ListenRepeatQuestion({
 
     recognitionRef.current.onerror = (event: any) => {
       console.error('Erro na gravação:', event.error)
+      new Audio('/audio/falou-errado.mp3').play().catch(() => {})
       const newAttempts = attemptCount + 1
       setAttemptCount(newAttempts)
     }
