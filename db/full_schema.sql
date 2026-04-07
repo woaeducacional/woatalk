@@ -15,6 +15,9 @@ CREATE TABLE users (
   xp_total INTEGER DEFAULT 0,
   coins_balance INTEGER DEFAULT 0,
   current_phase INTEGER DEFAULT 1,
+  streak_count INTEGER DEFAULT 0,
+  last_streak_date DATE,
+  streak_pending BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

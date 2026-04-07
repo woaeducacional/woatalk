@@ -121,6 +121,7 @@ export function SpeakFromMemoryQuestion({
   // ── Coin burst effect on win ──
   useEffect(() => {
     if (phase === 'result' && won) {
+      new Audio('/audio/som-concluir-memory-question.mp3').play().catch(() => {})
       setTimeout(() => setCoinBurst(true), 300)
     }
   }, [phase, won])
@@ -177,10 +178,6 @@ export function SpeakFromMemoryQuestion({
       const best = sentences[bestIdx]
       const scored = topScore
       const didWin = scored >= WIN_THRESHOLD
-
-      if (didWin) {
-        new Audio('/audio/som-concluir-memory-question.mp3').play().catch(() => {})
-      }
 
       setBestSentence(best)
       setBestScore(scored)
