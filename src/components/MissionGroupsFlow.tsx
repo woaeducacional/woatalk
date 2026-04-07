@@ -15,6 +15,8 @@ const MISSION_GROUPS = [
     description: 'Watch a video introduction to the topic',
     color: '#00D4FF',
     activities: 1,
+    xp: 10,
+    coins: 0,
   },
   {
     id: 1,
@@ -23,6 +25,8 @@ const MISSION_GROUPS = [
     description: 'Select the correct sentences about hobbies',
     color: '#00FF88',
     activities: 1,
+    xp: 80,
+    coins: 5,
   },
   {
     id: 2,
@@ -31,6 +35,8 @@ const MISSION_GROUPS = [
     description: 'Practice pronunciation with 8 sentences',
     color: '#FFD700',
     activities: 1,
+    xp: 85,
+    coins: 5,
   },
   {
     id: 3,
@@ -39,6 +45,8 @@ const MISSION_GROUPS = [
     description: 'Master 2 selected sentences',
     color: '#FF6B9D',
     activities: 2,
+    xp: 95,
+    coins: 5,
   },
   {
     id: 4,
@@ -47,6 +55,8 @@ const MISSION_GROUPS = [
     description: 'The ultimate speaking challenge',
     color: '#00F0FF',
     activities: 1,
+    xp: 100,
+    coins: 15,
   },
 ];
 
@@ -192,6 +202,34 @@ export const MissionGroupsFlow: React.FC<MissionGroupsFlowProps> = ({ phaseId, o
 
                 {/* Status badge */}
                 <div className="pt-2 space-y-2">
+                  {/* XP + Coins reward row — only shown when completed */}
+                  {isCompleted && (
+                    <div className="flex items-center justify-center gap-3">
+                      <span
+                        className="text-xs font-black tracking-wide px-2 py-0.5 rounded-full"
+                        style={{
+                          color: '#60a5fa',
+                          background: 'rgba(59,130,246,0.15)',
+                          border: '1px solid rgba(96,165,250,0.35)',
+                        }}
+                      >
+                        ⚡ {group.xp} XP
+                      </span>
+                      {group.coins > 0 && (
+                        <span
+                          className="text-xs font-black tracking-wide px-2 py-0.5 rounded-full"
+                          style={{
+                            color: '#fbbf24',
+                            background: 'rgba(251,191,36,0.15)',
+                            border: '1px solid rgba(251,191,36,0.35)',
+                          }}
+                        >
+                          🪙 {group.coins}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {isCompleted && (
                     <div className="text-center py-2 rounded-lg" style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgb(34,197,94)' }}>
                       <p className="text-sm font-bold text-green-300">✅ COMPLETO</p>
