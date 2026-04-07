@@ -82,8 +82,8 @@ export function Block1VideoInsight({ onComplete, onActivityChange }: Block1Video
       {/* STAGE 2: CHOOSE */}
       {stage === 'choose' && (
         <MultipleChoiceQuestion
-          stepLabel="Step 1"
-          title="🧩 Choose"
+          stepLabel="Passo 1"
+          title="🧩 Escolha"
           question="Which sentences are useful for talking about hobbies?"
           questionPt="Quais frases são úteis para falar sobre hobbies?"
           options={CHOICE_OPTIONS}
@@ -98,8 +98,8 @@ export function Block1VideoInsight({ onComplete, onActivityChange }: Block1Video
       {stage === 'listenRepeat' && (
         <ListenRepeatQuestion
           sentences={LISTEN_REPEAT_SENTENCES}
-          stepLabel="Step 2"
-          title="Listen & Repeat"
+          stepLabel="Passo 2"
+          title="Ouça e Repita"
           xpReward={25}
           icon="🎧"
           onComplete={handleListenRepeatComplete}
@@ -111,7 +111,7 @@ export function Block1VideoInsight({ onComplete, onActivityChange }: Block1Video
         <div className="space-y-6" style={{ animation: 'fadeIn 0.6s ease-in' }}>
           <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
             <div className="text-5xl mb-4">🏆</div>
-            <h3 className="text-3xl font-black text-green-300 mb-3">Video Insight Complete!</h3>
+            <h3 className="text-3xl font-black text-green-300 mb-3">Video Insight Concluído!</h3>
             <p className="text-blue-200/80 mb-6">Parabéns! Você completou esta atividade!</p>
             <div className="flex justify-center gap-4 mb-6">
               <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400">

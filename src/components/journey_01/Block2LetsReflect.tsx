@@ -97,12 +97,12 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.08)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">💬 LET&apos;S REFLECT</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">💬 VAMOS REFLETIR</p>
           <p className="text-white/40 text-[10px] mb-2">Vamos refletir</p>
           <p className="text-white text-lg italic">{QUOTE}</p>
           <p className="text-white/35 text-xs italic mt-1">{QUOTE_PT}</p>
         </div>
-        <p className="text-blue-200/80 text-center">👉 What do you love to do? Choose one:</p>
+        <p className="text-blue-200/80 text-center">👉 O que você ama fazer? Escolha um:</p>
         <div className="space-y-3">
           {CHOICES.map((c) => (
             <button
@@ -125,8 +125,8 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
     return (
       <ListenRepeatQuestion
         sentences={[chosenSentence]}
-        stepLabel="Listen & Repeat"
-        title="Your Choice"
+        stepLabel="Ouça e Repita"
+        title="Sua Escolha"
         icon="🎧"
         xpReward={10}
         onComplete={handleChoiceListenRepeatComplete}
@@ -139,9 +139,9 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-purple-400/30 text-center" style={{ background: 'rgba(147,51,234,0.06)' }}>
-          <p className="text-purple-300 font-bold text-sm tracking-widest mb-0.5">🎧 LISTEN & THINK</p>
+          <p className="text-purple-300 font-bold text-sm tracking-widest mb-0.5">🎧 OUÇA E PENSE</p>
           <p className="text-white/40 text-[10px] mb-3">Ouça e pense</p>
-          <p className="text-blue-200/80 mb-4">👉 Listen to the sentence. Don&apos;t focus on details — just understand the idea.</p>
+          <p className="text-blue-200/80 mb-4">👉 Ouça a frase. Não foque nos detalhes — apenas entenda a ideia.</p>
           <p className="text-white text-xl font-semibold mb-1">🎧 {MODEL_SENTENCE}</p>
           <p className="text-white/35 text-xs mb-6">{MODEL_SENTENCE_PT}</p>
           <button
@@ -162,11 +162,11 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 YOUR TURN</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 SUA VEZ</p>
           <p className="text-white/40 text-[10px] mb-3">Sua vez</p>
-          <p className="text-blue-200/80 mb-4">👉 Build your sentence: <span className="text-white font-bold">I love ______ because ______.</span></p>
+          <p className="text-blue-200/80 mb-4">👉 Monte sua frase: <span className="text-white font-bold">I love ______ because ______.</span></p>
           
-          <p className="text-cyan-300 text-sm font-bold mb-2">Choose your activity:</p>
+          <p className="text-cyan-300 text-sm font-bold mb-2">Escolha sua atividade:</p>
           <div className="grid grid-cols-1 gap-2 mb-4">
             {FIRST_BLANKS.map((b) => (
               <button
@@ -179,7 +179,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
             ))}
           </div>
 
-          <p className="text-yellow-300 text-sm font-bold mb-2">Choose your reason:</p>
+          <p className="text-yellow-300 text-sm font-bold mb-2">Escolha seu motivo:</p>
           <div className="grid grid-cols-1 gap-2 mb-6">
             {SECOND_BLANKS.map((b) => (
               <button
@@ -214,7 +214,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
           )}
         </div>
         <div className="p-4 rounded-lg border border-blue-400/20" style={{ background: 'rgba(0,100,255,0.06)' }}>
-          <p className="text-blue-300 text-sm">💡 <strong>Need help?</strong> I love + activity because + reason</p>
+          <p className="text-blue-300 text-sm">💡 <strong>Precisa de ajuda?</strong> I love + activity because + reason</p>
         </div>
       </div>
     )
@@ -225,8 +225,8 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
     return (
       <ListenRepeatQuestion
         sentences={[builtSentence]}
-        stepLabel="Listen & Repeat"
-        title="Your Sentence"
+        stepLabel="Ouça e Repita"
+        title="Sua Frase"
         icon="🎧"
         xpReward={20}
         onComplete={handleBuiltListenRepeatComplete}
@@ -254,8 +254,8 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
     return (
       <ListenRepeatQuestion
         sentences={[BOOST_SENTENCE]}
-        stepLabel="⚡ Quick Boost"
-        title="Extra Sentence"
+        stepLabel="⚡ Extra Rápido"
+        title="Frase Extra"
         icon="⚡"
         xpReward={0}
         onComplete={handleBoostListenRepeatComplete}
@@ -283,7 +283,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
     <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
         <div className="text-5xl mb-4">🏆</div>
-        <h3 className="text-2xl font-black text-white mb-2">Group Complete!</h3>
+        <h3 className="text-2xl font-black text-white mb-2">Grupo Concluído!</h3>
         <p className="text-blue-200/80 mb-4">Quote & Reflect concluído</p>
         <div className="flex justify-center gap-4 mb-6">
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400">

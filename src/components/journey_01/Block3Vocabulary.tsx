@@ -134,7 +134,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     return (
       <VocabularyMatchQuestion
         items={VOCABULARY}
-        stepLabel="Step 1 — Match"
+        stepLabel="Passo 1 — Combinação"
         title="Vocabulário"
         icon="🧩"
         instruction="Click each card to reveal the Portuguese translation."
@@ -149,7 +149,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     return (
       <ListenRepeatQuestion
         sentences={VOCABULARY.map((v) => v.word)}
-        stepLabel="Step 1 — Match"
+        stepLabel="Passo 1 — Combinação"
         title="Ouça e Repita"
         icon="🧩"
         instruction="Listen to each vocabulary word and repeat!"
@@ -166,7 +166,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="flex justify-between items-center">
-          <p className="text-green-300 text-sm font-bold mb-0.5">⚡ STEP 2 — CHOOSE & SPEAK ({fillIdx + 1}/{FILL_SENTENCES.length})</p>
+          <p className="text-green-300 text-sm font-bold mb-0.5">⚡ PASSO 2 — ESCOLHA E FALE ({fillIdx + 1}/{FILL_SENTENCES.length})</p>
           <p className="text-white/40 text-[10px] mb-3">Escolha e fale</p>
         </div>
         <div className="p-6 rounded-xl border border-green-400/30" style={{ background: 'rgba(34,197,94,0.06)' }}>
@@ -205,7 +205,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     return (
       <ListenRepeatQuestion
         sentences={[FILL_SENTENCES[fillIdx].full]}
-        stepLabel={`Step 2 — ${fillIdx + 1}/${FILL_SENTENCES.length}`}
+        stepLabel={`Passo 2 — ${fillIdx + 1}/${FILL_SENTENCES.length}`}
         title="Ouça e Repita"
         icon="📝"
         instruction="Listen and repeat the full sentence!"
@@ -221,9 +221,9 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 STEP 3 — SPEAK</p>
+          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 PASSO 3 — FALE</p>
           <p className="text-white/40 text-[10px] mb-3">Fale as frases completas</p>
-          <p className="text-blue-200/80 mb-4">👉 Complete and say ({speakIdx + 1}/{SPEAK_PROMPTS.length}):</p>
+          <p className="text-blue-200/80 mb-4">👉 Complete e diga ({speakIdx + 1}/{SPEAK_PROMPTS.length}):</p>
           <p className="text-white text-xl font-semibold mb-6">{SPEAK_PROMPTS[speakIdx]}</p>
           {transcript && <p className="text-blue-200/60 text-sm mb-1">&quot;{transcript}&quot;</p>}
           {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
@@ -258,7 +258,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     return (
       <SpeakFromMemoryQuestion
         sentences={MEMORY_SENTENCES}
-        stepLabel="Step 4 — Memory Boost"
+        stepLabel="Passo 4 — Fixação"
         title="Fale de Memória"
         icon="🧠"
         instruction="Fale qualquer uma das frases que você aprendeu — sem ler!"
@@ -276,7 +276,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
         <div className="text-5xl mb-4">🏆</div>
-        <h3 className="text-2xl font-black text-white mb-2">Group Complete!</h3>
+        <h3 className="text-2xl font-black text-white mb-2">Grupo Concluído!</h3>
         <p className="text-blue-200/80 mb-4">Learn & Speak concluído</p>
         <div className="flex justify-center gap-4 mb-6">
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>

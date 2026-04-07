@@ -127,7 +127,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-purple-400/30" style={{ background: 'rgba(168,85,247,0.06)' }}>
-          <p className="text-purple-300 font-bold text-sm tracking-widest mb-0.5">✨ STEP 1 — CHOOSE 2 EXPRESSIONS</p>
+          <p className="text-purple-300 font-bold text-sm tracking-widest mb-0.5">✨ PASSO 1 — ESCOLHA 2 EXPRESSÕES</p>
           <p className="text-white/40 text-[10px] mb-3">Escolha 2 expressões</p>
           <p className="text-blue-200/80 mb-4">Escolha 2 expressões para praticar:</p>
           <div className="grid gap-2">
@@ -163,7 +163,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     return (
       <ListenRepeatQuestion
         sentences={selected.map((i) => EXPRESSIONS[i].example)}
-        stepLabel="Step 2 — Listen & Repeat"
+        stepLabel="Passo 2 — Ouça e Repita"
         title="Suas Expressões"
         icon="🎧"
         instruction="Listen and repeat your chosen expressions!"
@@ -182,7 +182,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm mb-0.5">✍️ STEP 2 — COMPLETE ({completeSentences.length + 1}/2)</p>
+          <p className="text-yellow-300 font-bold text-sm mb-0.5">✍️ PASSO 2 — COMPLETE ({completeSentences.length + 1}/2)</p>
           <p className="text-white/40 text-[10px] mb-3">Escolha a opção que combina com você</p>
           <p className="text-blue-200/80 mb-2">Complete sobre você:</p>
           <p className="text-white text-xl font-semibold mb-6">{exp.text}</p>
@@ -212,7 +212,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     return (
       <ListenRepeatQuestion
         sentences={completeSentences}
-        stepLabel="Step 3a — Fale com Texto"
+        stepLabel="Passo 3a — Fale com Texto"
         title="Suas Frases"
         icon="🎤"
         instruction="Listen and say your own sentences out loud!"
@@ -228,7 +228,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     return (
       <SpeakFromMemoryQuestion
         sentences={completeSentences}
-        stepLabel="Step 3b — Sem Texto"
+        stepLabel="Passo 3b — Sem Texto"
         title="Fale de Memória"
         icon="🧠"
         instruction="Diga uma das suas frases — sem ler!"
@@ -244,7 +244,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-cyan-400/30" style={{ background: 'rgba(0,212,255,0.06)' }}>
-          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-0.5">⬆️ UPGRADE — CHOOSE 3 MORE</p>
+          <p className="text-cyan-300 font-bold text-sm tracking-widest mb-0.5">⬆️ UPGRADE — ESCOLHA MAIS 3</p>
           <p className="text-white/40 text-[10px] mb-3">Escolha mais 3 expressões</p>
           <p className="text-blue-200/80 mb-4">Escolha mais 3 expressões:</p>
           <div className="grid gap-2">
@@ -280,7 +280,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     return (
       <ListenRepeatQuestion
         sentences={upgradeSelected.map((i) => EXPRESSIONS[i].example)}
-        stepLabel="Upgrade — Listen & Repeat"
+        stepLabel="Upgrade — Ouça e Repita"
         title="Novas Expressões"
         icon="⬆️"
         instruction="Listen and repeat the new expressions!"
@@ -311,7 +311,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
     <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
         <div className="text-5xl mb-4">🏆</div>
-        <h3 className="text-2xl font-black text-white mb-2">Group Complete!</h3>
+        <h3 className="text-2xl font-black text-white mb-2">Grupo Concluído!</h3>
         <p className="text-blue-200/80 mb-4">Practice & Speak concluído</p>
         <div className="flex justify-center gap-4 mb-6">
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
