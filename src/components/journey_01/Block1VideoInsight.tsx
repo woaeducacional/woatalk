@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { VideoWatchQuestion, MultipleChoiceQuestion, ListenRepeatQuestion, type ChoiceOption } from '../questions_structs'
 
-interface Activity0VideoInsightProps {
+interface Block1VideoInsightProps {
   onComplete: (xp: number) => void
 }
 
@@ -32,7 +32,7 @@ const LISTEN_REPEAT_SENTENCES = [
 
 type Stage = 'video' | 'choose' | 'listenRepeat' | 'complete'
 
-export function Activity0VideoInsight({ onComplete }: Activity0VideoInsightProps) {
+export function Block1VideoInsight({ onComplete }: Block1VideoInsightProps) {
   const [stage, setStage] = useState<Stage>('video')
   const [xpEarned, setXpEarned] = useState(10) // Video = 10 XP
 

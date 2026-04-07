@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Activity0VideoInsight } from '@/src/components/activities'
-import { Activity1Quote } from '@/src/components/activities/Activity1Quote'
-import { Activity2Vocabulary } from '@/src/components/activities/Activity2Vocabulary'
-import { Activity3Expressions } from '@/src/components/activities/Activity3Expressions'
-import { Activity4Conversation } from '@/src/components/activities/Activity4Conversation'
+import {
+  Block1VideoInsight,
+  Block2LetsReflect,
+  Block3Vocabulary,
+  Block4PracticeSpeak,
+  Block5WOAChallenge,
+} from '@/src/components/journey_01'
 import { MissionGroupsFlow } from '@/src/components/MissionGroupsFlow'
 
 interface HobbiesActivityFlowProps {
@@ -235,11 +237,11 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
 
       {/* Activity content */}
       <div style={{ animation: 'fadeIn 0.6s ease-in' }}>
-        {currentGroup === 0 && <Activity0VideoInsight onComplete={handleGroupComplete} />}
-        {currentGroup === 1 && <Activity1Quote onComplete={handleGroupComplete} />}
-        {currentGroup === 2 && <Activity2Vocabulary onComplete={handleGroupComplete} />}
-        {currentGroup === 3 && <Activity3Expressions onComplete={handleGroupComplete} />}
-        {currentGroup === 4 && <Activity4Conversation onComplete={handleGroupComplete} />}
+        {currentGroup === 0 && <Block1VideoInsight  onComplete={handleGroupComplete} />}
+        {currentGroup === 1 && <Block2LetsReflect    onComplete={handleGroupComplete} />}
+        {currentGroup === 2 && <Block3Vocabulary     onComplete={handleGroupComplete} />}
+        {currentGroup === 3 && <Block4PracticeSpeak  onComplete={handleGroupComplete} />}
+        {currentGroup === 4 && <Block5WOAChallenge   onComplete={handleGroupComplete} />}
       </div>
 
       <style>{`
