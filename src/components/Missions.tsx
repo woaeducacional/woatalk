@@ -692,14 +692,14 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
 
   const handleStartRecording = () => {
     setError('')
-    /*const SpeechRecognitionAPI =
+    const SpeechRecognitionAPI =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
     if (SpeechRecognitionAPI) {
       startBrowserRecognition(SpeechRecognitionAPI)
-    } else {*/
+    } else {
       startRecordingWithMediaRecorder()
-    //}
+    }
   }
 
   function startBrowserRecognition(SpeechRecognitionAPI: any) {
