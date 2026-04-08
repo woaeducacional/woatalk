@@ -264,14 +264,14 @@ export function ListenRepeatQuestion({
       return
     }
 
-    const SpeechRecognitionAPI =
+    /*const SpeechRecognitionAPI =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
     if (SpeechRecognitionAPI) {
       startBrowserRecognition(SpeechRecognitionAPI)
-    } else {
+    } else {*/
       startRecordingWithMediaRecorder()
-    }
+    //}
   }
 
   // Função para resetar e ir para próxima sentença
