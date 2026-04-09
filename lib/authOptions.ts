@@ -1,6 +1,7 @@
 import Credentials from 'next-auth/providers/credentials'
 import { signInSchema } from '@/lib/validation'
 import { apiService } from '@/lib/api.service'
+import { hasUnverifiedEmail } from '@/lib/otp'
 import type { NextAuthOptions } from 'next-auth'
 
 declare module 'next-auth' {
@@ -36,6 +37,12 @@ export const authOptions: NextAuthOptions = {
           const { email, password } = await signInSchema.parseAsync(credentials)
           const user = await apiService.validateCredentials(email, password)
           if (!user) return null
+
+          // Bloquear login se o email ainda não foi verificado
+          if (await hasUnverifiedEmail(email)) {
+            throw new Error(`EMAIL_NOT_VERIFIED:${email}`)
+          }
+
           return {
             id: user.id,
             email: user.email,
@@ -43,7 +50,9 @@ export const authOptions: NextAuthOptions = {
             image: user.avatar_url,
             role: user.role ?? 'user',
           }
-        } catch {
+        } catch (err: any) {
+          // Propagar erros de verificação para o cliente
+          if (err?.message?.startsWith('EMAIL_NOT_VERIFIED')) throw err
           return null
         }
       },

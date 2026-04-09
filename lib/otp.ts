@@ -104,9 +104,36 @@ export async function deleteOTP(email: string): Promise<void> {
 }
 
 /**
- * Verifica se há OTP pendente para um email
+ * Verifica se há OTP pendente para um email.
+ * Retorna true apenas se o código foi gerado há menos de 1 minuto (anti-spam).
+ * Após 1 minuto o usuário pode re-solicitar (o upsert substituirá o registro).
  */
 export async function hasOTPPending(email: string): Promise<boolean> {
+  if (!supabase) return false
+  const normalizedEmail = email.toLowerCase().trim()
+
+  const { data, error } = await supabase
+    .from('otp_codes')
+    .select('created_at, expires_at')
+    .eq('email', normalizedEmail)
+    .single()
+
+  if (error || !data) return false
+
+  // OTP já expirou — não bloquear
+  if (new Date() > new Date(data.expires_at)) return false
+
+  // Bloquear re-envio apenas dentro do cooldown de 60 segundos
+  const createdAt = new Date(data.created_at)
+  const cooldownMs = 60 * 1000
+  return Date.now() - createdAt.getTime() < cooldownMs
+}
+
+/**
+ * Verifica se o email do usuário ainda não foi confirmado.
+ * Retorna true se houver um OTP não expirado no banco (indica que não verificou).
+ */
+export async function hasUnverifiedEmail(email: string): Promise<boolean> {
   if (!supabase) return false
   const normalizedEmail = email.toLowerCase().trim()
 

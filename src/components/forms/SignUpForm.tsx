@@ -42,6 +42,15 @@ export function SignUpForm() {
       }
     }
     checkHealth()
+
+    // Se vier de /auth/signin via redirect de e-mail não verificado, pular para step verify
+    const params = new URLSearchParams(window.location.search)
+    const emailParam = params.get('email')
+    const verifyParam = params.get('verify')
+    if (emailParam && verifyParam === '1') {
+      setRegisteredEmail(decodeURIComponent(emailParam))
+      setStep('verify')
+    }
   }, [])
 
   const form = useForm<SignUpInput>({
