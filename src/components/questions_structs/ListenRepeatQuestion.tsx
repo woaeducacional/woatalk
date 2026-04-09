@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface ListenRepeatQuestionProps {
   /**
@@ -73,6 +73,12 @@ interface ListenRepeatQuestionProps {
    * @default "⏭️ PULAR →"
    */
   skipButtonText?: string
+
+  /**
+   * Callback chamado quando não há frase disponível (ex: usuário não escolheu ainda).
+   * Use para voltar à atividade anterior.
+   */
+  onBack?: () => void
 }
 
 /**
@@ -106,10 +112,12 @@ export function ListenRepeatQuestion({
   speakButtonText = '🎤 FALAR',
   advanceButtonText = '✓ AVANÇAR →',
   skipButtonText = '⏭️ PULAR →',
+  onBack,
 }: ListenRepeatQuestionProps) {
   const [repeatIndex, setRepeatIndex] = useState(0)
   const [isListening, setIsListening] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
   const [attemptCount, setAttemptCount] = useState(0)
   const [lastScore, setLastScore] = useState(0)
   const [passed, setPassed] = useState(false)
@@ -117,6 +125,17 @@ export function ListenRepeatQuestion({
   const recognitionRef = useRef<any>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const vadActiveRef = useRef(false)  // true once user has spoken at least once
+
+  // Se não houver frase disponível, volta para a atividade anterior
+  useEffect(() => {
+    if (!sentences || sentences.length === 0 || !sentences[0]) {
+      onBack?.()
+    }
+  }, [sentences, onBack])
 
   const LISTEN_REQUIRED = 3
   const speakUnlocked = listenCount >= LISTEN_REQUIRED
@@ -180,98 +199,130 @@ export function ListenRepeatQuestion({
     }
   }
 
-  // Reconhecimento via Web Speech API (Chrome/Android)
-  function startBrowserRecognition(SpeechRecognitionAPI: any) {
-    const rec = new SpeechRecognitionAPI()
-    rec.lang = 'en-US'
-    rec.interimResults = false
-    rec.continuous = false
-    rec.maxAlternatives = 1
-    rec.onstart = () => { setIsRecording(true); setPassed(false) }
-    rec.onresult = (event: any) => {
-      let transcript = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) transcript += event.results[i][0].transcript
-      }
-      processTranscript(transcript)
-    }
-    rec.onerror = (event: any) => {
-      console.error('Erro na gravação:', event.error)
-      new Audio('/audio/falou-errado.mp3').play().catch(() => {})
-      setAttemptCount((c) => c + 1)
-      setIsRecording(false)
-    }
-    rec.onend = () => setIsRecording(false)
-    recognitionRef.current = rec
-    rec.start()
+  // Converte Blob para base64 via FileReader — seguro para áudio grande (evita stack overflow do btoa+spread)
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve((reader.result as string).split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
   }
 
-  // Gravação via MediaRecorder + /api/transcribe (fallback para iOS)
-  async function startRecordingWithMediaRecorder() {
+  // Inicia gravação: getUserMedia → AudioContext → createMediaStreamSource → MediaRecorder
+  async function startRecording() {
     try {
+      // Pede permissão para usar o microfone
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      streamRef.current = stream
+
+      // Cria o contexto de áudio e conecta ao microfone (padrão do snippet de referência)
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const source = audioContext.createMediaStreamSource(stream)
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 2048
+      source.connect(analyser)
+      analyserRef.current = analyser
+      // analyser não conectado ao destination → sem echo
+
+      // MediaRecorder captura o áudio real do stream
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+          ? 'audio/ogg;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : ''
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       chunksRef.current = []
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop())
-        handleMediaRecorderStop()
-      }
-      recorder.start()
-      mediaRecorderRef.current = recorder
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.start()
+      mediaRecorderRef.current = mr
+      vadActiveRef.current = false
+      silenceTimerRef.current = null
       setIsRecording(true)
       setPassed(false)
+
+      // Detecção de silêncio: para automaticamente 1.5s após o usuário parar de falar
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+      const SILENCE_THRESHOLD = 10   // RMS mínimo para considerar fala
+      const SILENCE_DELAY = 1500     // ms de silêncio antes de parar
+
+      function checkSilence() {
+        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return
+        analyser.getByteTimeDomainData(dataArray)
+        // Calcula RMS (volume médio)
+        let sum = 0
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] - 128
+          sum += v * v
+        }
+        const rms = Math.sqrt(sum / bufferLength)
+
+        if (rms > SILENCE_THRESHOLD) {
+          // Usuário está falando — cancela timer de silêncio
+          vadActiveRef.current = true
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current)
+            silenceTimerRef.current = null
+          }
+        } else if (vadActiveRef.current && !silenceTimerRef.current) {
+          // Silêncio detectado após fala — agenda parada
+          silenceTimerRef.current = setTimeout(() => {
+            stopRecording()
+          }, SILENCE_DELAY)
+        }
+        requestAnimationFrame(checkSilence)
+      }
+      requestAnimationFrame(checkSilence)
     } catch (err) {
       console.error(err)
       alert('Erro ao acessar microfone')
     }
   }
 
-  async function handleMediaRecorderStop() {
-    if (chunksRef.current.length === 0) {
-      new Audio('/audio/falou-errado.mp3').play().catch(() => {})
-      setAttemptCount((c) => c + 1)
-      setIsRecording(false)
-      return
+  // Para a gravação, envia o áudio para transcrição
+  function stopRecording() {
+    const mr = mediaRecorderRef.current
+    if (!mr || mr.state === 'inactive') return
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
+    mr.onstop = async () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      const blob = new Blob(chunksRef.current, { type: mr.mimeType })
+      const mimeBase = (mr.mimeType || 'audio/webm').split(';')[0]
+      try {
+        setIsTranscribing(true)
+        const base64 = await blobToBase64(blob)
+        const res = await fetch('/api/transcribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audio: base64, mimeType: mimeBase }),
+        })
+        const text = await res.text()
+        if (!text) throw new Error('Resposta vazia do servidor')
+        const data = JSON.parse(text)
+        if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
+        if (!data.transcript) throw new Error('Transcrição vazia')
+        processTranscript(data.transcript)
+      } catch (err: any) {
+        new Audio('/audio/falou-errado.mp3').play().catch(() => {})
+        setAttemptCount((c) => c + 1)
+      } finally {
+        setIsTranscribing(false)
+      }
     }
-    const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
-    const blob = new Blob(chunksRef.current, { type: mimeType })
-    const formData = new FormData()
-    formData.append('audio', blob, 'recording.webm')
-    try {
-      const res = await fetch('/api/transcribe', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
-      if (!data.transcript) throw new Error('Transcrição vazia')
-      processTranscript(data.transcript)
-    } catch (err: any) {
-      console.error(err)
-      new Audio('/audio/falou-errado.mp3').play().catch(() => {})
-      setAttemptCount((c) => c + 1)
-    } finally {
-      setIsRecording(false)
-    }
+    mr.stop()
+    setIsRecording(false)
   }
 
   // Função para gravar a voz do usuário
   const handleSpeak = () => {
     if (isRecording) {
-      if (recognitionRef.current) recognitionRef.current.stop()
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop()
-      }
-      setIsRecording(false)
+      stopRecording()
       return
     }
-
-    const SpeechRecognitionAPI =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-    if (SpeechRecognitionAPI) {
-      startBrowserRecognition(SpeechRecognitionAPI)
-    } else {
-      startRecordingWithMediaRecorder()
-    }
+    startRecording()
   }
 
   // Função para resetar e ir para próxima sentença
@@ -391,6 +442,32 @@ export function ListenRepeatQuestion({
         </div>
       </div>
 
+      {/* ── CARREGANDO TRANSCRIÇÃO ── */}
+      {isTranscribing && (
+        <div
+          className="rounded-xl p-5 flex items-center justify-center gap-3"
+          style={{
+            background: 'rgba(0,20,60,0.6)',
+            border: '1px solid rgba(0,212,255,0.2)',
+          }}
+        >
+          <div className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full"
+                style={{
+                  background: '#00D4FF',
+                  animation: 'dotPulse 0.8s ease-in-out infinite',
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-sm font-bold tracking-widest text-cyan-300/80">Analisando áudio...</span>
+        </div>
+      )}
+
       {/* ── SCORE FEEDBACK ── */}
       {lastScore > 0 && (
         <div
@@ -481,7 +558,7 @@ export function ListenRepeatQuestion({
         {/* AVANÇAR */}
         <button
           onClick={handleAdvance}
-          disabled={!passed}
+          disabled={!passed || isTranscribing}
           className="w-full font-black tracking-widest px-8 py-4 rounded-xl text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
           style={{
             background: passed
@@ -500,7 +577,10 @@ export function ListenRepeatQuestion({
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes pulseGreen {
+        @keyframes dotPulse {
+          0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
+          50%       { opacity: 1;   transform: scaleY(1.2); }
+        }
           0%, 100% { box-shadow: 0 0 20px rgba(34,197,94,0.3); }
           50%       { box-shadow: 0 0 35px rgba(34,197,94,0.6); }
         }

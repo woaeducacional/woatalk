@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { getSpeechRecognition } from '@/src/lib/speechRecognition'
 
 interface SpeakFromMemoryQuestionProps {
   /**
@@ -71,9 +70,14 @@ export function SpeakFromMemoryQuestion({
   const [won, setWon] = useState(false)
   const [revealCountdown, setRevealCountdown] = useState(3)
   const [coinBurst, setCoinBurst] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
 
-  const recognitionRef = useRef<any>(null)
-  const liveRef = useRef('')
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const vadActiveRef = useRef(false)
 
   // ── Score: how many target words appear anywhere in spoken transcript ──
   const calculateScore = (spoken: string, target: string): number => {
@@ -126,80 +130,113 @@ export function SpeakFromMemoryQuestion({
     }
   }, [phase, won])
 
-  const handleRecord = () => {
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve((reader.result as string).split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
+
+  const handleRecord = async () => {
     if (phase !== 'ready') return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
 
-    const API = getSpeechRecognition()
-    if (!API) {
-      alert('Seu navegador não suporta reconhecimento de voz.')
-      return
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const source = audioContext.createMediaStreamSource(stream)
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 2048
+      source.connect(analyser)
+      analyserRef.current = analyser
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+          ? 'audio/ogg;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : ''
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      chunksRef.current = []
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mediaRecorderRef.current = mr
+      vadActiveRef.current = false
+      silenceTimerRef.current = null
+
+      mr.onstop = async () => {
+        streamRef.current?.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType })
+        const mimeBase = (mr.mimeType || 'audio/webm').split(';')[0]
+        let spoken = ''
+        try {
+          setIsTranscribing(true)
+          const base64 = await blobToBase64(blob)
+          const res = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: base64, mimeType: mimeBase }),
+          })
+          const text = await res.text()
+          if (text) {
+            const data = JSON.parse(text)
+            if (res.ok) spoken = data.transcript || ''
+          }
+        } catch { /* spoken stays empty */ } finally {
+          setIsTranscribing(false)
+        }
+
+        setLiveTranscript(spoken)
+
+        let bestIdx = 0
+        let topScore = 0
+        sentences.forEach((s, i) => {
+          const sc = calculateScore(spoken, s)
+          if (sc > topScore) { topScore = sc; bestIdx = i }
+        })
+        const best = sentences[bestIdx]
+        setBestSentence(best)
+        setBestScore(topScore)
+        setWordResults(buildWordResults(spoken, best))
+        setWon(topScore >= WIN_THRESHOLD)
+        setPhase('revealing')
+      }
+
+      mr.start()
+      setLiveTranscript('')
+      setPhase('recording')
+
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+      const SILENCE_THRESHOLD = 10
+      const SILENCE_DELAY = 1500
+
+      function checkSilence() {
+        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return
+        analyser.getByteTimeDomainData(dataArray)
+        let sum = 0
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] - 128
+          sum += v * v
+        }
+        const rms = Math.sqrt(sum / bufferLength)
+        if (rms > SILENCE_THRESHOLD) {
+          vadActiveRef.current = true
+          if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
+        } else if (vadActiveRef.current && !silenceTimerRef.current) {
+          silenceTimerRef.current = setTimeout(() => {
+            const m = mediaRecorderRef.current
+            if (m && m.state !== 'inactive') m.stop()
+          }, SILENCE_DELAY)
+        }
+        requestAnimationFrame(checkSilence)
+      }
+      requestAnimationFrame(checkSilence)
+    } catch {
+      alert('Erro ao acessar microfone')
     }
-
-    const rec = new API()
-    rec.lang = 'en-US'
-    rec.continuous = true
-    rec.interimResults = true
-    liveRef.current = ''
-    setLiveTranscript('')
-    setPhase('recording')
-
-    let silenceTimer: ReturnType<typeof setTimeout> | null = null
-    let graceTimer: ReturnType<typeof setTimeout> | null = null
-
-    const resetSilence = () => {
-      if (silenceTimer) clearTimeout(silenceTimer)
-      silenceTimer = setTimeout(() => rec.stop(), 4000)
-    }
-
-    rec.onresult = (e: any) => {
-      if (graceTimer) { clearTimeout(graceTimer); graceTimer = null }
-      resetSilence()
-      const t = Array.from(e.results)
-        .map((r: any) => r[0].transcript)
-        .join('')
-      liveRef.current = t
-      setLiveTranscript(t)
-    }
-
-    rec.onend = () => {
-      if (graceTimer) clearTimeout(graceTimer)
-      if (silenceTimer) clearTimeout(silenceTimer)
-
-      const spoken = liveRef.current
-
-      // Find the best matching sentence
-      let bestIdx = 0
-      let topScore = 0
-      sentences.forEach((s, i) => {
-        const sc = calculateScore(spoken, s)
-        if (sc > topScore) { topScore = sc; bestIdx = i }
-      })
-
-      const best = sentences[bestIdx]
-      const scored = topScore
-      const didWin = scored >= WIN_THRESHOLD
-
-      setBestSentence(best)
-      setBestScore(scored)
-      setWordResults(buildWordResults(spoken, best))
-      setWon(didWin)
-
-      // Move to revealing phase (countdown, then result)
-      setPhase('revealing')
-    }
-
-    rec.onerror = (e: any) => {
-      if (graceTimer) clearTimeout(graceTimer)
-      if (silenceTimer) clearTimeout(silenceTimer)
-      liveRef.current = liveRef.current || '(erro de microfone)'
-      rec.stop()
-    }
-
-    recognitionRef.current = rec
-    rec.start()
-
-    // Grace period before silence detection starts
-    graceTimer = setTimeout(() => { graceTimer = null; resetSilence() }, 2000)
   }
 
   const handleContinue = () => {
@@ -310,6 +347,32 @@ export function SpeakFromMemoryQuestion({
           >
             🔴 GRAVANDO...
           </div>
+        </div>
+      )}
+
+      {/* ── CARREGANDO TRANSCRIÇÃO ── */}
+      {isTranscribing && (
+        <div
+          className="rounded-2xl p-6 flex flex-col items-center justify-center gap-4"
+          style={{
+            background: 'rgba(40,0,80,0.5)',
+            border: '1px solid rgba(168,85,247,0.3)',
+          }}
+        >
+          <div className="flex gap-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-3 h-3 rounded-full"
+                style={{
+                  background: '#a855f7',
+                  animation: 'dotPulse 0.8s ease-in-out infinite',
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-sm font-bold tracking-widest text-purple-300/80">Analisando áudio...</span>
         </div>
       )}
 
@@ -479,6 +542,10 @@ export function SpeakFromMemoryQuestion({
       )}
 
       <style>{`
+        @keyframes dotPulse {
+          0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
+          50%       { opacity: 1;   transform: scaleY(1.2); }
+        }
         @keyframes fadeInMemory {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
