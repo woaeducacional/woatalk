@@ -27,6 +27,7 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [dbStatus, setDbStatus] = useState<'supabase' | 'fallback' | 'unknown'>('unknown')
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -65,7 +66,14 @@ export default function SignInPage() {
       })
 
       if (!result?.ok) {
-        setError('Email ou senha incorretos')
+        const errMsg = result?.error ?? ''
+        if (errMsg.startsWith('EMAIL_NOT_VERIFIED:')) {
+          setUnverifiedEmail(errMsg.replace('EMAIL_NOT_VERIFIED:', ''))
+          setError(null)
+        } else {
+          setError('Email ou senha incorretos')
+          setUnverifiedEmail(null)
+        }
         return
       }
 
@@ -133,6 +141,22 @@ export default function SignInPage() {
               {success && (
                 <div className="mb-4 p-4 rounded-lg bg-green-500 bg-opacity-20 border-2 border-green-400 text-green-300 font-medium text-base">
                   ✅ {success}
+                </div>
+              )}
+              {unverifiedEmail && (
+                <div className="mb-4 p-4 rounded-xl space-y-3" style={{ background: 'rgba(234,179,8,0.1)', border: '2px solid rgba(234,179,8,0.5)' }}>
+                  <p className="font-black tracking-widest text-yellow-300 text-sm">📧 EMAIL NÃO VERIFICADO</p>
+                  <p className="text-yellow-200/80 text-sm">
+                    Você precisa confirmar seu email antes de acessar a plataforma.<br />
+                    Verifique sua caixa de entrada e insira o código de 6 dígitos.
+                  </p>
+                  <a
+                    href={`/auth/signup?email=${encodeURIComponent(unverifiedEmail)}&verify=1`}
+                    className="block w-full text-center font-black tracking-widest py-3 rounded-xl text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ background: 'linear-gradient(135deg, #b45309, #eab308)', boxShadow: '0 0 20px rgba(234,179,8,0.3)' }}
+                  >
+                    → INSERIR CÓDIGO DE VERIFICAÇÃO
+                  </a>
                 </div>
               )}
               {error && (

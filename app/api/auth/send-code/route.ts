@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendCodeSchema } from '@/lib/validation'
 import { getUserByEmail } from '@/lib/db'
-import { generateOTP, storeOTP, hasOTPPending } from '@/lib/otp'
+import { generateOTP, storeOTP, hasOTPPending, deleteOTP } from '@/lib/otp'
 import { sendOTPEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
     const emailResult = await sendOTPEmail(validatedData.email, code)
     
     if (!emailResult.success) {
+      // Limpar OTP armazenado para o usuário poder tentar novamente
+      await deleteOTP(validatedData.email)
       return NextResponse.json(
         { error: 'Erro ao enviar código. Tente novamente.' },
         { status: 500 }
