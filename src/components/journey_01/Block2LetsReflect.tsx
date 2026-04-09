@@ -130,6 +130,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
         icon="🎧"
         xpReward={10}
         onComplete={handleChoiceListenRepeatComplete}
+        onBack={() => setStage('quote')}
       />
     )
   }
@@ -230,6 +231,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
         icon="🎧"
         xpReward={20}
         onComplete={handleBuiltListenRepeatComplete}
+        onBack={() => setStage('yourTurn')}
       />
     )
   }

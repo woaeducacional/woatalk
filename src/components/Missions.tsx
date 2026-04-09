@@ -625,8 +625,6 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
   const [error, setError] = useState('')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null)
-  const resultReceivedRef = useRef(false)
-  const transcriptPartsRef = useRef<string[]>([])
   const circleRef = useRef<SVGCircleElement | null>(null)
 
   const expectedText = mission.speakText ?? mission.correctAnswer ?? ''
@@ -638,8 +636,13 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
   const scoreLabel = score >= 75 ? '🏆 Excelente!' : score >= 50 ? '💪 Bom esforço!' : '🔁 Tente novamente'
   const canContinue = !hasExpected || score >= 50
 
+  const audioCtxRef = useRef<AudioContext | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const vadActiveRef = useRef(false)
 
   useEffect(() => {
     if (stage !== 'result') return
@@ -692,66 +695,69 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
 
   const handleStartRecording = () => {
     setError('')
-    const SpeechRecognitionAPI =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-    if (SpeechRecognitionAPI) {
-      startBrowserRecognition(SpeechRecognitionAPI)
-    } else {
-      startRecordingWithMediaRecorder()
-    }
+    startRecording()
   }
 
-  function startBrowserRecognition(SpeechRecognitionAPI: any) {
-    resultReceivedRef.current = false
-    transcriptPartsRef.current = []
-    const rec = new SpeechRecognitionAPI()
-    rec.lang = 'en-US'
-    rec.interimResults = false
-    rec.continuous = true
-    rec.maxAlternatives = 1
-    rec.onstart = () => setStage('recording')
-    rec.onresult = (event: any) => {
-      resultReceivedRef.current = true
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) transcriptPartsRef.current.push(event.results[i][0].transcript)
-      }
-    }
-    rec.onerror = (event: any) => {
-      if (event.error === 'no-speech') setError('Nenhuma fala detectada. Tente novamente.')
-      else if (event.error === 'not-allowed') setError('Permissão de microfone negada.')
-      else setError(`Erro de reconhecimento: ${event.error}`)
-      setStage('idle')
-    }
-    rec.onend = () => {
-      if (!resultReceivedRef.current || transcriptPartsRef.current.length === 0) {
-        setError('Nenhuma fala detectada. Tente novamente.')
-        setStage('idle')
-      } else {
-        const text = transcriptPartsRef.current.join(' ')
-        setStage('processing')
-        setTimeout(() => processTranscript(text), 300)
-      }
-    }
-    recognitionRef.current = rec
-    rec.start()
+  // Converte Blob para base64 via FileReader — sem risk de stack overflow
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve((reader.result as string).split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
   }
 
-  async function startRecordingWithMediaRecorder() {
+  // Inicia gravação: getUserMedia → AudioContext → createMediaStreamSource → MediaRecorder
+  async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      streamRef.current = stream
+
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      audioCtxRef.current = audioContext
+      const source = audioContext.createMediaStreamSource(stream)
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 2048
+      source.connect(analyser)
+      analyserRef.current = analyser
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+          ? 'audio/ogg;codecs=opus'
+          : ''
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       chunksRef.current = []
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data)
-      }
-      recorder.onstop = () => {
-        stream.getTracks().forEach(track => track.stop())
-        handleMediaRecorderStop()
-      }
-      recorder.start()
-      mediaRecorderRef.current = recorder
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.start()
+      mediaRecorderRef.current = mr
+      vadActiveRef.current = false
+      silenceTimerRef.current = null
       setStage('recording')
+
+      // Detecção de silêncio: para automaticamente 1.5s após o usuário parar de falar
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+      const SILENCE_THRESHOLD = 10
+      const SILENCE_DELAY = 1500
+
+      function checkSilence() {
+        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return
+        analyser.getByteTimeDomainData(dataArray)
+        let sum = 0
+        for (let i = 0; i < bufferLength; i++) { const v = dataArray[i] - 128; sum += v * v }
+        const rms = Math.sqrt(sum / bufferLength)
+
+        if (rms > SILENCE_THRESHOLD) {
+          vadActiveRef.current = true
+          if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
+        } else if (vadActiveRef.current && !silenceTimerRef.current) {
+          silenceTimerRef.current = setTimeout(() => handleStopRecording(), SILENCE_DELAY)
+        }
+        requestAnimationFrame(checkSilence)
+      }
+      requestAnimationFrame(checkSilence)
     } catch (err) {
       console.error(err)
       setError('Erro ao acessar microfone')
@@ -759,34 +765,36 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
   }
 
   const handleStopRecording = () => {
-    if (recognitionRef.current && stage === 'recording') recognitionRef.current.stop()
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop()
-      setStage('processing')
+    const mr = mediaRecorderRef.current
+    if (!mr || mr.state === 'inactive') return
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
+    setStage('processing')
+    mr.onstop = async () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      audioCtxRef.current?.close()
+      audioCtxRef.current = null
+      const blob = new Blob(chunksRef.current, { type: mr.mimeType })
+      const mimeBase = (mr.mimeType || 'audio/webm').split(';')[0]
+      try {
+        const base64 = await blobToBase64(blob)
+        const res = await fetch('/api/transcribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audio: base64, mimeType: mimeBase }),
+        })
+        const text = await res.text()
+        if (!text) throw new Error('Resposta vazia do servidor')
+        const data = JSON.parse(text)
+        if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
+        if (!data.transcript) throw new Error('Transcrição vazia')
+        processTranscript(data.transcript)
+      } catch (err: any) {
+        console.error(err)
+        setError(err.message)
+        setStage('idle')
+      }
     }
-  }
-
-  async function handleMediaRecorderStop() {
-    if (chunksRef.current.length === 0) {
-      setError('Nenhum áudio capturado')
-      setStage('idle')
-      return
-    }
-    const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
-    const blob = new Blob(chunksRef.current, { type: mimeType })
-    const formData = new FormData()
-    formData.append('audio', blob, 'recording.webm')
-    try {
-      const res = await fetch('/api/transcribe', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
-      if (!data.transcript) throw new Error('Transcrição vazia')
-      processTranscript(data.transcript)
-    } catch (err: any) {
-      console.error(err)
-      setError(err.message)
-      setStage('idle')
-    }
+    mr.stop()
   }
 
   const handleRetry = () => {
@@ -794,8 +802,6 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
       try { recognitionRef.current.abort() } catch { /* ignore */ }
       recognitionRef.current = null
     }
-    mediaRecorderRef.current = null
-    chunksRef.current = []
     setStage('idle')
     setTranscript('')
     setWordResults([])
