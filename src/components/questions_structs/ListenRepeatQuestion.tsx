@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { getCookie, setCookie } from '@/lib/utils'
+import { playTTS } from '@/src/lib/ttsService'
 
 interface ListenRepeatQuestionProps {
   /**
@@ -122,6 +124,9 @@ export function ListenRepeatQuestion({
   const [lastScore, setLastScore] = useState(0)
   const [passed, setPassed] = useState(false)
   const [listenCount, setListenCount] = useState(0)
+  const [ttsVoice, setTtsVoice] = useState<'oliver' | 'alice'>(() => (getCookie('tts_voice') as 'oliver' | 'alice') || 'oliver')
+  const [ttsRate, setTtsRate] = useState<'normal' | 'slow'>(() => (getCookie('tts_rate') as 'normal' | 'slow') || 'normal')
+  const [showTtsModal, setShowTtsModal] = useState(false)
   const recognitionRef = useRef<any>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -158,32 +163,16 @@ export function ListenRepeatQuestion({
     return Math.round((matches / expectedWords.length) * 100)
   }
 
-  // Função para sintetizar e reproduzir áudio da frase
-  const handleListen = () => {
-    if ('speechSynthesis' in window) {
-      if (isListening) {
-        window.speechSynthesis.cancel()
-        setIsListening(false)
-        return
-      }
-
-      const utterance = new SpeechSynthesisUtterance(sentences[repeatIndex])
-      utterance.lang = 'en-US'
-      utterance.rate = 0.6
-      utterance.pitch = 1
-      utterance.volume = 1
-
-      utterance.onstart = () => setIsListening(true)
-      utterance.onend = () => {
-        setIsListening(false)
-        setListenCount((c) => Math.min(c + 1, LISTEN_REQUIRED))
-      }
-      utterance.onerror = () => setIsListening(false)
-
-      window.speechSynthesis.speak(utterance)
-    } else {
-      alert('Web Speech API não é suportada neste navegador')
-    }
+  // Sintetiza e reproduz áudio via ttsService (Azure + fallback speechSynthesis)
+  const handleListen = async () => {
+    if (isListening) return
+    setIsListening(true)
+    await playTTS(
+      sentences[repeatIndex],
+      ttsVoice,
+      ttsRate,
+      () => { setIsListening(false); setListenCount((c) => Math.min(c + 1, LISTEN_REQUIRED)) },
+    )
   }
 
   // Processa o texto reconhecido e calcula o score
@@ -399,6 +388,7 @@ export function ListenRepeatQuestion({
         >
           {sentences[repeatIndex]}
         </p>
+
       </div>
 
       {/* ── LISTEN LOCK COUNTER ── */}
@@ -490,7 +480,7 @@ export function ListenRepeatQuestion({
 
       {/* ── BUTTONS ── */}
       <div className="space-y-3">
-        {/* ESCUTAR + PULAR (lado a lado após 3 erros) */}
+        {/* ESCUTAR + ⚙️ + PULAR (lado a lado após 3 erros) */}
         <div className="flex gap-3">
           <button
             onClick={handleListen}
@@ -506,6 +496,19 @@ export function ListenRepeatQuestion({
           >
             {isListening ? '⏸ PARANDO...' : `${listenButtonText} ${listenCount > 0 && !speakUnlocked ? `(${listenCount}/${LISTEN_REQUIRED})` : ''}`}
           </button>
+          {/* Gear icon — opens TTS settings modal */}
+          <button
+            onClick={() => setShowTtsModal(true)}
+            title="Configurações de voz"
+            className="flex items-center justify-center px-4 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 text-lg"
+            style={{
+              background: 'linear-gradient(135deg, rgba(194,65,12,0.35), rgba(249,115,22,0.2))',
+              border: '2px solid rgba(249,115,22,0.7)',
+              boxShadow: '0 0 12px rgba(249,115,22,0.45), inset 0 0 8px rgba(249,115,22,0.1)',
+            }}
+          >
+            ⚙️
+          </button>
           {attemptCount >= 3 && (
             <button
               onClick={handleAdvance}
@@ -519,6 +522,76 @@ export function ListenRepeatQuestion({
             </button>
           )}
         </div>
+
+        {/* TTS SETTINGS MODAL */}
+        {showTtsModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.75)' }}
+            onClick={() => setShowTtsModal(false)}
+          >
+            <div
+              className="rounded-2xl p-6 space-y-5 w-72"
+              style={{ background: '#0a1628', border: '1px solid rgba(249,115,22,0.4)', boxShadow: '0 0 40px rgba(249,115,22,0.15)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-orange-400 font-black tracking-widest text-sm text-center">⚙️ CONFIGURAÇÕES DE VOZ</p>
+
+              {/* Voice selection */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Voz</p>
+                <div className="flex gap-2">
+                  {(['oliver', 'alice'] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => { setTtsVoice(v); setCookie('tts_voice', v) }}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
+                      style={{
+                        background: ttsVoice === v ? 'linear-gradient(135deg, #ea580c, #f97316)' : 'rgba(255,255,255,0.06)',
+                        border: ttsVoice === v ? '1px solid rgba(251,146,60,0.6)' : '1px solid rgba(255,255,255,0.1)',
+                        color: ttsVoice === v ? '#fff' : 'rgba(255,255,255,0.4)',
+                        boxShadow: ttsVoice === v ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
+                      }}
+                    >
+                      {v === 'oliver' ? '👨 Oliver' : '👩 Alice'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Speed selection */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Velocidade</p>
+                <div className="flex gap-2">
+                  {(['normal', 'slow'] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setTtsRate(s); setCookie('tts_rate', s) }}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
+                      style={{
+                        background: ttsRate === s ? 'linear-gradient(135deg, #ea580c, #f97316)' : 'rgba(255,255,255,0.06)',
+                        border: ttsRate === s ? '1px solid rgba(251,146,60,0.6)' : '1px solid rgba(255,255,255,0.1)',
+                        color: ttsRate === s ? '#fff' : 'rgba(255,255,255,0.4)',
+                        boxShadow: ttsRate === s ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
+                      }}
+                    >
+                      {s === 'normal' ? '▶ Normal' : '🐢 Lento'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Close */}
+              <button
+                onClick={() => setShowTtsModal(false)}
+                className="w-full py-3 rounded-xl font-black tracking-widest text-sm transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)' }}
+              >
+                FECHAR
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* FALAR — só aparece após 3 escutas */}
         {speakUnlocked && (
