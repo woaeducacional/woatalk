@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
@@ -21,6 +21,13 @@ export default function DashboardPage() {
   const [badgeCount, setBadgeCount] = useState(0)
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isEmailVerified, setIsEmailVerified] = useState(true)
+  const [showVerifyModal, setShowVerifyModal] = useState(false)
+  const [verifyCode, setVerifyCode] = useState(['', '', '', '', '', ''])
+  const [verifyStep, setVerifyStep] = useState<'send' | 'input' | 'done'>('send')
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+  const [verifyLoading, setVerifyLoading] = useState(false)
+  const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
     fetch('/api/user/stats')
@@ -35,6 +42,10 @@ export default function DashboardPage() {
       .then(r => r.ok ? r.json() : { badges: [] })
       .then(d => setBadgeCount((d.badges ?? []).length))
       .catch(() => {})
+    fetch('/api/auth/verify-status')
+      .then(r => r.ok ? r.json() : { verified: true })
+      .then(d => setIsEmailVerified(d.verified ?? true))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -47,6 +58,48 @@ export default function DashboardPage() {
   const xpInLevel = xpTotal % xpPerLevel
   const xpProgress = Math.round((xpInLevel / xpPerLevel) * 100)
   const isAdmin = session?.user?.role === 'admin'
+
+  // ── Verify email from dashboard ──
+  const handleSendVerifyCode = async () => {
+    setVerifyLoading(true)
+    setVerifyError(null)
+    try {
+      const res = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setVerifyError(data.error || 'Erro ao enviar código'); return }
+      setVerifyStep('input')
+      setVerifyCode(['', '', '', '', '', ''])
+    } catch { setVerifyError('Erro ao conectar ao servidor') }
+    finally { setVerifyLoading(false) }
+  }
+
+  const handleVerifyCode = async () => {
+    const fullCode = verifyCode.join('')
+    if (fullCode.length !== 6) { setVerifyError('Insira o código completo'); return }
+    setVerifyLoading(true)
+    setVerifyError(null)
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email, code: fullCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setVerifyError(data.error || 'Código inválido')
+        setVerifyCode(['', '', '', '', '', ''])
+        verifyInputRefs.current[0]?.focus()
+        return
+      }
+      setVerifyStep('done')
+      setIsEmailVerified(true)
+    } catch { setVerifyError('Erro ao conectar ao servidor') }
+    finally { setVerifyLoading(false) }
+  }
 
   if (status === 'loading') {
     return (
@@ -414,11 +467,135 @@ export default function DashboardPage() {
             </div>
             <span style={{ color: 'rgba(192,132,252,0.7)', fontSize: '16px' }} className="sm:text-lg">›</span>
           </Link>
+
+          {/* Verify email button — only shown if not verified */}
+          {!isEmailVerified && (
+            <button
+              onClick={() => { setShowVerifyModal(true); setVerifyStep('send'); setVerifyError(null) }}
+              className="flex items-center gap-2 sm:gap-3 w-full rounded-xl px-3 sm:px-4 py-2.5 sm:py-3.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: 'rgba(234,179,8,0.1)',
+                border: '1px solid rgba(234,179,8,0.4)',
+                boxShadow: '0 0 12px rgba(234,179,8,0.1)',
+              }}
+            >
+              <span className="text-lg sm:text-xl">🔒</span>
+              <div className="text-left">
+                <p className="text-xs sm:text-sm font-black tracking-wider" style={{ color: '#eab308' }}>VERIFICAR MINHA CONTA</p>
+                <p className="text-[8px] sm:text-[10px]" style={{ color: 'rgba(234,179,8,0.55)' }}>Email ainda não confirmado</p>
+              </div>
+            </button>
+          )}
         </div>
 
         {/* Bottom padding */}
         <div className="h-8" />
       </div>
+      {/* ── VERIFY EMAIL MODAL ── */}
+      {showVerifyModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowVerifyModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 space-y-5"
+            style={{ background: '#0a1628', border: '1px solid rgba(234,179,8,0.4)', boxShadow: '0 0 40px rgba(234,179,8,0.1)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {verifyStep === 'send' && (
+              <>
+                <div className="text-center">
+                  <p className="text-2xl mb-2">📧</p>
+                  <p className="text-yellow-300 font-black tracking-widest text-sm">VERIFICAR CONTA</p>
+                  <p className="text-blue-200/60 text-xs mt-2">
+                    Enviaremos um código de 6 dígitos para<br />
+                    <strong className="text-white">{session?.user?.email}</strong>
+                  </p>
+                </div>
+                {verifyError && <p className="text-red-400 text-xs text-center">{verifyError}</p>}
+                <button
+                  onClick={handleSendVerifyCode}
+                  disabled={verifyLoading}
+                  className="w-full py-3 rounded-xl font-black tracking-widest text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #b45309, #eab308)', boxShadow: '0 0 20px rgba(234,179,8,0.3)' }}
+                >
+                  {verifyLoading ? 'Enviando...' : '📨 ENVIAR CÓDIGO'}
+                </button>
+                <button onClick={() => setShowVerifyModal(false)} className="w-full text-center text-xs text-blue-200/40 hover:text-blue-200/70 transition-colors">Fechar</button>
+              </>
+            )}
+
+            {verifyStep === 'input' && (
+              <>
+                <div className="text-center">
+                  <p className="text-yellow-300 font-black tracking-widest text-sm">INSIRA O CÓDIGO</p>
+                  <p className="text-blue-200/50 text-xs mt-1">Código enviado para {session?.user?.email}</p>
+                </div>
+                {verifyError && <p className="text-red-400 text-xs text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20">{verifyError}</p>}
+                <div className="flex gap-1.5 justify-center">
+                  {verifyCode.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { verifyInputRefs.current[i] = el }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => {
+                        if (!/^\d*$/.test(e.target.value)) return
+                        const next = [...verifyCode]; next[i] = e.target.value; setVerifyCode(next)
+                        if (e.target.value && i < 5) verifyInputRefs.current[i + 1]?.focus()
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Backspace') {
+                          const next = [...verifyCode]; next[i] = ''; setVerifyCode(next)
+                          if (i > 0) verifyInputRefs.current[i - 1]?.focus()
+                        }
+                      }}
+                      onPaste={(e) => {
+                        const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6).split('')
+                        if (digits.length === 6) { setVerifyCode(digits); verifyInputRefs.current[5]?.focus(); e.preventDefault() }
+                      }}
+                      className="w-11 h-11 text-center text-xl font-black text-white rounded-lg outline-none"
+                      style={{
+                        background: 'rgba(255,255,255,0.08)',
+                        border: `2px solid ${digit ? 'rgba(234,179,8,0.8)' : 'rgba(255,255,255,0.2)'}`,
+                        boxShadow: digit ? '0 0 12px rgba(234,179,8,0.3)' : 'none',
+                      }}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={handleVerifyCode}
+                  disabled={verifyLoading || verifyCode.some(d => !d)}
+                  className="w-full py-3 rounded-xl font-black tracking-widest text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
+                  style={{ background: 'linear-gradient(135deg, #b45309, #eab308)', boxShadow: '0 0 20px rgba(234,179,8,0.3)' }}
+                >
+                  {verifyLoading ? 'Verificando...' : '✓ CONFIRMAR'}
+                </button>
+                <button onClick={() => setVerifyStep('send')} className="w-full text-center text-xs text-blue-200/40 hover:text-blue-200/70 transition-colors">← Reenviar código</button>
+              </>
+            )}
+
+            {verifyStep === 'done' && (
+              <div className="text-center space-y-4 py-2">
+                <p className="text-4xl">✅</p>
+                <p className="text-green-400 font-black tracking-widest text-sm">EMAIL VERIFICADO!</p>
+                <p className="text-blue-200/60 text-xs">Sua conta está completamente ativa agora.</p>
+                <button
+                  onClick={() => setShowVerifyModal(false)}
+                  className="w-full py-3 rounded-xl font-black tracking-widest text-sm text-white transition-all hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg, #15803d, #22c55e)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }}
+                >
+                  FECHAR
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <EagleTip
         storageKey="eagle_dashboard_welcome"
         lines={[
