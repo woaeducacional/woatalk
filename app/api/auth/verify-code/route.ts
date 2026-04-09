@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyEmailSchema } from '@/lib/validation'
 import { verifyOTP } from '@/lib/otp'
 import { getUserByEmail } from '@/lib/db'
+import { apiService } from '@/lib/api.service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,8 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Atualizar status de email verificado no banco de dados
-    // TODO: Implementar campo email_verified_at na tabela de usuários
-    // await updateUser(user.id, { email_verified_at: new Date().toISOString() })
+    await apiService.setEmailVerified(user.id)
 
     return NextResponse.json(
       {

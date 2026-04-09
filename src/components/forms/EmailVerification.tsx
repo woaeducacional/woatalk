@@ -18,6 +18,9 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
   const [isCodeSent, setIsCodeSent] = useState(true)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+  const [skipChecked, setSkipChecked] = useState(false)
+  const [skipLoading, setSkipLoading] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   // Lidar com mudanças nos inputs
@@ -138,6 +141,22 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
     }
   }
 
+  // Pular verificação — deleta OTP (permite login), mas email_verified fica false
+  const handleSkip = async () => {
+    if (!skipChecked) return
+    setSkipLoading(true)
+    try {
+      await fetch('/api/auth/skip-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+    } finally {
+      setSkipLoading(false)
+      onVerificationComplete()
+    }
+  }
+
   return (
     <Card className="w-full max-w-md mx-auto px-4 sm:px-6">
       <CardHeader>
@@ -205,6 +224,61 @@ export function EmailVerification({ email, onVerificationComplete, onBackClick }
                   : 'Reenviar código'}
             </button>
           </div>
+
+          {/* Não consigo acessar meu e-mail */}
+          {!showSkipConfirm ? (
+            <div className="border-t border-white/10 pt-4 text-center">
+              <button
+                type="button"
+                onClick={() => setShowSkipConfirm(true)}
+                className="text-xs text-blue-200/40 hover:text-blue-200/70 transition-colors underline underline-offset-2"
+              >
+                Não consigo acessar meu e-mail agora / Não estou recebendo o código
+              </button>
+            </div>
+          ) : (
+            <div
+              className="rounded-xl p-4 space-y-3 border-t border-white/10 pt-4"
+              style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.3)' }}
+            >
+              <p className="text-yellow-300 font-black text-xs tracking-widest">⚠️ VERIFICAÇÃO PENDENTE</p>
+              <p className="text-yellow-200/70 text-xs leading-relaxed">
+                Você poderá acessar a plataforma agora, mas sua conta ficará marcada como{' '}
+                <strong className="text-yellow-300">não verificada</strong> até confirmar seu email.
+                Um botão de verificação aparecerá no seu painel.
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={skipChecked}
+                  onChange={(e) => setSkipChecked(e.target.checked)}
+                  className="mt-0.5 accent-yellow-400 w-4 h-4 flex-shrink-0"
+                />
+                <span className="text-xs text-yellow-200/80">
+                  Entendo que minha conta ficará limitada até verified meu email
+                </span>
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowSkipConfirm(false); setSkipChecked(false) }}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSkip}
+                  disabled={!skipChecked || skipLoading}
+                  className="flex-1 py-2 rounded-lg text-xs font-black tracking-widest transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: skipChecked ? 'linear-gradient(135deg, #b45309, #eab308)' : 'rgba(255,255,255,0.05)', color: '#fff' }}
+                >
+                  {skipLoading ? 'Aguarde...' : 'ENTRAR SEM VERIFICAR'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Voltar */}
           {onBackClick && (

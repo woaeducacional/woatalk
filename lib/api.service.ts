@@ -14,6 +14,7 @@ export interface User {
   xp_total: number
   coins_balance: number
   current_phase: number
+  email_verified: boolean
   created_at: string
   updated_at: string
 }
@@ -108,6 +109,7 @@ class ApiService {
       xp_total: 0,
       coins_balance: 0,
       current_phase: 1,
+      email_verified: false,
       created_at: now,
       updated_at: now,
     }
@@ -152,6 +154,17 @@ class ApiService {
   async emailExists(email: string): Promise<boolean> {
     const user = await this.getUserByEmail(email)
     return !!user
+  }
+
+  /**
+   * Marcar email do usuário como verificado
+   */
+  async setEmailVerified(userId: string): Promise<void> {
+    if (!this.isSupabaseAvailable()) return
+    await (supabaseClient! as any)
+      .from('users')
+      .update({ email_verified: true, updated_at: new Date().toISOString() })
+      .eq('id', userId)
   }
 
   /**
