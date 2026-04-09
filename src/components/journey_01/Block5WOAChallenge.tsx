@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { getSpeechRecognition } from '@/src/lib/speechRecognition'
-import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
+import { useState, useEffect } from 'react'
+import { deleteCookie } from '@/lib/utils'
+import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
 
 interface Block5WOAChallengeProps {
   onComplete: (xp: number) => void
@@ -11,72 +11,77 @@ interface Block5WOAChallengeProps {
 
 type Stage = 'write' | 'translate' | 'listen' | 'repeat' | 'understand' | 'speakFree' | 'complete'
 
-function tts(text: string, rate = 0.85): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) { resolve(); return }
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(text)
-    u.lang = 'en-US'; u.rate = rate
-    u.onend = () => resolve(); u.onerror = () => resolve()
-    window.speechSynthesis.speak(u)
-  })
+async function tts(text: string): Promise<void> {
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    if (!res.ok) throw new Error('TTS failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    await new Promise<void>((resolve) => {
+      const audio = new Audio(url)
+      audio.onended = () => { URL.revokeObjectURL(url); resolve() }
+      audio.onerror = () => { URL.revokeObjectURL(url); resolve() }
+      audio.play().catch(() => resolve())
+    })
+  } catch {
+    await new Promise<void>((resolve) => {
+      if (typeof window === 'undefined' || !window.speechSynthesis) { resolve(); return }
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = 'en-US'; u.rate = 0.8
+      u.onend = () => resolve(); u.onerror = () => resolve()
+      window.speechSynthesis.speak(u)
+    })
+  }
 }
 
 const STAGE_INDEX: Record<Stage, number> = { write:1, translate:2, listen:3, repeat:4, understand:5, speakFree:6, complete:6 }
 
+const LS_KEY = 'woa_b5_progress'
+
+function loadProgress() {
+  if (typeof window === 'undefined') return null
+  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? 'null') } catch { return null }
+}
+
+function saveProgress(data: object) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(LS_KEY, JSON.stringify(data))
+}
+
+function clearProgress() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(LS_KEY)
+  deleteCookie('woa_b5_stage')
+}
+
 export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOAChallengeProps) {
   const [stage, setStage] = useState<Stage>(() => {
-    const RESTORE: Partial<Record<Stage, Stage>> = { listen: 'write', repeat: 'write', understand: 'write', speakFree: 'write' }
-    const s = getCookie('woa_b5_stage') as Stage | null
-    if (s && s !== 'complete') return RESTORE[s] ?? s
+    const saved = loadProgress()
+    const s = saved?.stage as Stage | null
+    if (s && s !== 'complete') return s
     return 'write'
   })
-  const [portugueseText, setPortugueseText] = useState('')
-  const [englishText, setEnglishText] = useState('')
+  const [portugueseText, setPortugueseText] = useState<string>(() => loadProgress()?.portugueseText ?? '')
+  const [englishText, setEnglishText] = useState<string>(() => loadProgress()?.englishText ?? '')
   const [isTranslating, setIsTranslating] = useState(false)
   const [repeatIdx, setRepeatIdx] = useState(0)
-  const [sentences, setSentences] = useState<string[]>([])
-  const [showText, setShowText] = useState(true)
+  const [sentences, setSentences] = useState<string[]>(() => loadProgress()?.sentences ?? [])
   const [isPlaying, setIsPlaying] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const [transcript, setTranscript] = useState('')
-  const [score, setScore] = useState(0)
   const [error, setError] = useState('')
-  const [xpEarned, setXpEarned] = useState(0)
-  const [speakFreeIdx, setSpeakFreeIdx] = useState(0)
-  const transcriptRef = useRef('')
+  const [xpEarned, setXpEarned] = useState<number>(() => loadProgress()?.xpEarned ?? 0)
 
   useEffect(() => {
     onActivityChange?.(STAGE_INDEX[stage], 6)
-    if (stage !== 'complete') setCookie('woa_b5_stage', stage)
-  }, [stage])
-  const calcScore = (spoken: string, target: string): number => {
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/)
-    const a = norm(spoken), b = norm(target)
-    if (b.length === 0) return 0
-    let m = 0; for (const w of b) if (a.includes(w)) m++
-    return Math.round((m / b.length) * 100)
-  }
+    if (stage !== 'complete') {
+      saveProgress({ stage, portugueseText, englishText, sentences, xpEarned })
+    }
+  }, [stage, portugueseText, englishText, sentences, xpEarned])
 
-  const record = async (target: string, onPass: () => void, threshold = 70) => {
-    if (isRecording) return
-    setError(''); setTranscript(''); setScore(0)
-    const API = getSpeechRecognition()
-    if (!API) { setError('Speech Recognition not supported.'); return }
-
-    const rec = new API()
-    rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true
-    setIsRecording(true); transcriptRef.current = ''
-
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const resetT = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => rec.stop(), 4000) }
-
-    rec.onresult = (e: any) => { resetT(); const t = Array.from(e.results).map((r: any) => r[0].transcript).join(''); transcriptRef.current = t; setTranscript(t) }
-    rec.onend = () => { setIsRecording(false); if (timer) clearTimeout(timer); const s = calcScore(transcriptRef.current, target); setScore(s); if (s >= threshold) { setTimeout(onPass, 600) } else { setError(`Score: ${s}%. Mínimo ${threshold}%. Tente de novo.`) } }
-    rec.onerror = (e: any) => { setIsRecording(false); if (timer) clearTimeout(timer); setError(e.error === 'no-speech' ? 'Nenhuma fala detectada.' : `Erro: ${e.error}`) }
-
-    await rec.start(); resetT()
-  }
 
   const translateWithAI = async (text: string): Promise<string> => {
     const response = await fetch('/api/translate', {
@@ -188,8 +193,8 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
                 <p className="text-white text-sm">{englishText}</p>
               </div>
               <p className="text-blue-200/40 text-xs mb-3">+10 XP pela tradução</p>
-              <button onClick={() => { setRepeatIdx(0); setStage('listen') }} className="w-full py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
-                🎧 WOA METHOD →
+              <button onClick={() => { setRepeatIdx(0); setStage('repeat') }} className="w-full py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
+                🎧 Método WOA →
               </button>
             </div>
           )}
@@ -211,7 +216,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
 
           <p className="text-white text-lg font-semibold mb-6">{sent}</p>
 
-          <button onClick={async () => { setIsPlaying(true); await tts(sent, 0.8); setIsPlaying(false) }} disabled={isPlaying} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
+          <button onClick={async () => { setIsPlaying(true); await tts(sent); setIsPlaying(false) }} disabled={isPlaying} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
             {isPlaying ? '🔊 Tocando...' : '🎧 Ouvir'}
           </button>
 
@@ -226,38 +231,16 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
 
   // ─── Step 4: Repeat ───
   if (stage === 'repeat') {
-    const sent = sentences[repeatIdx]
     return (
-      <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
-        <div className="p-6 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.06)' }}>
-          <p className="text-green-300 font-bold text-sm mb-0.5">🎤 WOA — REPEAT ({repeatIdx + 1}/{sentences.length})</p>
-          <p className="text-white/40 text-[10px] mb-1">Repita em voz alta</p>
-          <div className="flex justify-center gap-1 mb-4">{['Ouça', 'Repita', 'Entenda', 'Fale'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 1 ? 'bg-green-500/30 text-green-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
-
-          <p className="text-white text-lg font-semibold mb-4">{sent}</p>
-
-          <button onClick={async () => { setIsPlaying(true); await tts(sent, 0.8); setIsPlaying(false) }} disabled={isPlaying} className="px-6 py-2 rounded-xl font-bold text-white mb-4 hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
-            {isPlaying ? '🔊...' : '🎧 Ouvir'}
-          </button>
-
-          {transcript && <p className="text-blue-200/60 text-sm mb-1">&quot;{transcript}&quot;</p>}
-          {score > 0 && <p className={`text-sm font-bold mb-2 ${score >= 70 ? 'text-green-400' : 'text-red-400'}`}>{score}%</p>}
-          {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
-          <button
-            onClick={() => record(sent, () => {
-              setTranscript(''); setScore(0)
-              if (repeatIdx < sentences.length - 1) setRepeatIdx(repeatIdx + 1)
-              else { setXpEarned(p => p + 30); setRepeatIdx(0); setShowText(true); setStage('understand') }
-            }, 70)}
-            disabled={isRecording}
-            className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all"
-            style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #22c55e, #16a34a)' }}
-          >
-            {isRecording ? '🔴 Gravando...' : '🎤 Repetir'}
-          </button>
-        </div>
-        <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
-      </div>
+      <ListenRepeatQuestion
+        sentences={sentences}
+        onComplete={() => { setXpEarned(p => p + 30); setStage('understand') }}
+        xpReward={30}
+        icon="🎤"
+        stepLabel="WOA — REPEAT"
+        title="Repita as Frases"
+        instruction="Ouça e repita cada frase:"
+      />
     )
   }
 
@@ -279,7 +262,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
 
           <p className="text-blue-200/60 text-sm mb-4">Compare as frases. Você consegue entender cada uma?</p>
 
-          <button onClick={async () => { setIsPlaying(true); await tts(englishText, 0.75); setIsPlaying(false) }} disabled={isPlaying} className="px-6 py-2 rounded-xl font-bold text-white mb-4 hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+          <button onClick={async () => { setIsPlaying(true); await tts(englishText); setIsPlaying(false) }} disabled={isPlaying} className="px-6 py-2 rounded-xl font-bold text-white mb-4 hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
             {isPlaying ? '🔊 Tocando...' : '🎧 Ouvir tudo'}
           </button>
 
@@ -292,41 +275,18 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
     )
   }
 
-  // ─── Step 6: Speak without support (80% minimum) ───
+  // ─── Step 6: Speak without support ───
   if (stage === 'speakFree') {
-    const sent = sentences[speakFreeIdx]
     return (
-      <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
-        <div className="p-6 rounded-xl border border-red-400/30 text-center" style={{ background: 'rgba(239,68,68,0.06)' }}>
-          <p className="text-red-300 font-bold text-sm mb-0.5">🔥 WOA — SPEAK ({speakFreeIdx + 1}/{sentences.length})</p>
-          <p className="text-white/40 text-[10px] mb-1">Fale livremente</p>
-          <div className="flex justify-center gap-1 mb-4">{['Ouça', 'Repita', 'Entenda', 'Fale'].map((s, i) => (<span key={s} className={`px-2 py-1 text-xs rounded ${i === 3 ? 'bg-red-500/30 text-red-300' : 'bg-white/5 text-white/30'}`}>{s}</span>))}</div>
-
-          {showText && <p className="text-white/30 text-sm mb-2 italic">Dica: {sent}</p>}
-          <button onClick={() => setShowText(!showText)} className="text-xs text-blue-200/40 underline mb-4 block mx-auto">
-            {showText ? 'Esconder dica' : 'Mostrar dica'}
-          </button>
-
-          <p className="text-blue-200/80 mb-4">Diga a frase sem ouvir (mínimo 80%):</p>
-
-          {transcript && <p className="text-blue-200/60 text-sm mb-1">&quot;{transcript}&quot;</p>}
-          {score > 0 && <p className={`text-sm font-bold mb-2 ${score >= 80 ? 'text-green-400' : 'text-red-400'}`}>{score}%</p>}
-          {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
-          <button
-            onClick={() => record(sent, () => {
-              setTranscript(''); setScore(0); setShowText(false)
-              if (speakFreeIdx < sentences.length - 1) setSpeakFreeIdx(speakFreeIdx + 1)
-              else { setXpEarned(p => p + 40); setStage('complete') }
-            }, 80)}
-            disabled={isRecording}
-            className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all"
-            style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #dc2626, #991b1b)' }}
-          >
-            {isRecording ? '🔴 Gravando...' : '🎤 Falar sem apoio'}
-          </button>
-        </div>
-        <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
-      </div>
+      <SpeakFromMemoryQuestion
+        sentences={sentences}
+        onComplete={() => { setXpEarned(p => p + 40); setStage('complete') }}
+        xpReward={40}
+        stepLabel="WOA — SPEAK"
+        title="Fale Sem Apoio"
+        icon="🔥"
+        instruction="Diga cada frase de memória — sem ouvir!"
+      />
     )
   }
 
@@ -336,12 +296,12 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
         <div className="text-5xl mb-4">🏆</div>
         <h3 className="text-2xl font-black text-white mb-2">Desafio de Conversação Concluído!</h3>
-        <p className="text-blue-200/80 mb-2">Parabéns! Você completou o WOA Method!</p>
+        <p className="text-blue-200/80 mb-2">Parabéns! Você completou o Método WOA!</p>
         <div className="flex justify-center gap-4 mb-6">
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +15 WOA Coins</p></div>
         </div>
-        <button onClick={() => { deleteCookie('woa_b5_stage'); onComplete(xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>FINALIZAR →</button>
+        <button onClick={() => { clearProgress(); onComplete(xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>FINALIZAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

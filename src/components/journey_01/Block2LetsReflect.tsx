@@ -38,17 +38,32 @@ type Stage =
   | 'boostNoAudio'
   | 'complete'
 
-function speak(text: string, rate = 0.85): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) { resolve(); return }
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(text)
-    u.lang = 'en-US'
-    u.rate = rate
-    u.onend = () => resolve()
-    u.onerror = () => resolve()
-    window.speechSynthesis.speak(u)
-  })
+async function speak(text: string): Promise<void> {
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    if (!res.ok) throw new Error('TTS failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    await new Promise<void>((resolve) => {
+      const audio = new Audio(url)
+      audio.onended = () => { URL.revokeObjectURL(url); resolve() }
+      audio.onerror = () => { URL.revokeObjectURL(url); resolve() }
+      audio.play().catch(() => resolve())
+    })
+  } catch {
+    await new Promise<void>((resolve) => {
+      if (typeof window === 'undefined' || !window.speechSynthesis) { resolve(); return }
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = 'en-US'; u.rate = 0.8
+      u.onend = () => resolve(); u.onerror = () => resolve()
+      window.speechSynthesis.speak(u)
+    })
+  }
 }
 
 export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsReflectProps) {

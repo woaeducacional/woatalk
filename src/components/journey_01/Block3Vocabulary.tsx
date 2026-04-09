@@ -44,7 +44,14 @@ const MEMORY_SENTENCES = [
 
 type Stage = 'matchIntro' | 'matchWord' | 'fillBlank' | 'fillRepeat' | 'speak' | 'memory' | 'complete'
 
-const STAGE_INDEX: Record<Stage, number> = { matchIntro:1, matchWord:2, fillBlank:3, fillRepeat:4, speak:5, memory:6, complete:6 }
+// activities: matchIntro(1) matchWord(2) fill pairs 1-7(3-9) speak(10) memory(11) = 11 total
+function getActivityIndex(stage: Stage, fillIdx: number): number {
+  if (stage === 'matchIntro') return 1
+  if (stage === 'matchWord') return 2
+  if (stage === 'fillBlank' || stage === 'fillRepeat') return 3 + fillIdx
+  if (stage === 'speak') return 10
+  return 11 // memory + complete
+}
 
 export function Block3Vocabulary({ onComplete, onActivityChange }: Block3VocabularyProps) {
   const [stage, setStage] = useState<Stage>(() => {
@@ -64,9 +71,9 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
   const transcriptRef = useRef('')
 
   useEffect(() => {
-    onActivityChange?.(STAGE_INDEX[stage], 6)
+    onActivityChange?.(getActivityIndex(stage, fillIdx), 11)
     if (stage !== 'complete') setCookie('woa_b3_stage', stage)
-  }, [stage])
+  }, [stage, fillIdx])
   const calcScore = (spoken: string, target: string): number => {
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/)
     const a = norm(spoken), b = norm(target)
