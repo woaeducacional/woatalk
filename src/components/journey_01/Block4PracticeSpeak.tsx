@@ -7,6 +7,7 @@ import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 interface Block4PracticeSpeakProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
+  alreadyCompleted?: boolean
 }
 
 const COMPLETIONS: Record<number, { label: string; full: string }[]> = {
@@ -77,7 +78,7 @@ type Stage =
   | 'upgrade' | 'upgradeRepeat'
   | 'final' | 'complete'
 
-export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4PracticeSpeakProps) {
+export function Block4PracticeSpeak({ onComplete, onActivityChange, alreadyCompleted = false }: Block4PracticeSpeakProps) {
   const [stage, setStage] = useState<Stage>(() => {
     const RESTORE: Partial<Record<Stage, Stage>> = { listenRepeat: 'choose', completeStep: 'choose', speakWithText: 'choose', speakNoText: 'choose', upgrade: 'choose', upgradeRepeat: 'choose', final: 'choose' }
     const s = getCookie('woa_b4_stage') as Stage | null
@@ -317,7 +318,7 @@ export function Block4PracticeSpeak({ onComplete, onActivityChange }: Block4Prac
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +5 WOA Coins</p></div>
         </div>
-        <button onClick={() => { deleteCookie('woa_b4_stage'); onComplete(xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
+        <button onClick={() => { deleteCookie('woa_b4_stage'); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

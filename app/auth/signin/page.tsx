@@ -160,9 +160,9 @@ export default function SignInPage() {
                 </div>
               )}
               {error && (
-                <div className="mb-4 p-4 rounded-lg bg-red-500 bg-opacity-20 border-2 border-red-400 text-red-300 font-medium text-base">
+                <div className="mb-4 p-4 rounded-lg bg-red-500 bg-opacity-20 border-2 border-red-400 text-white font-bold text-base">
                   <div>⚠️ {error}</div>
-                  <div className="text-sm text-red-200 mt-1">Verifique seus dados e tente novamente</div>
+                  <div className="text-sm text-white/80 mt-1">Verifique seus dados e tente novamente</div>
                 </div>
               )}
 

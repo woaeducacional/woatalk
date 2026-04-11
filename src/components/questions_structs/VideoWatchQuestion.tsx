@@ -100,34 +100,43 @@ export function VideoWatchQuestion({
 
   // Carregar YouTube API e criar player
   useEffect(() => {
-    // Carregar script da YouTube API
-    if (typeof window !== 'undefined' && !window.YT) {
-      const tag = document.createElement('script')
-      tag.src = 'https://www.youtube.com/iframe_api'
-      const firstScriptTag = document.getElementsByTagName('script')[0]
-      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag)
+    const createPlayer = () => {
+      if (!window.YT || !window.YT.Player) return
+      if (playerRef.current) return // evitar duplicatas
+      playerRef.current = new window.YT.Player('youtube-player', {
+        height: '100%',
+        width: '100%',
+        videoId: videoId,
+        playerVars: {
+          playsinline: 1,  // essencial para iOS não mostrar tela preta
+          rel: 0,
+        },
+        events: {
+          onStateChange: onPlayerStateChange,
+        },
+      })
     }
 
-    // Criar player quando API estiver pronta
-    const createPlayer = () => {
-      if (window.YT && window.YT.Player) {
-        playerRef.current = new window.YT.Player('youtube-player', {
-          height: '450',
-          width: '100%',
-          videoId: videoId,
-          events: {
-            onStateChange: onPlayerStateChange,
-          },
-        })
+    if (typeof window === 'undefined') return
+
+    if (window.YT && window.YT.Player) {
+      // API já carregada (ex: outro player na página antes)
+      createPlayer()
+    } else {
+      // Registrar callback que a API chama ao terminar de carregar
+      const prevCallback = window.onYouTubeIframeAPIReady
+      window.onYouTubeIframeAPIReady = () => {
+        prevCallback?.()
+        createPlayer()
+      }
+
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script')
+        tag.src = 'https://www.youtube.com/iframe_api'
+        const firstScriptTag = document.getElementsByTagName('script')[0]
+        firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag)
       }
     }
-
-    // Esperar um pouco para garantir que a API está carregada
-    const timer = setTimeout(() => {
-      createPlayer()
-    }, 500)
-
-    return () => clearTimeout(timer)
   }, [videoId])
 
   // Handler de mudança de estado do vídeo
@@ -166,7 +175,9 @@ export function VideoWatchQuestion({
 
       {/* Video player */}
       <div className="rounded-2xl overflow-hidden" style={{ background: '#000' }}>
-        <div id="youtube-player" style={{ width: '100%', height: '450px' }} />
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+          <div id="youtube-player" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+        </div>
       </div>
 
       {/* Botão de avançar após vídeo */}

@@ -131,9 +131,6 @@ export function ListenRepeatQuestion({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const vadActiveRef = useRef(false)  // true once user has spoken at least once
 
   // Se não houver frase disponível, volta para a atividade anterior
   useEffect(() => {
@@ -142,7 +139,8 @@ export function ListenRepeatQuestion({
     }
   }, [sentences, onBack])
 
-  const LISTEN_REQUIRED = 3
+  const isWord = sentences[repeatIndex]?.trim().split(/\s+/).length === 1
+  const LISTEN_REQUIRED = isWord ? 1 : 3
   const speakUnlocked = listenCount >= LISTEN_REQUIRED
 
   // Função para calcular match entre frase esperada e frase dita
@@ -205,15 +203,6 @@ export function ListenRepeatQuestion({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
 
-      // Cria o contexto de áudio e conecta ao microfone (padrão do snippet de referência)
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const source = audioContext.createMediaStreamSource(stream)
-      const analyser = audioContext.createAnalyser()
-      analyser.fftSize = 2048
-      source.connect(analyser)
-      analyserRef.current = analyser
-      // analyser não conectado ao destination → sem echo
-
       // MediaRecorder captura o áudio real do stream
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -227,44 +216,8 @@ export function ListenRepeatQuestion({
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mr.start()
       mediaRecorderRef.current = mr
-      vadActiveRef.current = false
-      silenceTimerRef.current = null
       setIsRecording(true)
       setPassed(false)
-
-      // Detecção de silêncio: para automaticamente 1.5s após o usuário parar de falar
-      const bufferLength = analyser.frequencyBinCount
-      const dataArray = new Uint8Array(bufferLength)
-      const SILENCE_THRESHOLD = 10   // RMS mínimo para considerar fala
-      const SILENCE_DELAY = 1500     // ms de silêncio antes de parar
-
-      function checkSilence() {
-        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return
-        analyser.getByteTimeDomainData(dataArray)
-        // Calcula RMS (volume médio)
-        let sum = 0
-        for (let i = 0; i < bufferLength; i++) {
-          const v = dataArray[i] - 128
-          sum += v * v
-        }
-        const rms = Math.sqrt(sum / bufferLength)
-
-        if (rms > SILENCE_THRESHOLD) {
-          // Usuário está falando — cancela timer de silêncio
-          vadActiveRef.current = true
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current)
-            silenceTimerRef.current = null
-          }
-        } else if (vadActiveRef.current && !silenceTimerRef.current) {
-          // Silêncio detectado após fala — agenda parada
-          silenceTimerRef.current = setTimeout(() => {
-            stopRecording()
-          }, SILENCE_DELAY)
-        }
-        requestAnimationFrame(checkSilence)
-      }
-      requestAnimationFrame(checkSilence)
     } catch (err) {
       console.error(err)
       alert('Erro ao acessar microfone')
@@ -275,7 +228,6 @@ export function ListenRepeatQuestion({
   function stopRecording() {
     const mr = mediaRecorderRef.current
     if (!mr || mr.state === 'inactive') return
-    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
     mr.onstop = async () => {
       streamRef.current?.getTracks().forEach((t) => t.stop())
       const blob = new Blob(chunksRef.current, { type: mr.mimeType })
@@ -611,7 +563,7 @@ export function ListenRepeatQuestion({
                 : 'none',
             }}
           >
-            <span>{isRecording ? '⏹ PARANDO...' : speakButtonText}</span>
+            <span>{isRecording ? '🛑 APERTE PARA PARAR DE FALAR' : speakButtonText}</span>
             {attemptCount > 0 && lastScore < 80 && (
               <span className="flex gap-1 ml-1">
                 {Array.from({ length: Math.min(attemptCount, 3) }).map((_, i) => (

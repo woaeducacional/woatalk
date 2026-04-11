@@ -7,6 +7,7 @@ import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 interface Block1VideoInsightProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
+  alreadyCompleted?: boolean
 }
 
 // Dados das sentenças para escolha (com ids e marcação de correto)
@@ -34,7 +35,7 @@ const LISTEN_REPEAT_SENTENCES = [
 
 type Stage = 'video' | 'choose' | 'listenRepeat' | 'complete'
 
-export function Block1VideoInsight({ onComplete, onActivityChange }: Block1VideoInsightProps) {
+export function Block1VideoInsight({ onComplete, onActivityChange, alreadyCompleted = false }: Block1VideoInsightProps) {
   const [stage, setStage] = useState<Stage>(() => {
     const s = getCookie('woa_b1_stage') as Stage | null
     return (s && s !== 'complete') ? s : 'video'
@@ -120,7 +121,7 @@ export function Block1VideoInsight({ onComplete, onActivityChange }: Block1Video
             </div>
           </div>
           <button
-            onClick={() => { deleteCookie('woa_b1_stage'); onComplete(xpEarned) }}
+            onClick={() => { deleteCookie('woa_b1_stage'); onComplete(alreadyCompleted ? 0 : xpEarned) }}
             className="w-full font-bold tracking-widest px-8 py-4 rounded-lg text-white transition-all hover:scale-105 active:scale-95"
             style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)' }}
           >

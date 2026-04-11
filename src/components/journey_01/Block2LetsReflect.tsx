@@ -7,6 +7,7 @@ import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 interface Block2LetsReflectProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
+  alreadyCompleted?: boolean
 }
 
 const QUOTE = '"Do what you love, and you will never have to work a day in your life." — Confucius'
@@ -23,6 +24,17 @@ const MODEL_SENTENCE_PT = 'Eu adoro dançar porque me sinto livre.'
 
 const FIRST_BLANKS = ['listening to music', 'spending time with my family', 'watching movies']
 const SECOND_BLANKS = ['it helps me relax', 'it makes me happy', 'I feel good when I do it']
+
+const FIRST_BLANKS_PT: Record<string, string> = {
+  'listening to music': 'ouvir música',
+  'spending time with my family': 'passar tempo com minha família',
+  'watching movies': 'assistir filmes',
+}
+const SECOND_BLANKS_PT: Record<string, string> = {
+  'it helps me relax': 'me ajuda a relaxar',
+  'it makes me happy': 'me deixa feliz',
+  'I feel good when I do it': 'me sinto bem quando faço isso',
+}
 
 const BOOST_SENTENCE = 'I want to do what I love every day.'
 const BOOST_SENTENCE_PT = 'Eu quero fazer o que amo todos os dias.'
@@ -66,7 +78,7 @@ async function speak(text: string): Promise<void> {
   }
 }
 
-export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsReflectProps) {
+export function Block2LetsReflect({ onComplete, onActivityChange, alreadyCompleted = false }: Block2LetsReflectProps) {
   const [stage, setStage] = useState<Stage>(() => {
     const RESTORE: Partial<Record<Stage, Stage>> = { repeatNoAudio: 'yourTurn', boostNoAudio: 'quickBoost' }
     const s = getCookie('woa_b2_stage') as Stage | null
@@ -80,6 +92,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
   const [builtSentence, setBuiltSentence] = useState(() => getCookie('woa_b2_built') ?? '')
   const [isPlaying, setIsPlaying] = useState(false)
   const [xpEarned, setXpEarned] = useState(0)
+  const [showTranslation, setShowTranslation] = useState(false)
 
   const STAGE_INDEX: Record<Stage, number> = { quote:1, listenChoice:2, listenThink:3, yourTurn:4, listenBuilt:5, repeatNoAudio:6, quickBoost:7, boostNoAudio:8, complete:8 }
   useEffect(() => {
@@ -210,9 +223,28 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
 
           {firstBlank && secondBlank && (
             <div className="text-center">
-              <p className="text-white text-lg font-semibold mb-4">
-                &quot;I love {firstBlank} because {secondBlank}.&quot;
-              </p>
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <p className="text-white text-lg font-semibold">
+                  &quot;I love {firstBlank} because {secondBlank}.&quot;
+                </p>
+                <button
+                  onClick={() => setShowTranslation((v) => !v)}
+                  title="Ver tradução"
+                  className="flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold transition-all hover:scale-110 active:scale-95"
+                  style={{
+                    background: showTranslation ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: showTranslation ? '#00D4FF' : 'rgba(255,255,255,0.4)',
+                  }}
+                >
+                  ?
+                </button>
+              </div>
+              {showTranslation && (
+                <p className="text-white/40 text-sm mb-4 -mt-2">
+                  &quot;Eu adoro {FIRST_BLANKS_PT[firstBlank]} porque {SECOND_BLANKS_PT[secondBlank]}.&quot;
+                </p>
+              )}
               <button
                 onClick={() => {
                   const s = `I love ${firstBlank} because ${secondBlank}.`
@@ -311,7 +343,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange }: Block2LetsRe
           </div>
         </div>
         <button
-          onClick={() => { deleteCookie('woa_b2_stage'); deleteCookie('woa_b2_built'); onComplete(xpEarned) }}
+          onClick={() => { deleteCookie('woa_b2_stage'); deleteCookie('woa_b2_built'); onComplete(alreadyCompleted ? 0 : xpEarned) }}
           className="px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
           style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}
         >

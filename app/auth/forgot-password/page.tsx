@@ -154,7 +154,7 @@ export default function ForgotPasswordPage() {
               </div>
 
               {error && (
-                <div className="p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)', color: '#fca5a5' }}>
+                <div className="p-3 rounded-lg text-sm font-bold" style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)', color: '#ffffff' }}>
                   ⚠️ {error}
                 </div>
               )}
@@ -202,7 +202,7 @@ export default function ForgotPasswordPage() {
               </div>
 
               {error && (
-                <div className="p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)', color: '#fca5a5' }}>
+                <div className="p-3 rounded-lg text-sm font-bold" style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)', color: '#ffffff' }}>
                   ⚠️ {error}
                 </div>
               )}

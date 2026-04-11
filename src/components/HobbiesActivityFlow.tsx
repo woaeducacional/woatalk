@@ -27,6 +27,7 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
   const [streakUpdate, setStreakUpdate] = useState<{ status: StreakUpdateStatus; streak: number; recoveryCost: number } | null>(null)
   const [badgeUnlocked, setBadgeUnlocked] = useState<{ title: string; challenge: string; icon: string } | null>(null)
   const [activityInfo, setActivityInfo] = useState<{ current: number; total: number }>({ current: 1, total: 1 })
+  const [isRedoing, setIsRedoing] = useState(false)
 
   // Refs that are always fresh — prevent stale-closure bugs in callbacks
   const currentGroupRef = useRef(0)
@@ -111,6 +112,13 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
 
   // ─── Called ONLY by the final CONTINUAR button of each group's last activity ───
   const handleGroupComplete = (xp: number) => {
+    // Redo mode: go back to groups list, no XP or DB changes
+    if (isRedoing) {
+      setIsRedoing(false)
+      setShowGroups(true)
+      return
+    }
+
     // Prevent double-calls (double-tap, fast click, stale event)
     if (isSavingRef.current) return
     isSavingRef.current = true
@@ -147,9 +155,10 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
     }
   }
 
-  const handleStartMissionGroup = (groupIndex: number) => {
+  const handleStartMissionGroup = (groupIndex: number, isRedo = false) => {
     setCurrentGroup(groupIndex)
     currentGroupRef.current = groupIndex
+    setIsRedoing(isRedo)
     setActivityInfo({ current: 1, total: 1 })
     setShowGroups(false)
   }
@@ -337,15 +346,20 @@ export function HobbiesActivityFlow({ phaseId, userId }: HobbiesActivityFlowProp
             />
           ))}
         </div>
+        {isRedoing && (
+          <div className="mt-2 text-center text-xs font-bold tracking-widest" style={{ color: '#c084fc' }}>
+            🔁 REFAZENDO — nenhum XP será ganho
+          </div>
+        )}
       </div>
 
       {/* Activity content */}
       <div style={{ animation: 'fadeIn 0.6s ease-in' }}>
-        {currentGroup === 0 && <Block1VideoInsight  onComplete={handleGroupComplete} onActivityChange={handleActivityChange} />}
-        {currentGroup === 1 && <Block2LetsReflect    onComplete={handleGroupComplete} onActivityChange={handleActivityChange} />}
-        {currentGroup === 2 && <Block3Vocabulary     onComplete={handleGroupComplete} onActivityChange={handleActivityChange} />}
-        {currentGroup === 3 && <Block4PracticeSpeak  onComplete={handleGroupComplete} onActivityChange={handleActivityChange} />}
-        {currentGroup === 4 && <Block5WOAChallenge   onComplete={handleGroupComplete} onActivityChange={handleActivityChange} />}
+        {currentGroup === 0 && <Block1VideoInsight  onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
+        {currentGroup === 1 && <Block2LetsReflect    onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
+        {currentGroup === 2 && <Block3Vocabulary     onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
+        {currentGroup === 3 && <Block4PracticeSpeak  onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
+        {currentGroup === 4 && <Block5WOAChallenge   onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
       </div>
 
       <style>{`
