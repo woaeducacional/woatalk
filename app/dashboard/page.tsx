@@ -263,7 +263,7 @@ export default function DashboardPage() {
                   </Link>
                   {isAdmin && (
                     <button
-                      onClick={() => { playClick(); router.push('/admin/journey/1') }}
+                      onClick={() => { playClick(); router.push('/admin/journey-content/1') }}
                       className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
                       style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
                     >

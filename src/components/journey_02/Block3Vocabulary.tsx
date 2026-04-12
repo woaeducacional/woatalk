@@ -1,42 +1,18 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import { getSpeechRecognition } from '@/src/lib/speechRecognition'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion, VocabularyMatchQuestion } from '../questions_structs'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
+import type { Block3Content } from '@/lib/journeyContent'
 
 interface Block3VocabularyProps {
+  content: Block3Content
+  phaseId: number
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
 }
-
-const VOCABULARY = [
-  { word: 'Introduce',   definition: 'To present yourself or someone to another person', translationPt: 'Apresentar',   example: 'Let me introduce myself — my name is Ana.' },
-  { word: 'Background',  definition: 'Your history, education, and experience',          translationPt: 'Histórico',    example: 'Can you tell me about your background?' },
-  { word: 'Nationality', definition: 'The country you are from',                          translationPt: 'Nacionalidade',example: 'My nationality is Brazilian.' },
-  { word: 'Profession',  definition: 'Your job or career',                                translationPt: 'Profissão',    example: 'My profession is software engineering.' },
-  { word: 'Origin',      definition: 'Where you come from',                              translationPt: 'Origem',       example: "I'm originally from São Paulo." },
-  { word: 'Describe',    definition: 'To tell details about something or someone',        translationPt: 'Descrever',    example: 'How would you describe yourself?' },
-  { word: 'Connect',     definition: 'To form a link or relationship with someone',       translationPt: 'Conectar',     example: 'English helps me connect with people worldwide.' },
-  { word: 'Mention',     definition: 'To speak about something briefly',                  translationPt: 'Mencionar',    example: 'I should mention that I love music.' },
-]
-
-const FILL_SENTENCES = [
-  { sentence: 'Let me ___ myself. My name is Ana.',                      answer: 'introduce',   options: ['introduce', 'describe', 'mention'],    full: 'Let me introduce myself. My name is Ana.' },
-  { sentence: "Can you tell me about your ___?",                         answer: 'background',  options: ['background', 'origin', 'nationality'], full: 'Can you tell me about your background?' },
-  { sentence: 'My ___ is Brazilian.',                                    answer: 'nationality', options: ['nationality', 'profession', 'background'], full: 'My nationality is Brazilian.' },
-  { sentence: 'My ___ is software engineering.',                         answer: 'profession',  options: ['profession', 'origin', 'describe'],    full: 'My profession is software engineering.' },
-  { sentence: "I'm originally from São Paulo — that's my ___.",         answer: 'origin',      options: ['origin', 'nationality', 'connect'],    full: "I'm originally from São Paulo — that's my origin." },
-  { sentence: 'English helps me ___ with people from all over the world.', answer: 'connect',  options: ['connect', 'mention', 'describe'],      full: 'English helps me connect with people from all over the world.' },
-  { sentence: 'I should ___ that I enjoy music and art.',                answer: 'mention',     options: ['mention', 'introduce', 'origin'],      full: 'I should mention that I enjoy music and art.' },
-]
-
-const MEMORY_SENTENCES = [
-  'Let me introduce myself.',
-  'My nationality is Brazilian.',
-  'English helps me connect with people worldwide.',
-]
 
 type Stage = 'matchIntro' | 'matchWord' | 'fillBlank' | 'fillRepeat' | 'memory' | 'complete'
 
@@ -47,9 +23,10 @@ function getActivityIndex(stage: Stage, fillIdx: number): number {
   return 10
 }
 
-export function Block3Vocabulary({ onComplete, onActivityChange, alreadyCompleted = false }: Block3VocabularyProps) {
+export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block3VocabularyProps) {
+  const cookieKey = `woa_p${phaseId}_b3_stage`
   const [stage, setStage] = useState<Stage>(() => {
-    const s = getCookie('woa_j2_b3_stage') as Stage | null
+    const s = getCookie(cookieKey) as Stage | null
     return (s && s !== 'complete') ? s : 'matchIntro'
   })
   const [fillIdx, setFillIdx] = useState(0)
@@ -65,7 +42,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
 
   useEffect(() => {
     onActivityChange?.(getActivityIndex(stage, fillIdx), 10)
-    if (stage !== 'complete') setCookie('woa_j2_b3_stage', stage)
+    if (stage !== 'complete') setCookie(cookieKey, stage)
   }, [stage, fillIdx])
 
   const calcScore = (spoken: string, target: string): number => {
@@ -108,15 +85,15 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
   const handleFillRepeatComplete = () => {
     const next = fillIdx + 1
     setFillAnswer(''); setFillCorrect(null)
-    if (next < FILL_SENTENCES.length) { setFillIdx(next); setStage('fillBlank') }
+    if (next < content.fillSentences.length) { setFillIdx(next); setStage('fillBlank') }
     else { setXpEarned((p) => p + 20); setStage('memory') }
   }
 
-  // ─── Match flip cards ───
+  // --- Match flip cards ---
   if (stage === 'matchIntro') {
     return (
       <VocabularyMatchQuestion
-        items={VOCABULARY}
+        items={content.vocabulary}
         stepLabel="Passo 1 — Combinação"
         title="Vocabulário"
         icon="🧩"
@@ -127,11 +104,11 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
     )
   }
 
-  // ─── Match word by word ───
+  // --- Match word by word ---
   if (stage === 'matchWord') {
     return (
       <ListenRepeatQuestion
-        sentences={VOCABULARY.map((v) => v.word)}
+        sentences={content.vocabulary.map((v) => v.word)}
         stepLabel="Passo 1 — Combinação"
         title="Ouça e Repita"
         icon="🧩"
@@ -143,13 +120,13 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
     )
   }
 
-  // ─── Fill blank ───
+  // --- Fill blank ---
   if (stage === 'fillBlank') {
-    const q = FILL_SENTENCES[fillIdx]
+    const q = content.fillSentences[fillIdx]
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="flex justify-between items-center">
-          <p className="text-green-300 text-sm font-bold mb-0.5">⚡ PASSO 2 — ESCOLHA E FALE ({fillIdx + 1}/{FILL_SENTENCES.length})</p>
+          <p className="text-green-300 text-sm font-bold mb-0.5">⚡ PASSO 2 — ESCOLHA E FALE ({fillIdx + 1}/{content.fillSentences.length})</p>
           <p className="text-white/40 text-[10px] mb-3">Escolha e fale</p>
         </div>
         <div className="p-6 rounded-xl border border-green-400/30" style={{ background: 'rgba(34,197,94,0.06)' }}>
@@ -177,12 +154,12 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
     )
   }
 
-  // ─── Fill repeat ───
+  // --- Fill repeat ---
   if (stage === 'fillRepeat') {
     return (
       <ListenRepeatQuestion
-        sentences={[FILL_SENTENCES[fillIdx].full]}
-        stepLabel={`Passo 2 — ${fillIdx + 1}/${FILL_SENTENCES.length}`}
+        sentences={[content.fillSentences[fillIdx].full]}
+        stepLabel={`Passo 2 — ${fillIdx + 1}/${content.fillSentences.length}`}
         title="Ouça e Repita"
         icon="📝"
         instruction="Listen and repeat the full sentence!"
@@ -193,11 +170,11 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
     )
   }
 
-  // ─── Memory ───
+  // --- Memory ---
   if (stage === 'memory') {
     return (
       <SpeakFromMemoryQuestion
-        sentences={MEMORY_SENTENCES}
+        sentences={content.memorySentences}
         stepLabel="Passo 4 — Fixação"
         title="Fale de Memória"
         icon="🧠"
@@ -208,7 +185,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
     )
   }
 
-  // ─── Complete ───
+  // --- Complete ---
   return (
     <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
@@ -219,7 +196,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange, alreadyComplete
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +5 WOA Coins</p></div>
         </div>
-        <button onClick={() => { deleteCookie('woa_j2_b3_stage'); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
+        <button onClick={() => { deleteCookie(cookieKey); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

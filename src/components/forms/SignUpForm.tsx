@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { signIn } from 'next-auth/react'
 
 import { signUpSchema, type SignUpInput } from '@/lib/validation'
 import {
@@ -205,6 +206,29 @@ export function SignUpForm() {
             <Button type="submit" className="w-full" loading={isLoading}>
               🌊 INICIAR JORNADA
             </Button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-1">
+              <div className="flex-1 h-px bg-white/10" />
+              <span className="text-xs text-blue-300/40 tracking-widest">OU</span>
+              <div className="flex-1 h-px bg-white/10" />
+            </div>
+
+            {/* Google Sign-Up */}
+            <button
+              type="button"
+              onClick={() => { playClick(); signIn('google', { callbackUrl: '/dashboard' }) }}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-bold tracking-widest text-sm text-white/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.6 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
+                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 19 13 24 13c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+                <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.3 26.8 36 24 36c-5.3 0-9.7-3.1-11.4-7.6L6 33.7C9.4 39.8 16.2 44 24 44z"/>
+                <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.5l6.2 5.2C37.1 38.4 44 33 44 24c0-1.3-.1-2.6-.4-3.9z"/>
+              </svg>
+              CADASTRAR COM GOOGLE
+            </button>
 
             <p className="text-center text-sm text-blue-300/70">
               Já tem uma conta?{' '}

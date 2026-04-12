@@ -8,7 +8,7 @@ export interface User {
   id: string
   email: string
   name: string
-  password_hash: string
+  password_hash: string | null
   avatar_url: string | null
   role: string
   xp_total: number
@@ -142,10 +142,77 @@ class ApiService {
    */
   async validateCredentials(email: string, password: string): Promise<User | null> {
     const user = await this.getUserByEmail(email)
-    if (!user) return null
+    if (!user || !user.password_hash) return null // OAuth-only users have no password
 
     const isValid = await comparePasswords(password, user.password_hash)
     return isValid ? user : null
+  }
+
+  /**
+   * Criar ou retornar usuário OAuth (Google, etc)
+   */
+  async upsertOAuthUser({
+    email,
+    name,
+    avatar_url,
+  }: {
+    email: string
+    name: string
+    avatar_url: string | null
+  }): Promise<User> {
+    // Return existing user if already registered
+    const existing = await this.getUserByEmail(email)
+    if (existing) {
+      // Update avatar if missing
+      if (!existing.avatar_url && avatar_url && this.isSupabaseAvailable()) {
+        await (supabaseClient! as any)
+          .from('users')
+          .update({ avatar_url, email_verified: true, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+      }
+      return { ...existing, email_verified: true }
+    }
+
+    const id = uuidv4()
+    const now = new Date().toISOString()
+    const newUser = {
+      id,
+      email: email.toLowerCase().trim(),
+      name,
+      password_hash: null,
+      avatar_url,
+      role: 'user',
+      xp_total: 0,
+      coins_balance: 0,
+      current_phase: 1,
+      email_verified: true,
+      created_at: now,
+      updated_at: now,
+    }
+
+    if (this.isSupabaseAvailable()) {
+      try {
+        const { data, error } = await (supabaseClient! as any)
+          .from('users')
+          .insert([newUser])
+          .select()
+          .single()
+
+        if (error) {
+          console.warn('Supabase OAuth upsert error:', error)
+          // Could be a race condition duplicate — try fetching
+          const fallback = await this.getUserByEmail(email)
+          if (fallback) return fallback
+          throw error
+        }
+        return data as User
+      } catch (error) {
+        console.warn('Supabase exception in upsertOAuthUser:', error)
+        throw error
+      }
+    }
+
+    return inMemoryDB.createUser(newUser as User)
   }
 
   /**

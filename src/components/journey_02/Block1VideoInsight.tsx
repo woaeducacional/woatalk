@@ -1,42 +1,24 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
-import { VideoWatchQuestion, MultipleChoiceQuestion, ListenRepeatQuestion, type ChoiceOption } from '../questions_structs'
+import { VideoWatchQuestion, MultipleChoiceQuestion, ListenRepeatQuestion } from '../questions_structs'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
+import type { Block1Content } from '@/lib/journeyContent'
 
 interface Block1VideoInsightProps {
+  content: Block1Content
+  phaseId: number
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
 }
 
-const CHOICE_OPTIONS: ChoiceOption[] = [
-  { id: 1, text: 'My name is Lucas.',                      isCorrect: true  },
-  { id: 2, text: "I'm from Brazil.",                        isCorrect: true  },
-  { id: 3, text: 'I need to buy groceries.',               isCorrect: false },
-  { id: 4, text: 'Nice to meet you.',                      isCorrect: true  },
-  { id: 5, text: 'The traffic is terrible today.',         isCorrect: false },
-  { id: 6, text: 'I work as a software developer.',        isCorrect: true  },
-  { id: 7, text: "It's raining outside.",                  isCorrect: false },
-  { id: 8, text: "I'm interested in learning English.",    isCorrect: true  },
-]
-
-const LISTEN_REPEAT_SENTENCES = [
-  'My name is Lucas.',
-  "I'm from Brazil.",
-  'Nice to meet you.',
-  'I work as a teacher.',
-  "I'm interested in English.",
-  "I've been living here for two years.",
-  'Let me introduce myself.',
-  'One thing about me is that I love learning.',
-]
-
 type Stage = 'video' | 'choose' | 'listenRepeat' | 'complete'
 
-export function Block1VideoInsight({ onComplete, onActivityChange, alreadyCompleted = false }: Block1VideoInsightProps) {
+export function Block1VideoInsight({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block1VideoInsightProps) {
+  const cookieKey = `woa_p${phaseId}_b1_stage`
   const [stage, setStage] = useState<Stage>(() => {
-    const s = getCookie('woa_j2_b1_stage') as Stage | null
+    const s = getCookie(cookieKey) as Stage | null
     return (s && s !== 'complete') ? s : 'video'
   })
   const [xpEarned, setXpEarned] = useState(10)
@@ -44,7 +26,7 @@ export function Block1VideoInsight({ onComplete, onActivityChange, alreadyComple
   const STAGE_INDEX: Record<Stage, number> = { video: 1, choose: 2, listenRepeat: 3, complete: 3 }
   useEffect(() => {
     onActivityChange?.(STAGE_INDEX[stage], 3)
-    if (stage !== 'complete') setCookie('woa_j2_b1_stage', stage)
+    if (stage !== 'complete') setCookie(cookieKey, stage)
   }, [stage])
 
   const handleVideoComplete = (xp: number) => { setXpEarned((p) => p + xp); setStage('choose') }
@@ -55,8 +37,8 @@ export function Block1VideoInsight({ onComplete, onActivityChange, alreadyComple
     <div className="space-y-8">
       {stage === 'video' && (
         <VideoWatchQuestion
-          videoUrl="YGTEXtptvGM"
-          title="Self Introduction in English"
+          videoUrl={content.videoUrl}
+          title={content.videoTitle}
           description="Assista atentamente"
           xpReward={10}
           icon="🎯"
@@ -68,10 +50,10 @@ export function Block1VideoInsight({ onComplete, onActivityChange, alreadyComple
         <MultipleChoiceQuestion
           stepLabel="Passo 1"
           title="🧩 Escolha"
-          question="Which sentences are useful for introducing yourself?"
-          questionPt="Quais frases são úteis para se apresentar em inglês?"
-          options={CHOICE_OPTIONS}
-          expectedCorrectCount={5}
+          question={content.choiceQuestion}
+          questionPt={content.choiceQuestionPt}
+          options={content.choiceOptions}
+          expectedCorrectCount={content.choiceOptions.filter(o => o.isCorrect).length}
           icon="🧩"
           onComplete={handleChoiceComplete}
           xpReward={15}
@@ -80,7 +62,7 @@ export function Block1VideoInsight({ onComplete, onActivityChange, alreadyComple
 
       {stage === 'listenRepeat' && (
         <ListenRepeatQuestion
-          sentences={LISTEN_REPEAT_SENTENCES}
+          sentences={content.listenRepeatSentences}
           stepLabel="Passo 2"
           title="Ouça e Repita"
           xpReward={25}
@@ -102,7 +84,7 @@ export function Block1VideoInsight({ onComplete, onActivityChange, alreadyComple
             </div>
           </div>
           <button
-            onClick={() => { deleteCookie('woa_j2_b1_stage'); onComplete(alreadyCompleted ? 0 : xpEarned) }}
+            onClick={() => { deleteCookie(cookieKey); onComplete(alreadyCompleted ? 0 : xpEarned) }}
             className="w-full font-bold tracking-widest px-8 py-4 rounded-lg text-white transition-all hover:scale-105 active:scale-95"
             style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)' }}
           >

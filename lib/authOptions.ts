@@ -1,4 +1,5 @@
 import Credentials from 'next-auth/providers/credentials'
+import GoogleProvider from 'next-auth/providers/google'
 import { signInSchema } from '@/lib/validation'
 import { apiService } from '@/lib/api.service'
 import { hasUnverifiedEmail } from '@/lib/otp'
@@ -26,6 +27,10 @@ declare module 'next-auth/jwt' {
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     Credentials({
       name: 'Credentials',
       credentials: {
@@ -62,6 +67,25 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/signin',
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        try {
+          const dbUser = await apiService.upsertOAuthUser({
+            email: user.email!,
+            name: user.name ?? 'Usuário',
+            avatar_url: user.image ?? null,
+          })
+          // Attach our DB id/role so the jwt callback can pick them up
+          user.id = dbUser.id
+          user.role = dbUser.role ?? 'user'
+          return true
+        } catch (err) {
+          console.error('Google OAuth signIn error:', err)
+          return false
+        }
+      }
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id

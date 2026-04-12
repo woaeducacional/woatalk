@@ -1,51 +1,17 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
+import type { Block2Content } from '@/lib/journeyContent'
 
 interface Block2LetsReflectProps {
+  content: Block2Content
+  phaseId: number
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
 }
-
-const QUOTE = '"To speak another language is to have a second soul." — Charlemagne'
-const QUOTE_PT = '"Falar outro idioma é ter uma segunda alma." — Carlos Magno'
-
-const CHOICES = [
-  { id: 'A', text: 'I want to travel and talk to people abroad.', pt: 'Eu quero viajar e falar com pessoas no exterior.' },
-  { id: 'B', text: 'I want to grow in my career.', pt: 'Eu quero crescer na minha carreira.' },
-  { id: 'C', text: 'I want to connect with people from different cultures.', pt: 'Eu quero me conectar com pessoas de diferentes culturas.' },
-]
-
-const MODEL_SENTENCE = "I'm learning English because it helps me become a better version of myself."
-const MODEL_SENTENCE_PT = 'Estou aprendendo inglês porque me ajuda a ser uma versão melhor de mim mesmo.'
-
-const FIRST_BLANKS = [
-  'I want to travel and explore the world',
-  'I want to grow in my career',
-  'I want to connect with different cultures',
-]
-const SECOND_BLANKS = [
-  'it opens new opportunities',
-  'it gives me confidence',
-  'it makes me a global citizen',
-]
-
-const FIRST_BLANKS_PT: Record<string, string> = {
-  'I want to travel and explore the world': 'quero viajar e explorar o mundo',
-  'I want to grow in my career': 'quero crescer na minha carreira',
-  'I want to connect with different cultures': 'quero me conectar com diferentes culturas',
-}
-const SECOND_BLANKS_PT: Record<string, string> = {
-  'it opens new opportunities': 'abre novas oportunidades',
-  'it gives me confidence': 'me dá confiança',
-  'it makes me a global citizen': 'me torna um cidadão global',
-}
-
-const BOOST_SENTENCE = 'English is my key to the world.'
-const BOOST_SENTENCE_PT = 'O inglês é minha chave para o mundo.'
 
 type Stage =
   | 'quote'
@@ -86,17 +52,19 @@ async function speak(text: string): Promise<void> {
   }
 }
 
-export function Block2LetsReflect({ onComplete, onActivityChange, alreadyCompleted = false }: Block2LetsReflectProps) {
+export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block2LetsReflectProps) {
+  const cookieKey = `woa_p${phaseId}_b2_stage`
+  const builtCookieKey = `woa_p${phaseId}_b2_built`
   const [stage, setStage] = useState<Stage>(() => {
     const RESTORE: Partial<Record<Stage, Stage>> = { repeatNoAudio: 'yourTurn', boostNoAudio: 'quickBoost' }
-    const s = getCookie('woa_j2_b2_stage') as Stage | null
+    const s = getCookie(cookieKey) as Stage | null
     if (s && s !== 'complete') return RESTORE[s] ?? s
     return 'quote'
   })
   const [chosenSentence, setChosenSentence] = useState('')
   const [firstBlank, setFirstBlank] = useState('')
   const [secondBlank, setSecondBlank] = useState('')
-  const [builtSentence, setBuiltSentence] = useState(() => getCookie('woa_j2_b2_built') ?? '')
+  const [builtSentence, setBuiltSentence] = useState(() => getCookie(builtCookieKey) ?? '')
   const [isPlaying, setIsPlaying] = useState(false)
   const [xpEarned, setXpEarned] = useState(0)
   const [showTranslation, setShowTranslation] = useState(false)
@@ -104,24 +72,24 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
   const STAGE_INDEX: Record<Stage, number> = { quote:1, listenChoice:2, listenThink:3, yourTurn:4, listenBuilt:5, repeatNoAudio:6, quickBoost:7, boostNoAudio:8, complete:8 }
   useEffect(() => {
     onActivityChange?.(STAGE_INDEX[stage], 8)
-    if (stage !== 'complete') setCookie('woa_j2_b2_stage', stage)
+    if (stage !== 'complete') setCookie(cookieKey, stage)
   }, [stage])
 
   const handleListen = async (text: string) => { setIsPlaying(true); await speak(text); setIsPlaying(false) }
 
-  // ─── Quote + Choose ───
+  // --- Quote + Choose ---
   if (stage === 'quote') {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.08)' }}>
           <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">💬 VAMOS REFLETIR</p>
           <p className="text-white/40 text-[10px] mb-2">Vamos refletir</p>
-          <p className="text-white text-lg italic">{QUOTE}</p>
-          <p className="text-white/35 text-xs italic mt-1">{QUOTE_PT}</p>
+          <p className="text-white text-lg italic">{content.quote}</p>
+          <p className="text-white/35 text-xs italic mt-1">{content.quotePt}</p>
         </div>
-        <p className="text-blue-200/80 text-center">👉 Por que você quer aprender inglês? Escolha um:</p>
+        <p className="text-blue-200/80 text-center">👉 {content.choicePrompt}</p>
         <div className="space-y-3">
-          {CHOICES.map((c) => (
+          {content.choices.map((c) => (
             <button
               key={c.id}
               onClick={() => { setChosenSentence(c.text); setStage('listenChoice') }}
@@ -138,7 +106,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
     )
   }
 
-  // ─── Listen + Repeat chosen sentence ───
+  // --- Listen + Repeat chosen sentence ---
   if (stage === 'listenChoice') {
     return (
       <ListenRepeatQuestion
@@ -153,7 +121,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
     )
   }
 
-  // ─── Listen & Think ───
+  // --- Listen & Think ---
   if (stage === 'listenThink') {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
@@ -161,10 +129,10 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
           <p className="text-purple-300 font-bold text-sm tracking-widest mb-0.5">🎧 OUÇA E PENSE</p>
           <p className="text-white/40 text-[10px] mb-3">Ouça e pense</p>
           <p className="text-blue-200/80 mb-4">👉 Ouça a frase. Não foque nos detalhes — apenas entenda a ideia.</p>
-          <p className="text-white text-xl font-semibold mb-1">🎧 {MODEL_SENTENCE}</p>
-          <p className="text-white/35 text-xs mb-6">{MODEL_SENTENCE_PT}</p>
+          <p className="text-white text-xl font-semibold mb-1">🎧 {content.modelSentence}</p>
+          <p className="text-white/35 text-xs mb-6">{content.modelSentencePt}</p>
           <button
-            onClick={async () => { await handleListen(MODEL_SENTENCE); setStage('yourTurn') }}
+            onClick={async () => { await handleListen(content.modelSentence); setStage('yourTurn') }}
             disabled={isPlaying}
             className="px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
             style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #9333ea, #7c3aed)' }}
@@ -177,30 +145,31 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
     )
   }
 
-  // ─── Your Turn ───
+  // --- Your Turn ---
   if (stage === 'yourTurn') {
+    const templateDisplay = content.sentenceTemplate.replace('{first}', '______').replace('{second}', '______')
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
           <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 SUA VEZ</p>
           <p className="text-white/40 text-[10px] mb-3">Sua vez</p>
-          <p className="text-blue-200/80 mb-4">👉 Monte sua frase: <span className="text-white font-bold">I&apos;m learning English because ______ and ______.</span></p>
+          <p className="text-blue-200/80 mb-4">👉 Monte sua frase: <span className="text-white font-bold">{templateDisplay}</span></p>
 
-          <p className="text-cyan-300 text-sm font-bold mb-2">Escolha seu motivo:</p>
+          <p className="text-cyan-300 text-sm font-bold mb-2">{content.firstBlanksLabel}</p>
           <div className="grid grid-cols-1 gap-2 mb-4">
-            {FIRST_BLANKS.map((b) => (
-              <button key={b} onClick={() => setFirstBlank(b)}
-                className={`p-3 rounded-lg text-sm font-medium transition-all ${firstBlank === b ? 'bg-cyan-500/30 border-cyan-400 text-white' : 'bg-white/5 border-white/10 text-blue-200/70'} border`}
-              >{b}</button>
+            {content.firstBlanks.map((b) => (
+              <button key={b.en} onClick={() => setFirstBlank(b.en)}
+                className={`p-3 rounded-lg text-sm font-medium transition-all ${firstBlank === b.en ? 'bg-cyan-500/30 border-cyan-400 text-white' : 'bg-white/5 border-white/10 text-blue-200/70'} border`}
+              >{b.en}</button>
             ))}
           </div>
 
-          <p className="text-yellow-300 text-sm font-bold mb-2">Escolha o benefício:</p>
+          <p className="text-yellow-300 text-sm font-bold mb-2">{content.secondBlanksLabel}</p>
           <div className="grid grid-cols-1 gap-2 mb-6">
-            {SECOND_BLANKS.map((b) => (
-              <button key={b} onClick={() => setSecondBlank(b)}
-                className={`p-3 rounded-lg text-sm font-medium transition-all ${secondBlank === b ? 'bg-yellow-500/30 border-yellow-400 text-white' : 'bg-white/5 border-white/10 text-blue-200/70'} border`}
-              >{b}</button>
+            {content.secondBlanks.map((b) => (
+              <button key={b.en} onClick={() => setSecondBlank(b.en)}
+                className={`p-3 rounded-lg text-sm font-medium transition-all ${secondBlank === b.en ? 'bg-yellow-500/30 border-yellow-400 text-white' : 'bg-white/5 border-white/10 text-blue-200/70'} border`}
+              >{b.en}</button>
             ))}
           </div>
 
@@ -208,7 +177,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
                 <p className="text-white text-lg font-semibold">
-                  &quot;I&apos;m learning English because {firstBlank} and {secondBlank}.&quot;
+                  &quot;{content.sentenceTemplate.replace('{first}', firstBlank).replace('{second}', secondBlank)}&quot;
                 </p>
                 <button
                   onClick={() => setShowTranslation((v) => !v)}
@@ -223,14 +192,16 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
               </div>
               {showTranslation && (
                 <p className="text-white/40 text-sm mb-4 -mt-2">
-                  &quot;Estou aprendendo inglês porque {FIRST_BLANKS_PT[firstBlank]} e {SECOND_BLANKS_PT[secondBlank]}.&quot;
+                  &quot;{content.sentenceTemplatePt
+                    .replace('{first}', content.firstBlanks.find(b => b.en === firstBlank)?.pt ?? '')
+                    .replace('{second}', content.secondBlanks.find(b => b.en === secondBlank)?.pt ?? '')}&quot;
                 </p>
               )}
               <button
                 onClick={() => {
-                  const s = `I'm learning English because ${firstBlank} and ${secondBlank}.`
+                  const s = content.sentenceTemplate.replace('{first}', firstBlank).replace('{second}', secondBlank)
                   setBuiltSentence(s)
-                  setCookie('woa_j2_b2_built', s)
+                  setCookie(builtCookieKey, s)
                   setXpEarned((p) => p + 10)
                   setStage('listenBuilt')
                 }}
@@ -241,14 +212,14 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
           )}
         </div>
         <div className="p-4 rounded-lg border border-blue-400/20" style={{ background: 'rgba(0,100,255,0.06)' }}>
-          <p className="text-blue-300 text-sm">💡 <strong>Precisa de ajuda?</strong> I&apos;m learning English because + motivo + and + benefício</p>
+          <p className="text-blue-300 text-sm">💡 <strong>Precisa de ajuda?</strong> {content.helpText}</p>
         </div>
         <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
       </div>
     )
   }
 
-  // ─── Listen + Repeat built sentence ───
+  // --- Listen + Repeat built sentence ---
   if (stage === 'listenBuilt') {
     return (
       <ListenRepeatQuestion
@@ -263,7 +234,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
     )
   }
 
-  // ─── Repeat without audio ───
+  // --- Repeat without audio ---
   if (stage === 'repeatNoAudio') {
     return (
       <SpeakFromMemoryQuestion
@@ -278,11 +249,11 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
     )
   }
 
-  // ─── Quick Boost ───
+  // --- Quick Boost ---
   if (stage === 'quickBoost') {
     return (
       <ListenRepeatQuestion
-        sentences={[BOOST_SENTENCE]}
+        sentences={[content.boostSentence]}
         stepLabel="⚡ Extra Rápido"
         title="Frase Extra"
         icon="⚡"
@@ -292,11 +263,11 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
     )
   }
 
-  // ─── Boost without audio ───
+  // --- Boost without audio ---
   if (stage === 'boostNoAudio') {
     return (
       <SpeakFromMemoryQuestion
-        sentences={[builtSentence, BOOST_SENTENCE]}
+        sentences={[builtSentence, content.boostSentence]}
         stepLabel="Sem Áudio — Bônus"
         title="Fale em Inglês!"
         icon="🔥"
@@ -307,7 +278,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
     )
   }
 
-  // ─── Complete ───
+  // --- Complete ---
   return (
     <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
@@ -319,7 +290,7 @@ export function Block2LetsReflect({ onComplete, onActivityChange, alreadyComplet
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +5 WOA Coins</p></div>
         </div>
         <button
-          onClick={() => { deleteCookie('woa_j2_b2_stage'); deleteCookie('woa_j2_b2_built'); onComplete(alreadyCompleted ? 0 : xpEarned) }}
+          onClick={() => { deleteCookie(cookieKey); deleteCookie(builtCookieKey); onComplete(alreadyCompleted ? 0 : xpEarned) }}
           className="px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
           style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}
         >CONTINUAR →</button>

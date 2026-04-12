@@ -1,10 +1,13 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { deleteCookie } from '@/lib/utils'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
+import type { Block5Content } from '@/lib/journeyContent'
 
 interface Block5WOAChallengeProps {
+  content: Block5Content
+  phaseId: number
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
@@ -41,42 +44,43 @@ async function tts(text: string): Promise<void> {
 }
 
 const STAGE_INDEX: Record<Stage, number> = { write:1, translate:2, listen:3, repeat:4, understand:5, speakFree:6, complete:6 }
-const LS_KEY = 'woa_j2_b5_progress'
 
-function loadProgress() {
+function getLsKey(phaseId: number) { return `woa_p${phaseId}_b5_progress` }
+
+function loadProgress(phaseId: number) {
   if (typeof window === 'undefined') return null
-  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? 'null') } catch { return null }
+  try { return JSON.parse(localStorage.getItem(getLsKey(phaseId)) ?? 'null') } catch { return null }
 }
-function saveProgress(data: object) {
+function saveProgress(phaseId: number, data: object) {
   if (typeof window === 'undefined') return
-  localStorage.setItem(LS_KEY, JSON.stringify(data))
+  localStorage.setItem(getLsKey(phaseId), JSON.stringify(data))
 }
-function clearProgress() {
+function clearProgress(phaseId: number) {
   if (typeof window === 'undefined') return
-  localStorage.removeItem(LS_KEY)
-  deleteCookie('woa_j2_b5_stage')
+  localStorage.removeItem(getLsKey(phaseId))
+  deleteCookie(`woa_p${phaseId}_b5_stage`)
 }
 
-export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyCompleted = false }: Block5WOAChallengeProps) {
+export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block5WOAChallengeProps) {
   const [stage, setStage] = useState<Stage>(() => {
-    const saved = loadProgress()
+    const saved = loadProgress(phaseId)
     const s = saved?.stage as Stage | null
     if (s && s !== 'complete') return s
     return 'write'
   })
-  const [portugueseText, setPortugueseText] = useState<string>(() => loadProgress()?.portugueseText ?? '')
-  const [englishText, setEnglishText] = useState<string>(() => loadProgress()?.englishText ?? '')
+  const [portugueseText, setPortugueseText] = useState<string>(() => loadProgress(phaseId)?.portugueseText ?? '')
+  const [englishText, setEnglishText] = useState<string>(() => loadProgress(phaseId)?.englishText ?? '')
   const [isTranslating, setIsTranslating] = useState(false)
   const [repeatIdx, setRepeatIdx] = useState(0)
-  const [sentences, setSentences] = useState<string[]>(() => loadProgress()?.sentences ?? [])
+  const [sentences, setSentences] = useState<string[]>(() => loadProgress(phaseId)?.sentences ?? [])
   const [isPlaying, setIsPlaying] = useState(false)
   const [error, setError] = useState('')
-  const [xpEarned, setXpEarned] = useState<number>(() => loadProgress()?.xpEarned ?? 0)
+  const [xpEarned, setXpEarned] = useState<number>(() => loadProgress(phaseId)?.xpEarned ?? 0)
 
   useEffect(() => {
     onActivityChange?.(STAGE_INDEX[stage], 6)
     if (stage !== 'complete') {
-      saveProgress({ stage, portugueseText, englishText, sentences, xpEarned })
+      saveProgress(phaseId, { stage, portugueseText, englishText, sentences, xpEarned })
     }
   }, [stage, portugueseText, englishText, sentences, xpEarned])
 
@@ -91,7 +95,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
     return data.translation
   }
 
-  // ─── Step 1: Write in Portuguese ───
+  // --- Step 1: Write in Portuguese ---
   if (stage === 'write') {
     const wordCount = portugueseText.trim().split(/\s+/).filter(Boolean).length
     const canAdvance = wordCount >= 10
@@ -101,22 +105,18 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
           <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🏆 CONVERSATION CHALLENGE</p>
           <p className="text-white/40 text-[10px] mb-1">Desafio de Conversação</p>
           <p className="text-blue-200/60 text-xs mb-4">
-            👉 🇺🇸 How would you introduce yourself in English to someone you just met?<br />
-            🇧🇷 Como você se apresentaria em inglês para alguém que acabou de conhecer?
+            👉 🇺🇸 {content.promptEn}<br />
+            🇧🇷 {content.promptPt}
           </p>
 
           <p className="text-blue-200/80 mb-1 text-sm">✍️ <strong>Passo 1 — Escreva em Português</strong> (3–4 linhas):</p>
           <ul className="text-blue-200/50 text-xs mb-3 space-y-0.5 pl-4 list-disc">
-            <li>Seu nome e de onde você é</li>
-            <li>O que você faz (trabalho/estudo)</li>
-            <li>O que você gosta de fazer no tempo livre</li>
+            {content.topicHints.map((hint, i) => <li key={i}>{hint}</li>)}
           </ul>
 
           <div className="p-3 rounded-lg border border-white/10 mb-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <p className="text-blue-200/40 text-[10px] tracking-widest mb-1">💡 EXEMPLO</p>
-            <p className="text-blue-200/50 text-xs leading-relaxed italic">
-              Meu nome é Lucas, sou de São Paulo e trabalho como desenvolvedor de software. No meu tempo livre gosto de ler livros e aprender coisas novas, e estou aprendendo inglês porque quero me comunicar com pessoas do mundo inteiro.
-            </p>
+            <p className="text-blue-200/50 text-xs leading-relaxed italic">{content.examplePt}</p>
           </div>
 
           <textarea
@@ -146,7 +146,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
     )
   }
 
-  // ─── Step 2: Translate ───
+  // --- Step 2: Translate ---
   if (stage === 'translate') {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
@@ -197,7 +197,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
     )
   }
 
-  // ─── Step 3: Listen ───
+  // --- Step 3: Listen ---
   if (stage === 'listen') {
     const sent = sentences[repeatIdx]
     return (
@@ -223,7 +223,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
     )
   }
 
-  // ─── Step 4: Repeat ───
+  // --- Step 4: Repeat ---
   if (stage === 'repeat') {
     return (
       <ListenRepeatQuestion
@@ -238,7 +238,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
     )
   }
 
-  // ─── Step 5: Understand ───
+  // --- Step 5: Understand ---
   if (stage === 'understand') {
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
@@ -269,7 +269,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
     )
   }
 
-  // ─── Step 6: Speak free ───
+  // --- Step 6: Speak free ---
   if (stage === 'speakFree') {
     return (
       <SpeakFromMemoryQuestion
@@ -284,7 +284,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
     )
   }
 
-  // ─── Complete ───
+  // --- Complete ---
   return (
     <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
       <div className="p-8 rounded-xl border border-green-400/30 text-center" style={{ background: 'rgba(34,197,94,0.08)' }}>
@@ -297,7 +297,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyComple
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +15 WOA Coins</p></div>
         </div>
         <button
-          onClick={() => { clearProgress(); onComplete(alreadyCompleted ? 0 : xpEarned) }}
+          onClick={() => { clearProgress(phaseId); onComplete(alreadyCompleted ? 0 : xpEarned) }}
           className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all"
           style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}
         >CONTINUAR →</button>
