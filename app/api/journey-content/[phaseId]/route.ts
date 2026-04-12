@@ -7,9 +7,10 @@ import type { JourneyContent } from '@/lib/journeyContent'
 // GET — Fetch journey content for a phase
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { phaseId: string } }
+  { params }: { params: Promise<{ phaseId: string }> }
 ) {
-  const phaseId = parseInt(params.phaseId)
+  const { phaseId: phaseIdStr } = await params
+  const phaseId = parseInt(phaseIdStr)
   if (isNaN(phaseId)) return NextResponse.json({ error: 'Invalid phaseId' }, { status: 400 })
 
   // Try DB first
@@ -41,9 +42,10 @@ export async function GET(
 // PUT — Update journey content (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { phaseId: string } }
+  { params }: { params: Promise<{ phaseId: string }> }
 ) {
-  const phaseId = parseInt(params.phaseId)
+  const { phaseId: phaseIdStr } = await params
+  const phaseId = parseInt(phaseIdStr)
   if (isNaN(phaseId)) return NextResponse.json({ error: 'Invalid phaseId' }, { status: 400 })
 
   const session = await getServerSession(authOptions)
