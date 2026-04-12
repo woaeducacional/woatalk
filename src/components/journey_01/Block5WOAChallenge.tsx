@@ -7,6 +7,7 @@ import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_stru
 interface Block5WOAChallengeProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
+  alreadyCompleted?: boolean
 }
 
 type Stage = 'write' | 'translate' | 'listen' | 'repeat' | 'understand' | 'speakFree' | 'complete'
@@ -59,7 +60,7 @@ function clearProgress() {
   deleteCookie('woa_b5_stage')
 }
 
-export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOAChallengeProps) {
+export function Block5WOAChallenge({ onComplete, onActivityChange, alreadyCompleted = false }: Block5WOAChallengeProps) {
   const [stage, setStage] = useState<Stage>(() => {
     const saved = loadProgress()
     const s = saved?.stage as Stage | null
@@ -301,7 +302,7 @@ export function Block5WOAChallenge({ onComplete, onActivityChange }: Block5WOACh
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +15 WOA Coins</p></div>
         </div>
-        <button onClick={() => { clearProgress(); onComplete(xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>FINALIZAR →</button>
+        <button onClick={() => { clearProgress(); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>FINALIZAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

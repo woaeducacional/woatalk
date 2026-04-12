@@ -5,7 +5,7 @@ interface InMemoryUser {
   id: string
   email: string
   name: string
-  password_hash: string
+  password_hash: string | null
   avatar_url: string | null
   role: string
   xp_total: number

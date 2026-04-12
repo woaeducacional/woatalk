@@ -8,6 +8,7 @@ import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 interface Block3VocabularyProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
+  alreadyCompleted?: boolean
 }
 
 const VOCABULARY = [
@@ -31,29 +32,23 @@ const FILL_SENTENCES = [
   { sentence: 'One fun ___ is going to the gym.', answer: 'activity', options: ['activity', 'enjoy', 'leisure'], full: 'One fun activity is going to the gym.' },
 ]
 
-const SPEAK_PROMPTS = [
-  'I enjoy ______ in my free time.',
-  'My favorite hobby is ______.',
-]
-
 const MEMORY_SENTENCES = [
   'I enjoy watching movies on weekends.',
   'Playing soccer is my favorite hobby.',
   'I like to relax by listening to music.',
 ]
 
-type Stage = 'matchIntro' | 'matchWord' | 'fillBlank' | 'fillRepeat' | 'speak' | 'memory' | 'complete'
+type Stage = 'matchIntro' | 'matchWord' | 'fillBlank' | 'fillRepeat' | 'memory' | 'complete'
 
-// activities: matchIntro(1) matchWord(2) fill pairs 1-7(3-9) speak(10) memory(11) = 11 total
+// activities: matchIntro(1) matchWord(2) fill pairs 1-7(3-9) memory(10) = 10 total
 function getActivityIndex(stage: Stage, fillIdx: number): number {
   if (stage === 'matchIntro') return 1
   if (stage === 'matchWord') return 2
   if (stage === 'fillBlank' || stage === 'fillRepeat') return 3 + fillIdx
-  if (stage === 'speak') return 10
-  return 11 // memory + complete
+  return 10 // memory + complete
 }
 
-export function Block3Vocabulary({ onComplete, onActivityChange }: Block3VocabularyProps) {
+export function Block3Vocabulary({ onComplete, onActivityChange, alreadyCompleted = false }: Block3VocabularyProps) {
   const [stage, setStage] = useState<Stage>(() => {
     const s = getCookie('woa_b3_stage') as Stage | null
     return (s && s !== 'complete') ? s : 'matchIntro'
@@ -132,7 +127,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
       setStage('fillBlank')
     } else {
       setXpEarned((p) => p + 20)
-      setStage('speak')
+      setStage('memory')
     }
   }
 
@@ -223,43 +218,6 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
     )
   }
 
-  // ─── Step 3: Speak (complete sentences) ───
-  if (stage === 'speak') {
-    return (
-      <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
-        <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
-          <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 PASSO 3 — FALE</p>
-          <p className="text-white/40 text-[10px] mb-3">Fale as frases completas</p>
-          <p className="text-blue-200/80 mb-4">👉 Complete e diga ({speakIdx + 1}/{SPEAK_PROMPTS.length}):</p>
-          <p className="text-white text-xl font-semibold mb-6">{SPEAK_PROMPTS[speakIdx]}</p>
-          {transcript && <p className="text-blue-200/60 text-sm mb-1">&quot;{transcript}&quot;</p>}
-          {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
-          <button
-            onClick={() => {
-              if (isRecording) return; setError(''); setTranscript('')
-              const API = getSpeechRecognition(); if (!API) return
-              const rec = new API(); rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true
-              setIsRecording(true); transcriptRef.current = ''
-              let timer: ReturnType<typeof setTimeout> | null = null
-              const resetT = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => rec.stop(), 3000) }
-              rec.onresult = (e: any) => { resetT(); transcriptRef.current = Array.from(e.results).map((r: any) => r[0].transcript).join(''); setTranscript(transcriptRef.current) }
-              rec.onend = () => { setIsRecording(false); if (timer) clearTimeout(timer); if (transcriptRef.current.trim().split(/\s+/).length >= 3) { setXpEarned(p => p + 15);  if (speakIdx < SPEAK_PROMPTS.length - 1) setSpeakIdx(speakIdx + 1); else setStage('memory') } else { setError('Diga uma frase completa.') } }
-              rec.onerror = (e: any) => { setIsRecording(false); setError(e.error === 'no-speech' ? 'Nenhuma fala.' : `Erro: ${e.error}`) }
-              rec.start(); resetT()
-            }}
-            disabled={isRecording}
-            className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all"
-            style={{ background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #f59e0b, #d97706)' }}
-          >
-            {isRecording ? '🔴 Gravando...' : '🎤 Falar'}
-          </button>
-          <p className="text-blue-200/40 text-xs mt-2">+15 XP por frase</p>
-        </div>
-        <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
-      </div>
-    )
-  }
-
   // ─── Step 4: Memory Boost ───
   if (stage === 'memory') {
     return (
@@ -289,7 +247,7 @@ export function Block3Vocabulary({ onComplete, onActivityChange }: Block3Vocabul
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +5 WOA Coins</p></div>
         </div>
-        <button onClick={() => { deleteCookie('woa_b3_stage'); onComplete(xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
+        <button onClick={() => { deleteCookie('woa_b3_stage'); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

@@ -30,7 +30,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const { email, password } = await signInSchema.parseAsync(credentials)
 
           const user = await getUserByEmail(email)
-          if (!user) {
+          if (!user || !user.password_hash) {
             return null
           }
 

@@ -81,9 +81,6 @@ export function SpeakFromMemoryQuestion({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const vadActiveRef = useRef(false)
 
   // ── Score: how many target words appear anywhere in spoken transcript ──
   const calculateScore = (spoken: string, target: string): number => {
@@ -151,13 +148,6 @@ export function SpeakFromMemoryQuestion({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
 
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const source = audioContext.createMediaStreamSource(stream)
-      const analyser = audioContext.createAnalyser()
-      analyser.fftSize = 2048
-      source.connect(analyser)
-      analyserRef.current = analyser
-
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
@@ -169,8 +159,6 @@ export function SpeakFromMemoryQuestion({
       chunksRef.current = []
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mediaRecorderRef.current = mr
-      vadActiveRef.current = false
-      silenceTimerRef.current = null
 
       mr.onstop = async () => {
         streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -213,36 +201,14 @@ export function SpeakFromMemoryQuestion({
       mr.start()
       setLiveTranscript('')
       setPhase('recording')
-
-      const bufferLength = analyser.frequencyBinCount
-      const dataArray = new Uint8Array(bufferLength)
-      const SILENCE_THRESHOLD = 10
-      const SILENCE_DELAY = 1500
-
-      function checkSilence() {
-        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return
-        analyser.getByteTimeDomainData(dataArray)
-        let sum = 0
-        for (let i = 0; i < bufferLength; i++) {
-          const v = dataArray[i] - 128
-          sum += v * v
-        }
-        const rms = Math.sqrt(sum / bufferLength)
-        if (rms > SILENCE_THRESHOLD) {
-          vadActiveRef.current = true
-          if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
-        } else if (vadActiveRef.current && !silenceTimerRef.current) {
-          silenceTimerRef.current = setTimeout(() => {
-            const m = mediaRecorderRef.current
-            if (m && m.state !== 'inactive') m.stop()
-          }, SILENCE_DELAY)
-        }
-        requestAnimationFrame(checkSilence)
-      }
-      requestAnimationFrame(checkSilence)
     } catch {
       alert('Erro ao acessar microfone')
     }
+  }
+
+  const handleStopRecording = () => {
+    const m = mediaRecorderRef.current
+    if (m && m.state !== 'inactive') m.stop()
   }
 
   const handleContinue = () => {
@@ -427,17 +393,18 @@ export function SpeakFromMemoryQuestion({
             )}
           </div>
 
-          {/* Mic indicator */}
-          <div
-            className="w-full py-4 rounded-xl text-center font-black tracking-widest text-white"
+          {/* Stop button */}
+          <button
+            onClick={handleStopRecording}
+            className="w-full py-4 rounded-xl text-center font-black tracking-widest text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             style={{
               background: 'linear-gradient(135deg, #7f1d1d, #dc2626)',
               boxShadow: '0 0 20px rgba(220,38,38,0.4)',
               animation: 'pulseRed 1s ease-in-out infinite',
             }}
           >
-            🔴 GRAVANDO...
-          </div>
+            🛑 APERTE PARA PARAR DE FALAR
+          </button>
         </div>
       )}
 
