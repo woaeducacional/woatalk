@@ -246,21 +246,20 @@ export default function DashboardPage() {
             <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4">— FASES OCEÂNICAS —</h3>
             <div className="grid md:grid-cols-3 gap-5">
 
-              {/* Pacific — ACTIVE */}
-              <div className="rounded-2xl overflow-hidden backdrop-blur-md relative" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid #00D4FF50', boxShadow: '0 0 30px rgba(0,212,255,0.12), 0 8px 32px rgba(0,0,0,0.4)' }}>
-                <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,#00D4FF,transparent)' }} />
-                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#001a40,#003080)' }}>
-                  <Image src="/images/icon_pacifico.png" alt="Pacific Ocean" width={70} height={70} className="object-contain" />
-                  <div className="absolute top-2 right-2 bg-cyan-400/20 border border-cyan-400/40 rounded px-2 py-0.5">
-                    <span className="text-[9px] font-black tracking-widest text-cyan-300">ATIVO</span>
+              {/* Pacific — LOCKED */}
+              <div className="rounded-2xl overflow-hidden backdrop-blur-md relative opacity-60" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid #ffffff15', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#0d0d0d,#1a1a2e)' }}>
+                  <Image src="/images/icon_pacifico.png" alt="Pacific Ocean" width={70} height={70} className="object-contain grayscale" />
+                  <div className="absolute top-2 right-2 bg-white/10 border border-white/20 rounded px-2 py-0.5">
+                    <span className="text-[9px] font-black tracking-widest text-white/50">🔒 BLOQUEADO</span>
                   </div>
                 </div>
                 <div className="p-5">
-                  <h4 className="font-black text-white text-sm tracking-wider mb-1" style={{ textShadow: '0 0 10px rgba(0,212,255,0.4)' }}>PACIFIC OCEAN</h4>
-                  <p className="text-[10px] text-blue-100/80 mb-4">4.280m de profundidade</p>
-                  <Link href="/challenge/1" onClick={() => playClick()} className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', boxShadow: '0 0 16px rgba(0,102,255,0.3)' }}>
-                    ▶ INICIAR JORNADA
-                  </Link>
+                  <h4 className="font-black text-white/50 text-sm tracking-wider mb-1">PACIFIC OCEAN</h4>
+                  <p className="text-[10px] text-blue-100/40 mb-4">4.280m de profundidade</p>
+                  <div className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white/30 cursor-not-allowed" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    🔒 EM BREVE
+                  </div>
                   {isAdmin && (
                     <button
                       onClick={() => { playClick(); router.push('/admin/journey-content/1') }}
