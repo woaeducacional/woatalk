@@ -21,22 +21,65 @@ type Stage =
 
 export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block4PracticeSpeakProps) {
   const cookieKey = `woa_p${phaseId}_b4_stage`
-  const [stage, setStage] = useState<Stage>(() => {
-    const RESTORE: Partial<Record<Stage, Stage>> = { listenRepeat: 'choose', completeStep: 'choose', speakWithText: 'choose', speakNoText: 'choose', upgrade: 'choose', upgradeRepeat: 'choose', final: 'choose' }
-    const s = getCookie(cookieKey) as Stage | null
-    if (s && s !== 'complete') return RESTORE[s] ?? s
-    return 'choose'
-  })
-  const [selected, setSelected] = useState<number[]>([])
-  const [completeSentences, setCompleteSentences] = useState<string[]>([])
-  const [upgradeSelected, setUpgradeSelected] = useState<number[]>([])
-  const [xpEarned, setXpEarned] = useState(0)
+  const selKey = `woa_p${phaseId}_b4_sel`
+  const csKey = `woa_p${phaseId}_b4_cs`
+  const usKey = `woa_p${phaseId}_b4_us`
 
-  const STAGE_INDEX: Record<Stage, number> = { choose:1, listenRepeat:2, completeStep:3, speakWithText:4, speakNoText:5, upgrade:6, upgradeRepeat:7, final:8, complete:8 }
+  const [stage, setStage] = useState<Stage>(() => {
+    const s = getCookie(cookieKey) as Stage | null
+    if (!s || s === 'complete') return 'choose'
+    // Stages that need selected expressions
+    const needsSelected: Stage[] = ['listenRepeat', 'completeStep', 'speakWithText', 'speakNoText']
+    if (needsSelected.includes(s)) {
+      try { const sel = getCookie(selKey); if (!sel || JSON.parse(sel).length < 2) return 'choose' } catch { return 'choose' }
+    }
+    // Stages that need upgradeSelected
+    const needsUpgrade: Stage[] = ['upgradeRepeat', 'final']
+    if (needsUpgrade.includes(s)) {
+      try { const us = getCookie(usKey); if (!us || JSON.parse(us).length < 3) return 'upgrade' } catch { return 'upgrade' }
+    }
+    return s
+  })
+  const [selected, setSelected] = useState<number[]>(() => {
+    try { const v = getCookie(selKey); return v ? JSON.parse(v) : [] } catch { return [] }
+  })
+  const [completeSentences, setCompleteSentences] = useState<string[]>(() => {
+    try { const v = getCookie(csKey); return v ? JSON.parse(v) : [] } catch { return [] }
+  })
+  const [upgradeSelected, setUpgradeSelected] = useState<number[]>(() => {
+    try { const v = getCookie(usKey); return v ? JSON.parse(v) : [] } catch { return [] }
+  })
+  const [xpEarned, setXpEarned] = useState(0)
+  const [lrIdx, setLrIdx] = useState(0)
+  const [swIdx, setSwIdx] = useState(0)
+  const [urIdx, setUrIdx] = useState(0)
+
+  // total = choose(1) + listenRepeat(2) + completeStep(1) + speakWithText(2) + speakNoText(1) + upgrade(1) + upgradeRepeat(3) + final(1) = 12
+  const total = 12
+
+  function getCurrentActivity(): number {
+    switch (stage) {
+      case 'choose': return 1
+      case 'listenRepeat': return 2 + lrIdx        // 2-3
+      case 'completeStep': return 4
+      case 'speakWithText': return 5 + swIdx        // 5-6
+      case 'speakNoText': return 7
+      case 'upgrade': return 8
+      case 'upgradeRepeat': return 9 + urIdx        // 9-11
+      case 'final': case 'complete': return 12
+      default: return 1
+    }
+  }
+
   useEffect(() => {
-    onActivityChange?.(STAGE_INDEX[stage], 8)
-    if (stage !== 'complete') setCookie(cookieKey, stage)
-  }, [stage])
+    onActivityChange?.(getCurrentActivity(), total)
+    if (stage !== 'complete') {
+      setCookie(cookieKey, stage)
+      if (selected.length) setCookie(selKey, JSON.stringify(selected))
+      if (completeSentences.length) setCookie(csKey, JSON.stringify(completeSentences))
+      if (upgradeSelected.length) setCookie(usKey, JSON.stringify(upgradeSelected))
+    }
+  }, [stage, lrIdx, swIdx, urIdx, selected, completeSentences, upgradeSelected])
 
   const allSelected = [...selected, ...upgradeSelected]
 
@@ -90,6 +133,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         instructionPt="Ouça e repita as expressões que você escolheu!"
         xpReward={20}
         onComplete={handleListenRepeatComplete}
+        onSentenceChange={(idx) => setLrIdx(idx)}
+        persistKey={`woa_p${phaseId}_b4_lr`}
       />
     )
   }
@@ -136,6 +181,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         instructionPt="Ouça e diga suas próprias frases em voz alta!"
         xpReward={0}
         onComplete={() => setStage('speakNoText')}
+        onSentenceChange={(idx) => setSwIdx(idx)}
+        persistKey={`woa_p${phaseId}_b4_sw`}
       />
     )
   }
@@ -201,6 +248,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         instructionPt="Ouça e repita as expressões novas!"
         xpReward={10}
         onComplete={handleUpgradeRepeatComplete}
+        onSentenceChange={(idx) => setUrIdx(idx)}
+        persistKey={`woa_p${phaseId}_b4_ur`}
       />
     )
   }
@@ -231,7 +280,7 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +5 WOA Coins</p></div>
         </div>
-        <button onClick={() => { deleteCookie(cookieKey); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
+        <button onClick={() => { deleteCookie(cookieKey); deleteCookie(selKey); deleteCookie(csKey); deleteCookie(usKey); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

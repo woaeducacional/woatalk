@@ -43,7 +43,7 @@ async function tts(text: string): Promise<void> {
   }
 }
 
-const STAGE_INDEX: Record<Stage, number> = { write:1, translate:2, listen:3, repeat:4, understand:5, speakFree:6, complete:6 }
+const STAGE_BASE: Record<Stage, number> = { write:1, translate:2, listen:3, repeat:4, understand:5, speakFree:6, complete:6 }
 
 function getLsKey(phaseId: number) { return `woa_p${phaseId}_b5_progress` }
 
@@ -76,13 +76,24 @@ export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityCha
   const [isPlaying, setIsPlaying] = useState(false)
   const [error, setError] = useState('')
   const [xpEarned, setXpEarned] = useState<number>(() => loadProgress(phaseId)?.xpEarned ?? 0)
+  const [repeatLrIdx, setRepeatLrIdx] = useState(0)
+
+  const sentenceCount = sentences.length || 1
+  const total = 3 + sentenceCount + 2  // write + translate + listen + repeat[N] + understand + speakFree
+
+  function getCurrentActivity(): number {
+    if (stage === 'repeat') return 4 + repeatLrIdx
+    if (stage === 'understand') return 3 + sentenceCount + 1
+    if (stage === 'speakFree' || stage === 'complete') return total
+    return STAGE_BASE[stage]
+  }
 
   useEffect(() => {
-    onActivityChange?.(STAGE_INDEX[stage], 6)
+    onActivityChange?.(getCurrentActivity(), total)
     if (stage !== 'complete') {
       saveProgress(phaseId, { stage, portugueseText, englishText, sentences, xpEarned })
     }
-  }, [stage, portugueseText, englishText, sentences, xpEarned])
+  }, [stage, portugueseText, englishText, sentences, xpEarned, repeatLrIdx])
 
   const translateWithAI = async (text: string): Promise<string> => {
     const response = await fetch('/api/translate', {
@@ -234,6 +245,8 @@ export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityCha
         stepLabel="WOA — REPEAT"
         title="Repita as Frases"
         instruction="Ouça e repita cada frase:"
+        onSentenceChange={(idx) => setRepeatLrIdx(idx)}
+        persistKey={`woa_p${phaseId}_b5_lr`}
       />
     )
   }

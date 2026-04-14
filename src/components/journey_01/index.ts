@@ -1,16 +1,7 @@
 /**
- * Journey 01 — Hobbies
+ * @deprecated — Journey 01 (Hobbies) block components have been moved to ./_deprecated/.
+ * Content is now served from the database (journey_content table, phase_id = 2).
+ * Run db/migrations/add_atlantic_journey_content.sql in Supabase SQL Editor to seed the data.
  *
- * 5 mission blocks:
- *   Block1VideoInsight   — Group 0: Video Insight Challenge
- *   Block2LetsReflect    — Group 1: Let's Reflect
- *   Block3Vocabulary     — Group 2: Related Vocabulary
- *   Block4PracticeSpeak  — Group 3: Practice & Speak
- *   Block5WOAChallenge   — Group 4: WOA Challenge
+ * This barrel export is intentionally empty so any stale imports produce a clear error.
  */
-
-export { Block1VideoInsight } from './Block1VideoInsight'
-export { Block2LetsReflect }  from './Block2LetsReflect'
-export { Block3Vocabulary }   from './Block3Vocabulary'
-export { Block4PracticeSpeak } from './Block4PracticeSpeak'
-export { Block5WOAChallenge }  from './Block5WOAChallenge'

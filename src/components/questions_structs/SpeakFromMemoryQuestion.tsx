@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { getCookie, setCookie } from '@/lib/utils'
 import { playTTS } from '@/src/lib/ttsService'
+import { blobToWavBase64 } from '@/src/lib/audioUtils'
 
 interface SpeakFromMemoryQuestionProps {
   /**
@@ -167,11 +168,11 @@ export function SpeakFromMemoryQuestion({
         let spoken = ''
         try {
           setIsTranscribing(true)
-          const base64 = await blobToBase64(blob)
+          const base64 = await blobToWavBase64(blob)
           const res = await fetch('/api/transcribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audio: base64, mimeType: mimeBase }),
+            body: JSON.stringify({ audio: base64, mimeType: 'audio/wav' }),
           })
           const text = await res.text()
           if (text) {

@@ -22,12 +22,18 @@ export function Block1VideoInsight({ content, phaseId, onComplete, onActivityCha
     return (s && s !== 'complete') ? s : 'video'
   })
   const [xpEarned, setXpEarned] = useState(10)
+  const [lrIdx, setLrIdx] = useState(0)
 
-  const STAGE_INDEX: Record<Stage, number> = { video: 1, choose: 2, listenRepeat: 3, complete: 3 }
+  const lrCount = content.listenRepeatSentences.length
+  const total = 2 + lrCount
+
   useEffect(() => {
-    onActivityChange?.(STAGE_INDEX[stage], 3)
+    const current = stage === 'listenRepeat' ? 3 + lrIdx
+      : stage === 'complete' ? total
+      : stage === 'choose' ? 2 : 1
+    onActivityChange?.(current, total)
     if (stage !== 'complete') setCookie(cookieKey, stage)
-  }, [stage])
+  }, [stage, lrIdx])
 
   const handleVideoComplete = (xp: number) => { setXpEarned((p) => p + xp); setStage('choose') }
   const handleChoiceComplete = (xp: number) => { setXpEarned((p) => p + xp); setStage('listenRepeat') }
@@ -68,6 +74,8 @@ export function Block1VideoInsight({ content, phaseId, onComplete, onActivityCha
           xpReward={25}
           icon="🎧"
           onComplete={handleListenRepeatComplete}
+          onSentenceChange={(idx) => setLrIdx(idx)}
+          persistKey={`woa_p${phaseId}_b1_lr`}
         />
       )}
 

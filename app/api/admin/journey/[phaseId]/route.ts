@@ -103,3 +103,25 @@ export async function PUT(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ checkpoint: data })
 }
+
+/** DELETE /api/admin/journey/[phaseId] — permanently delete a journey from journey_content */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ phaseId: string }> }
+) {
+  const session = await requireAdmin()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+
+  const { phaseId: raw } = await params
+  const phaseId = parseInt(raw)
+  if (isNaN(phaseId)) return NextResponse.json({ error: 'Invalid phaseId' }, { status: 400 })
+  if (!supabase) return NextResponse.json({ error: 'DB not configured' }, { status: 503 })
+
+  const { error } = await supabase
+    .from('journey_content')
+    .delete()
+    .eq('phase_id', phaseId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}

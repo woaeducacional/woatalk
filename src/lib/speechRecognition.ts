@@ -9,6 +9,8 @@
  */
 
 // ─── iOS / unsupported browser detection ───
+import { blobToWavBase64 } from './audioUtils'
+
 export function isNativeSpeechSupported(): boolean {
   if (typeof window === 'undefined') return false
   return !!(
@@ -180,10 +182,12 @@ export class FallbackSpeechRecognition {
     const ext = mimeType.includes('webm') ? 'webm' : 'mp4'
 
     try {
-      const formData = new FormData()
-      formData.append('audio', blob, `recording.${ext}`)
-
-      const res = await fetch('/api/transcribe', { method: 'POST', body: formData })
+      const base64 = await blobToWavBase64(blob)
+      const res = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: base64, mimeType: 'audio/wav' }),
+      })
 
       if (!res.ok) {
         console.error('[FallbackSpeech] Transcribe failed:', res.status)

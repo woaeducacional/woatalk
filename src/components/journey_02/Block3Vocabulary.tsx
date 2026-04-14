@@ -16,20 +16,21 @@ interface Block3VocabularyProps {
 
 type Stage = 'matchIntro' | 'matchWord' | 'fillBlank' | 'fillRepeat' | 'memory' | 'complete'
 
-function getActivityIndex(stage: Stage, fillIdx: number): number {
-  if (stage === 'matchIntro') return 1
-  if (stage === 'matchWord') return 2
-  if (stage === 'fillBlank' || stage === 'fillRepeat') return 3 + fillIdx
-  return 10
-}
-
 export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block3VocabularyProps) {
   const cookieKey = `woa_p${phaseId}_b3_stage`
+  const fillIdxKey = `woa_p${phaseId}_b3_fill`
   const [stage, setStage] = useState<Stage>(() => {
     const s = getCookie(cookieKey) as Stage | null
     return (s && s !== 'complete') ? s : 'matchIntro'
   })
-  const [fillIdx, setFillIdx] = useState(0)
+  const [fillIdx, setFillIdx] = useState(() => {
+    const saved = getCookie(fillIdxKey)
+    if (saved) {
+      const idx = parseInt(saved, 10)
+      if (!isNaN(idx) && idx >= 0) return idx
+    }
+    return 0
+  })
   const [fillAnswer, setFillAnswer] = useState('')
   const [fillCorrect, setFillCorrect] = useState<boolean | null>(null)
   const [isRecording, setIsRecording] = useState(false)
@@ -39,11 +40,27 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
   const [xpEarned, setXpEarned] = useState(0)
   const [attemptCount, setAttemptCount] = useState(0)
   const transcriptRef = useRef('')
+  const [matchWordIdx, setMatchWordIdx] = useState(0)
+
+  const vocabCount = content.vocabulary.length
+  const fillCount = content.fillSentences.length
+  const total = 1 + vocabCount + fillCount + 1  // matchIntro + vocab words + fills + memory
+
+  function getActivityIndex(stage: Stage, fillIdx: number): number {
+    if (stage === 'matchIntro') return 1
+    if (stage === 'matchWord') return 2 + matchWordIdx
+    if (stage === 'fillBlank' || stage === 'fillRepeat') return 1 + vocabCount + 1 + fillIdx
+    if (stage === 'memory' || stage === 'complete') return total
+    return total
+  }
 
   useEffect(() => {
-    onActivityChange?.(getActivityIndex(stage, fillIdx), 10)
-    if (stage !== 'complete') setCookie(cookieKey, stage)
-  }, [stage, fillIdx])
+    onActivityChange?.(getActivityIndex(stage, fillIdx), total)
+    if (stage !== 'complete') {
+      setCookie(cookieKey, stage)
+      setCookie(fillIdxKey, String(fillIdx))
+    }
+  }, [stage, fillIdx, matchWordIdx])
 
   const calcScore = (spoken: string, target: string): number => {
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/)
@@ -116,6 +133,8 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
         instructionPt="Ouça cada palavra de vocabulário e repita!"
         xpReward={10}
         onComplete={handleMatchComplete}
+        onSentenceChange={(idx) => setMatchWordIdx(idx)}
+        persistKey={`woa_p${phaseId}_b3_mw`}
       />
     )
   }
@@ -196,7 +215,7 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">+{xpEarned} XP</p></div>
           <div className="px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-400"><p className="text-yellow-300 font-bold">🪙 +5 WOA Coins</p></div>
         </div>
-        <button onClick={() => { deleteCookie(cookieKey); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
+        <button onClick={() => { deleteCookie(cookieKey); deleteCookie(fillIdxKey); onComplete(alreadyCompleted ? 0 : xpEarned) }} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: 'linear-gradient(135deg, #003AB0, #0066FF)', border: '2px solid #00D4FF' }}>CONTINUAR →</button>
       </div>
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>

@@ -19,20 +19,18 @@ export async function GET(
 
     const { data: userData, error } = await supabase
       .from('users')
-      .select('current_phase')
+      .select('journey_progress')
       .eq('email', session.user.email)
       .single()
 
     if (error || !userData) return NextResponse.json([])
 
-    const currentPhase = userData.current_phase ?? 1
-    // Each group index corresponds to a phase (group 0 = phase 1, group 1 = phase 2, ...)
-    // Groups 0..(current_phase-2) are completed
-    const completedCount = Math.max(0, Math.min(currentPhase - 1, 5))
-    const completedGroups = Array.from({ length: completedCount }, (_, i) => i)
+    const journeyProgress: Record<string, number[]> = userData.journey_progress ?? {}
+    const completed = journeyProgress[String(phaseId)]
 
-    return NextResponse.json(completedGroups)
+    return NextResponse.json(Array.isArray(completed) ? completed : [])
   } catch {
     return NextResponse.json([])
   }
 }
+

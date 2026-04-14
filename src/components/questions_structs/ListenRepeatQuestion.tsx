@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { getCookie, setCookie } from '@/lib/utils'
+import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 import { playTTS } from '@/src/lib/ttsService'
+import { blobToWavBase64 } from '@/src/lib/audioUtils'
 
 interface ListenRepeatQuestionProps {
   /**
@@ -81,6 +82,17 @@ interface ListenRepeatQuestionProps {
    * Use para voltar à atividade anterior.
    */
   onBack?: () => void
+
+  /**
+   * Callback chamado quando o index da frase atual muda (para activity tracking por frase)
+   */
+  onSentenceChange?: (sentenceIndex: number, totalSentences: number) => void
+
+  /**
+   * Chave para persistir o progresso (repeatIndex) em cookie.
+   * Se não fornecido, o progresso não é salvo.
+   */
+  persistKey?: string
 }
 
 /**
@@ -115,8 +127,19 @@ export function ListenRepeatQuestion({
   advanceButtonText = '✓ AVANÇAR →',
   skipButtonText = '⏭️ PULAR →',
   onBack,
+  onSentenceChange,
+  persistKey,
 }: ListenRepeatQuestionProps) {
-  const [repeatIndex, setRepeatIndex] = useState(0)
+  const [repeatIndex, setRepeatIndex] = useState(() => {
+    if (persistKey) {
+      const saved = getCookie(persistKey)
+      if (saved) {
+        const idx = parseInt(saved, 10)
+        if (!isNaN(idx) && idx >= 0 && idx < sentences.length) return idx
+      }
+    }
+    return 0
+  })
   const [isListening, setIsListening] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -138,6 +161,12 @@ export function ListenRepeatQuestion({
       onBack?.()
     }
   }, [sentences, onBack])
+
+  // Notifica o parent sobre mudança de frase (para activity tracking)
+  useEffect(() => {
+    onSentenceChange?.(repeatIndex, sentences.length)
+    if (persistKey) setCookie(persistKey, String(repeatIndex))
+  }, [repeatIndex, sentences.length])
 
   const isWord = sentences[repeatIndex]?.trim().split(/\s+/).length === 1
   const LISTEN_REQUIRED = isWord ? 1 : 3
@@ -234,11 +263,11 @@ export function ListenRepeatQuestion({
       const mimeBase = (mr.mimeType || 'audio/webm').split(';')[0]
       try {
         setIsTranscribing(true)
-        const base64 = await blobToBase64(blob)
+        const base64 = await blobToWavBase64(blob)
         const res = await fetch('/api/transcribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audio: base64, mimeType: mimeBase }),
+          body: JSON.stringify({ audio: base64, mimeType: 'audio/wav' }),
         })
         const text = await res.text()
         if (!text) throw new Error('Resposta vazia do servidor')
@@ -276,6 +305,7 @@ export function ListenRepeatQuestion({
     if (repeatIndex < sentences.length - 1) {
       setRepeatIndex((p) => p + 1)
     } else {
+      if (persistKey) deleteCookie(persistKey)
       onComplete(xpReward)
     }
   }
