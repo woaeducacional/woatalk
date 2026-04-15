@@ -142,6 +142,10 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
   // --- Fill blank ---
   if (stage === 'fillBlank') {
     const q = content.fillSentences[fillIdx]
+    // Ensure the correct answer is always among the displayed options
+    const opts = q.options.includes(q.answer)
+      ? q.options
+      : [q.answer, ...q.options.slice(0, 2)]
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="flex justify-between items-center">
@@ -151,7 +155,7 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
         <div className="p-6 rounded-xl border border-green-400/30" style={{ background: 'rgba(34,197,94,0.06)' }}>
           <p className="text-white text-xl font-semibold mb-6">{q.sentence}</p>
           <div className="grid grid-cols-3 gap-2 mb-4">
-            {q.options.map((o) => (
+            {opts.map((o) => (
               <button key={o} onClick={() => { setFillAnswer(o); setFillCorrect(o === q.answer) }}
                 className={`p-3 rounded-lg font-medium text-sm transition-all border ${fillAnswer === o ? (fillCorrect ? 'bg-green-500/30 border-green-400 text-green-300' : 'bg-red-500/30 border-red-400 text-red-300') : 'bg-white/5 border-white/10 text-white'}`}
               >{o}</button>

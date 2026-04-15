@@ -243,6 +243,17 @@ export default function AdminJourneyContentEditor() {
   const handleSave = async () => {
     setSaving(true)
     setSaveMsg('')
+    // Validate fill exercises: answer must be one of the options
+    const fills = content.block3?.fillSentences ?? []
+    for (let i = 0; i < fills.length; i++) {
+      const f = fills[i]
+      if (f.answer && f.options?.length && !f.options.includes(f.answer)) {
+        setSaving(false)
+        setSaveMsg(`❌ Bloco 3, Exercício #${i + 1}: a resposta "${f.answer}" não está nas opções.`)
+        setTimeout(() => setSaveMsg(''), 6000)
+        return
+      }
+    }
     try {
       const res = await fetch(`/api/journey-content/${phaseId}`, {
         method: 'PUT',
