@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import type { JourneyMission } from '@/lib/journey'
 import { EagleTip } from '@/src/components/EagleTip'
 import { getSpeechRecognition } from '@/src/lib/speechRecognition'
+import { blobToWavBase64 } from '@/src/lib/audioUtils'
 
 interface MissionProps {
   mission: JourneyMission
@@ -776,11 +777,11 @@ function SpeakMissionInner({ mission, onComplete }: MissionProps) {
       const blob = new Blob(chunksRef.current, { type: mr.mimeType })
       const mimeBase = (mr.mimeType || 'audio/webm').split(';')[0]
       try {
-        const base64 = await blobToBase64(blob)
+        const base64 = await blobToWavBase64(blob)
         const res = await fetch('/api/transcribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audio: base64, mimeType: mimeBase }),
+          body: JSON.stringify({ audio: base64, mimeType: 'audio/wav' }),
         })
         const text = await res.text()
         if (!text) throw new Error('Resposta vazia do servidor')

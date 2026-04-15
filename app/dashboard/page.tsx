@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [badgeCount, setBadgeCount] = useState(0)
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [journeys, setJourneys] = useState<{ phase_id: number; title: string; description: string; blocked: boolean; is_pro: boolean }[]>([])
   const [isEmailVerified, setIsEmailVerified] = useState(true)
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [verifyCode, setVerifyCode] = useState(['', '', '', '', '', ''])
@@ -45,6 +46,10 @@ export default function DashboardPage() {
     fetch('/api/auth/verify-status')
       .then(r => r.ok ? r.json() : { verified: true })
       .then(d => setIsEmailVerified(d.verified ?? true))
+      .catch(() => {})
+    fetch('/api/journey')
+      .then(r => r.ok ? r.json() : { journeys: [] })
+      .then(d => setJourneys(d.journeys ?? []))
       .catch(() => {})
   }, [])
 
@@ -187,14 +192,26 @@ export default function DashboardPage() {
               </h2>
               <p className="text-blue-200/55 text-sm mt-2">Continue sua jornada e desbloqueie novos oceanos.</p>
             </div>
-            <Link
-              href="/challenge/1"
-              onClick={() => playClick()}
-              className="shrink-0 px-7 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105"
-              style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.4)' }}
-            >
-              🗺️ MAPA DA JORNADA
-            </Link>
+            <div className="flex flex-col gap-2 shrink-0">
+              <Link
+                href="/challenge/1"
+                onClick={() => playClick()}
+                className="px-7 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105 text-center"
+                style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.4)' }}
+              >
+                🗺️ MAPA DA JORNADA
+              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/journey-content/new"
+                  onClick={() => playClick()}
+                  className="px-7 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105 text-center"
+                  style={{ background: 'linear-gradient(135deg,#B05000,#FF6B00)', border: '2px solid #FF9A00', boxShadow: '0 0 24px rgba(255,107,0,0.4)' }}
+                >
+                  ➕ CRIAR JORNADA
+                </Link>
+              )}
+            </div>
           </section>
 
           {/* ── STATS HUD ── */}
@@ -246,52 +263,71 @@ export default function DashboardPage() {
             <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4">— FASES OCEÂNICAS —</h3>
             <div className="grid md:grid-cols-3 gap-5">
 
-              {/* Pacific — ACTIVE */}
-              <div className="rounded-2xl overflow-hidden backdrop-blur-md relative" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid #00D4FF50', boxShadow: '0 0 30px rgba(0,212,255,0.12), 0 8px 32px rgba(0,0,0,0.4)' }}>
-                <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,#00D4FF,transparent)' }} />
-                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#001a40,#003080)' }}>
-                  <Image src="/images/icon_pacifico.png" alt="Pacific Ocean" width={70} height={70} className="object-contain" />
-                  <div className="absolute top-2 right-2 bg-cyan-400/20 border border-cyan-400/40 rounded px-2 py-0.5">
-                    <span className="text-[9px] font-black tracking-widest text-cyan-300">ATIVO</span>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h4 className="font-black text-white text-sm tracking-wider mb-1" style={{ textShadow: '0 0 10px rgba(0,212,255,0.4)' }}>PACIFIC OCEAN</h4>
-                  <p className="text-[10px] text-blue-100/80 mb-4">4.280m de profundidade</p>
-                  <Link href="/challenge/1" onClick={() => playClick()} className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', boxShadow: '0 0 16px rgba(0,102,255,0.3)' }}>
-                    ▶ INICIAR JORNADA
-                  </Link>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { playClick(); router.push('/admin/journey-content/1') }}
-                      className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
-                      style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
-                    >
-                      ✏️ EDITAR JORNADA
-                    </button>
-                  )}
-                </div>
-              </div>
+              {/* All journeys from DB — fully dynamic */}
+              {journeys.map((journey) => {
+                const OCEAN_ICONS = ['/images/icon_pacifico.png', '/images/icon_indico.png', '/images/icon_atlantico.png']
+                const iconSrc = OCEAN_ICONS[(journey.phase_id - 1) % OCEAN_ICONS.length]
+                const locked = journey.blocked
 
-              {/* Atlantic — ACTIVE */}
-              <div className="rounded-2xl overflow-hidden backdrop-blur-md relative" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid #00D4FF50', boxShadow: '0 0 30px rgba(0,212,255,0.12), 0 8px 32px rgba(0,0,0,0.4)' }}>
-                {/* active glow top line */}
-                <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,#00D4FF,transparent)' }} />
-                <div className="h-28 flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg,#002060,#0043BB)' }}>
-                  <Image src="/images/icon_atlantico.png" alt="Atlantic Ocean" width={70} height={70} className="object-contain" />
-                  <div className="absolute top-2 right-2 bg-cyan-400/20 border border-cyan-400/40 rounded px-2 py-0.5">
-                    <span className="text-[9px] font-black tracking-widest text-cyan-300">ATIVO</span>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h4 className="font-black text-white text-sm tracking-wider mb-1" style={{ textShadow: '0 0 10px rgba(0,212,255,0.4)' }}>ATLANTIC OCEAN</h4>
-                  <p className="text-[10px] text-blue-100/80 mb-4">3.339m de profundidade</p>
+                const toggleBlocked = async () => {
+                  const newVal = !journey.blocked
+                  setJourneys((prev) => prev.map((j) => j.phase_id === journey.phase_id ? { ...j, blocked: newVal } : j))
+                  await fetch(`/api/admin/journey/${journey.phase_id}/toggle`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ field: 'blocked', value: newVal }),
+                  })
+                }
 
-                  <Link href="/challenge/2" onClick={() => playClick()} className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg,#CC4A00,#FF6B35)', boxShadow: '0 0 16px rgba(255,107,53,0.3)' }}>
-                    ▶ CONTINUAR MISSÃO
-                  </Link>
-                </div>
-              </div>
+                return (
+                  <div key={journey.phase_id} className={`rounded-2xl overflow-hidden backdrop-blur-md relative ${locked ? 'opacity-60' : ''}`} style={{ background: 'rgba(5,14,26,0.75)', border: locked ? '1px solid #ffffff15' : '1px solid #00D4FF50', boxShadow: locked ? '0 8px 32px rgba(0,0,0,0.4)' : '0 0 30px rgba(0,212,255,0.12), 0 8px 32px rgba(0,0,0,0.4)' }}>
+                    {!locked && <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,#00D4FF,transparent)' }} />}
+                    <div className="h-28 flex items-center justify-center relative" style={{ background: locked ? 'linear-gradient(135deg,#0d0d0d,#1a1a2e)' : 'linear-gradient(135deg,#002060,#0043BB)' }}>
+                      <Image src={iconSrc} alt={journey.title} width={70} height={70} className={`object-contain ${locked ? 'grayscale' : ''}`} />
+                      <div className={`absolute top-2 right-2 ${locked ? 'bg-white/10 border-white/20' : 'bg-cyan-400/20 border-cyan-400/40'} border rounded px-2 py-0.5`}>
+                        <span className={`text-[9px] font-black tracking-widest ${locked ? 'text-white/50' : 'text-cyan-300'}`}>
+                          {locked ? '🔒 BLOQUEADO' : journey.is_pro ? '⭐ PRO' : 'ATIVO'}
+                        </span>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); playClick(); toggleBlocked() }}
+                          className="absolute top-2 left-2 w-7 h-7 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95"
+                          style={{ background: locked ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)', border: locked ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(34,197,94,0.5)' }}
+                          title={locked ? 'Desbloquear jornada' : 'Bloquear jornada'}
+                        >
+                          <span className="text-xs">{locked ? '🔒' : '🔓'}</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="p-5">
+                      <h4 className={`font-black text-sm tracking-wider mb-1 ${locked ? 'text-white/50' : 'text-white'}`} style={!locked ? { textShadow: '0 0 10px rgba(0,212,255,0.4)' } : {}}>
+                        {journey.title.toUpperCase()}
+                        {journey.is_pro && <span className="ml-2 text-[9px] text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded px-1.5 py-0.5 align-middle">PRO</span>}
+                      </h4>
+                      <p className={`text-[10px] mb-4 ${locked ? 'text-blue-100/40' : 'text-blue-100/80'}`}>{journey.description}</p>
+                      {locked ? (
+                        <div className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white/30 cursor-not-allowed" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          🔒 EM BREVE
+                        </div>
+                      ) : (
+                        <Link href={`/challenge/${journey.phase_id}`} onClick={() => playClick()} className="block text-center text-xs font-black tracking-widest py-2.5 rounded-lg text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg,#CC4A00,#FF6B35)', boxShadow: '0 0 16px rgba(255,107,53,0.3)' }}>
+                          ▶ INICIAR JORNADA
+                        </Link>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => { playClick(); router.push(`/admin/journey-content/${journey.phase_id}`) }}
+                          className="w-full mt-2 text-[10px] font-black tracking-widest py-2 rounded-lg transition-all hover:scale-105 active:scale-95 uppercase"
+                          style={{ background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0)', color: '#111', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 0 12px rgba(255,255,255,0.15)' }}
+                        >
+                          ✏️ EDITAR JORNADA
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </section>
 

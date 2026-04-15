@@ -1,12 +1,10 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { toFile } from 'openai'
 
 export async function POST(request: NextRequest) {
   let body: { audio?: string; mimeType?: string }
   try {
     body = await request.json()
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: 'Formato de requisição inválido' }, { status: 400 })
   }
 
@@ -14,56 +12,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Nenhum áudio recebido' }, { status: 400 })
   }
 
-  const openaiKey = process.env.OPENAI_API_KEY
-  const hfToken = process.env.HF_TOKEN
-  if (!openaiKey && !hfToken) {
-    return NextResponse.json(
-      { error: 'Nenhuma API configurada. Defina OPENAI_API_KEY ou HF_TOKEN no .env.local' },
-      { status: 500 }
-    )
+  const key = process.env.AZURE_SPEECH_KEY
+  const region = process.env.AZURE_SPEECH_REGION
+  if (!key || !region) {
+    return NextResponse.json({ error: 'Azure Speech não configurado' }, { status: 500 })
   }
 
-  const mimeType = body.mimeType || 'audio/webm'
   const audioBuf = Buffer.from(body.audio, 'base64')
-  const ext = mimeType === 'audio/ogg' ? 'ogg' : mimeType === 'audio/mp4' ? 'mp4' : 'webm'
-  const filename = `recording.${ext}`
 
-  try {
-    if (openaiKey) {
-      const openai = new OpenAI({ apiKey: openaiKey })
-      const audioFile = await toFile(audioBuf, filename, { type: mimeType })
-      const result = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: 'whisper-1',
-        language: 'en',
-        response_format: 'json',
-      })
-      return NextResponse.json({ transcript: result.text ?? '' })
+  // Azure STT REST endpoint — audio must be WAV PCM 16kHz (converted client-side)
+  const res = await fetch(
+    `https://${region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US&format=simple`,
+    {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': key,
+        'Content-Type': 'audio/wav; codecs=audio/pcm; samplerate=16000',
+        'Accept': 'application/json',
+      },
+      body: audioBuf,
     }
+  )
 
-    // Fallback: HuggingFace (gratuito)
-    const hfRes = await fetch(
-      'https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: audioBuf.toString('base64'),
-          parameters: { generate_kwargs: { language: 'english', task: 'transcribe' } },
-        }),
-      }
-    )
-    const hfText = await hfRes.text()
-    if (!hfRes.ok) {
-      return NextResponse.json({ error: `HuggingFace erro: ${hfText}` }, { status: 502 })
-    }
-    const hfJson = JSON.parse(hfText)
-    return NextResponse.json({ transcript: hfJson.text ?? '' })
-  } catch (err: any) {
-    const msg = err?.message ?? String(err)
-    return NextResponse.json({ error: `Erro interno: ${msg}` }, { status: 500 })
+  const text = await res.text()
+  if (!res.ok) {
+    return NextResponse.json({ error: `Azure STT erro: ${text}` }, { status: 502 })
   }
+
+  let data: { RecognitionStatus?: string; DisplayText?: string }
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return NextResponse.json({ error: 'Resposta inválida do Azure' }, { status: 502 })
+  }
+
+  if (data.RecognitionStatus !== 'Success') {
+    // No speech detected — return empty transcript instead of error so UI handles gracefully
+    return NextResponse.json({ transcript: '' })
+  }
+
+  return NextResponse.json({ transcript: data.DisplayText ?? '' })
 }
+
