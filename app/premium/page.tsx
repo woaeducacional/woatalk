@@ -1,0 +1,248 @@
+'use client'
+
+import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { playClick } from '@/lib/sounds'
+
+export default function PremiumPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+    }
+  }, [status, router])
+
+  const plans = [
+    {
+      name: 'FREE',
+      price: '0',
+      period: '— Forever',
+      features: [
+        'Acesso a 3 jornadas iniciais',
+        'Você pode desbloquear novas jornadas com base na sua evolução',
+        'Desafios básicos',
+        'Comunidade limitada',
+        'Rastreamento de progresso'
+      ],
+      gradient: 'linear-gradient(135deg, #003AB0, #0066FF)',
+      border: '#00D4FF',
+      cta: 'Já estou nesse plano',
+      ctaDisabled: true
+    },
+    {
+      name: 'PREMIUM',
+      price: '29,90',
+      period: '/ mês',
+      features: [
+        'Acesso a todas as jornadas',
+        '5 WOA coins por dia apenas por entrar na plataforma',
+        'Desafios avançados',
+        'Comunidade premium',
+        'Análise completa de progresso',
+        'Bônus mensal de moedas'
+      ],
+      gradient: 'linear-gradient(135deg, #B05000, #FF6B00)',
+      border: '#FF9A00',
+      cta: 'Ativar Premium',
+      ctaDisabled: false,
+      popular: true
+    },
+    {
+      name: 'WOA TALK CLUB',
+      price: '129,90',
+      period: '/ mês',
+      features: [
+        'Acesso VIP a tudo',
+        '1000 XP por dia',
+        'Desafios supremos exclusivos',
+        'Comunidade elite',
+        'Mentoria personalizada',
+        '3000 moedas mensais',
+        'Badge exclusivo de club'
+      ],
+      gradient: 'linear-gradient(135deg, #1a0533, #3b0764)',
+      border: '#A855F7',
+      cta: 'Entrar no Club',
+      ctaDisabled: false
+    }
+  ]
+
+  return (
+    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #050E1A 0%, #0a1929 50%, #050E1A 100%)' }}>
+      <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
+      
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { playClick(); router.push('/dashboard') }}
+              className="relative w-9 h-9 hover:scale-110 transition-transform"
+            >
+              <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/30" />
+              <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/50 object-cover" />
+            </button>
+            <div>
+              <h1 className="text-base font-black tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>PREMIUM</h1>
+              <p className="text-[10px] text-cyan-400/50 tracking-widest">UPGRADE SUA JORNADA</p>
+            </div>
+          </div>
+          <button
+            onClick={() => { playClick(); router.push('/dashboard') }}
+            className="px-4 py-2 rounded border border-cyan-400/30 text-cyan-300/70 text-xs font-bold tracking-widest hover:border-cyan-400/60 hover:text-cyan-300 transition-all"
+          >
+            ← VOLTAR
+          </button>
+        </header>
+
+        {/* Main content */}
+        <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-12 space-y-12">
+          {/* Hero */}
+          <div className="text-center space-y-4">
+            <h2 className="text-4xl font-black text-white" style={{ textShadow: '0 0 20px rgba(0,212,255,0.4)' }}>
+              Escolha seu plano
+            </h2>
+            <p className="text-blue-200/70 text-lg max-w-2xl mx-auto">
+              Desbloqueie todo o potencial do WOA Talk e domine o inglês de forma épica
+            </p>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid md:grid-cols-3 gap-6 relative">
+            {plans.map((plan, idx) => (
+              <div
+                key={idx}
+                className="relative rounded-2xl overflow-hidden backdrop-blur-md transition-all hover:scale-105 flex flex-col"
+                style={{
+                  background: plan.popular ? 'rgba(168,85,247,0.08)' : 'rgba(5,14,26,0.65)',
+                  border: `2px solid ${plan.popular ? plan.border : 'rgba(' + (plan.border === '#00D4FF' ? '0,212,255' : plan.border === '#FF9A00' ? '255,154,0' : '168,85,247') + ',0.25)'}`,
+                  boxShadow: plan.popular ? `0 0 30px ${plan.border}40` : 'none',
+                }}
+              >
+                <div className="p-8 space-y-6 flex-1">
+                  {/* Plan header */}
+                  <div className="space-y-2">
+                    <h3
+                      className="text-2xl font-black tracking-wider"
+                      style={{ color: plan.border }}
+                    >
+                      {plan.name}
+                    </h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-black text-white">R$ {plan.price}</span>
+                      <span className="text-blue-200/60 text-sm">{plan.period}</span>
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <div className="space-y-3">
+                    {plan.features.map((feature, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="text-base mt-0.5">✓</span>
+                        <p className="text-blue-200/80 text-sm">{feature}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="px-8 pb-8">
+                  {/* CTA Button */}
+                  <button
+                    onClick={() => playClick()}
+                    disabled={plan.ctaDisabled}
+                    className="w-full py-3 rounded-xl font-black tracking-widest text-sm transition-all hover:scale-105 active:scale-95"
+                    style={{
+                      background: plan.ctaDisabled
+                        ? 'rgba(255,255,255,0.1)'
+                        : plan.gradient,
+                      color: plan.ctaDisabled ? 'rgba(255,255,255,0.4)' : 'white',
+                      cursor: plan.ctaDisabled ? 'not-allowed' : 'pointer',
+                      border: `1px solid ${plan.border}40`,
+                      boxShadow: !plan.ctaDisabled ? `0 0 20px ${plan.border}30` : 'none',
+                    }}
+                  >
+                    {plan.cta}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Benefits showcase */}
+          <div className="space-y-6">
+            <h3 className="text-2xl font-black text-white text-center">Por que fazer upgrade?</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                {
+                  title: 'Jornadas Ilimitadas',
+                  desc: 'Acesso a todas as jornadas temáticas disponíveis e futuras'
+                },
+                {
+                  title: 'XP Turbinado',
+                  desc: 'Ganhe até 10x mais XP nos desafios premium'
+                },
+                {
+                  title: 'Comunidade Elite',
+                  desc: 'Conecte-se com players de alto nível em uma comunidade premium'
+                },
+                {
+                  title: 'Recompensas Exclusivas',
+                  desc: 'Badges, bônus de moedas e eventos privados todos os meses'
+                }
+              ].map((benefit, i) => (
+                <div
+                  key={i}
+                  className="p-6 rounded-xl backdrop-blur-md border border-cyan-400/20"
+                  style={{ background: 'rgba(5,14,26,0.65)' }}
+                >
+                  <h4 className="font-black text-white mb-2">{benefit.title}</h4>
+                  <p className="text-blue-200/70 text-sm">{benefit.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* FAQ */}
+          <div className="space-y-6">
+            <h3 className="text-2xl font-black text-white text-center">Dúvidas frequentes</h3>
+            <div className="space-y-4 max-w-3xl mx-auto">
+              {[
+                {
+                  q: 'Posso cancelar a qualquer momento?',
+                  a: 'Sim! Você pode cancelar sua assinatura quando quiser, sem cobranças adicionais.'
+                },
+                {
+                  q: 'Qual a diferença entre Premium e CLUB?',
+                  a: 'CLUB oferece o dobro de XP diário, acesso a desafios supremos exclusivos, mentoria personalizada e muito mais.'
+                },
+                {
+                  q: 'Como recebo meus bônus de moedas?',
+                  a: 'Os bônus são creditados automaticamente no primeiro dia de cada mês da sua assinatura.'
+                }
+              ].map((faq, i) => (
+                <div
+                  key={i}
+                  className="p-6 rounded-xl backdrop-blur-md border border-cyan-400/20"
+                  style={{ background: 'rgba(5,14,26,0.65)' }}
+                >
+                  <h4 className="font-black text-white mb-2">{faq.q}</h4>
+                  <p className="text-blue-200/70 text-sm">{faq.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="py-6 text-center border-t border-cyan-400/10 mt-12">
+          <p className="text-[11px] text-blue-200/30 tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
+        </footer>
+      </div>
+    </div>
+  )
+}

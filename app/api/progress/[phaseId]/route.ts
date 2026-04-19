@@ -44,6 +44,15 @@ export async function POST(
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
+
+        // Record XP history for weekly ranking
+        if (xp_earned > 0) {
+          await supabase.from('xp_history').insert({
+            user_id: userId,
+            amount: xp_earned,
+            reason: 'phase_progress',
+          })
+        }
       }
     }
 

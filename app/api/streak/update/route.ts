@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
+import { communityService } from '@/src/services/community.service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +69,14 @@ export async function POST(request: NextRequest) {
         .eq('id', userData.id)
 
       if (streakError) console.error('Streak update error:', streakError)
+
+      // ── Community auto-publish for streak milestones ──
+      const streakMilestones = [7, 14, 30, 60, 100]
+      if (streakStatus === 'increased' && streakMilestones.includes(newStreakCount)) {
+        try {
+          await communityService.createPost(userData.id, 'streak_milestone', { streak: newStreakCount })
+        } catch (e) { console.error('Community streak post error:', e) }
+      }
     }
 
     return NextResponse.json({

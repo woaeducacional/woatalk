@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
+import { communityService } from '@/src/services/community.service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,7 +68,37 @@ export async function POST(request: NextRequest) {
 
     if (updateError) console.error('Update error:', updateError)
 
+    // ── Record XP history for weekly ranking ──
+    if (isFirstCompletion && totalXp > 0) {
+      await supabase.from('xp_history').insert({
+        user_id: userData.id,
+        amount: totalXp,
+        reason: 'mission_group',
+      })
+    }
+
     const isLastGroup = missionGroupId === 4
+
+    // ── Community auto-publish ──
+    if (isFirstCompletion) {
+      try {
+        if (newBadgeEarned) {
+          await communityService.createPost(userData.id, 'badge_earned', { badge: newBadgeEarned })
+        }
+        await communityService.createPost(userData.id, 'block_completed', { phaseId, missionGroupId })
+        if (isLastGroup) {
+          await communityService.createPost(userData.id, 'journey_completed', { phaseId })
+        }
+        const newXp = (updatePayload.xp_total as number) ?? (userData.xp_total ?? 0)
+        const xpMilestones = [500, 1000, 2500, 5000, 10000]
+        const oldXp = userData.xp_total ?? 0
+        for (const m of xpMilestones) {
+          if (oldXp < m && newXp >= m) {
+            await communityService.createPost(userData.id, 'xp_milestone', { xp: m })
+          }
+        }
+      } catch (e) { console.error('Community post error:', e) }
+    }
 
     return NextResponse.json({
       success: true,
