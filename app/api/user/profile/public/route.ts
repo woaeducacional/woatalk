@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
         message: error.message,
         code: error.code,
         id,
-        status: error.status,
       })
       return NextResponse.json(
         { error: `Database error: ${error.message}` },

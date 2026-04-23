@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { playClick } from '@/lib/sounds'
+import { NotificationBell } from '@/src/components/NotificationBell'
 import { calcLevel } from '@/lib/level'
 
 interface UserProfile {
@@ -19,6 +20,7 @@ interface UserProfile {
   language?: string
   gender?: string
   avatar?: string
+  avatar_status?: string
   xp_total?: number
   streak_count?: number
   badges?: string
@@ -31,6 +33,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [avatarStatus, setAvatarStatus] = useState<string>('none')
   const [badgesModalOpen, setBadgesModalOpen] = useState(false)
   const [profile, setProfile] = useState<UserProfile>({
     id: '',
@@ -64,6 +67,9 @@ export default function ProfilePage() {
               setFormData(data.profile)
               if (data.profile.avatar_url) {
                 setAvatarPreview(data.profile.avatar_url)
+              }
+              if (data.profile.avatar_status) {
+                setAvatarStatus(data.profile.avatar_status)
               }
             }
           } else {
@@ -104,6 +110,7 @@ export default function ProfilePage() {
   }
 
   const handleAvatarClick = () => {
+    if (avatarStatus === 'pending') return
     fileInputRef.current?.click()
   }
 
@@ -176,6 +183,11 @@ export default function ProfilePage() {
       setProfile(data.profile || formData)
       setFormData(data.profile || formData)
       
+      // Update avatar status if photo was uploaded
+      if (data.avatar_status) {
+        setAvatarStatus(data.avatar_status)
+      }
+      
       // Clear file input after successful upload
       if (fileInput) {
         fileInput.value = ''
@@ -229,12 +241,15 @@ export default function ProfilePage() {
               <p className="text-[10px] text-cyan-400/50 tracking-widest">EDITAR INFORMAÇÕES</p>
             </div>
           </div>
-          <button
-            onClick={() => { playClick(); router.push('/dashboard') }}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm border border-cyan-400/30 text-cyan-300/70 font-bold tracking-widest hover:border-cyan-400/60 hover:text-cyan-300 transition-all"
-          >
-            ← VOLTAR
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <NotificationBell />
+            <button
+              onClick={() => { playClick(); router.push('/dashboard') }}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm border border-cyan-400/30 text-cyan-300/70 font-bold tracking-widest hover:border-cyan-400/60 hover:text-cyan-300 transition-all"
+            >
+              ← VOLTAR
+            </button>
+          </div>
         </header>
 
         {/* Main content */}
@@ -244,16 +259,25 @@ export default function ProfilePage() {
             <div className="relative inline-block">
               <div
                 onClick={handleAvatarClick}
-                className="relative w-24 sm:w-32 h-24 sm:h-32 rounded-full cursor-pointer group"
+                className={`relative w-24 sm:w-32 h-24 sm:h-32 rounded-full group ${avatarStatus === 'pending' ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{ background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,102,255,0.1))' }}
               >
                 {avatarPreview ? (
-                  <Image
-                    src={avatarPreview}
-                    alt="Avatar"
-                    fill
-                    className="rounded-full object-cover"
-                  />
+                  <>
+                    <Image
+                      src={avatarPreview}
+                      alt="Avatar"
+                      fill
+                      className={`rounded-full object-cover ${avatarStatus === 'pending' ? 'opacity-60' : ''}`}
+                    />
+                    {avatarStatus === 'pending' && (
+                      <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)', border: '2px solid rgba(255,200,0,0.5)' }}>
+                        <svg className="w-8 h-8 text-yellow-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex items-center justify-center w-full h-full">
                     <svg className="w-12 sm:w-16 h-12 sm:h-16 text-cyan-400/40" fill="currentColor" viewBox="0 0 20 20">
@@ -261,9 +285,11 @@ export default function ProfilePage() {
                     </svg>
                   </div>
                 )}
-                <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center" style={{ border: '2px solid rgba(0,212,255,0.3)' }}>
-                  <span className="text-xl opacity-0 group-hover:opacity-100 transition-opacity font-black">EDITAR</span>
-                </div>
+                {avatarStatus !== 'pending' && (
+                  <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center" style={{ border: '2px solid rgba(0,212,255,0.3)' }}>
+                    <span className="text-xl opacity-0 group-hover:opacity-100 transition-opacity font-black">EDITAR</span>
+                  </div>
+                )}
               </div>
               <input
                 ref={fileInputRef}
@@ -271,9 +297,19 @@ export default function ProfilePage() {
                 accept="image/*"
                 onChange={handleAvatarChange}
                 className="hidden"
+                disabled={avatarStatus === 'pending'}
               />
             </div>
-            <p className="text-xs text-blue-200/50 mt-3">Clique para fazer upload de foto</p>
+            {avatarStatus === 'pending' ? (
+              <div className="mt-3 px-4 py-2 rounded-lg inline-flex items-center gap-2" style={{ background: 'rgba(255,200,0,0.1)', border: '1px solid rgba(255,200,0,0.3)' }}>
+                <svg className="w-4 h-4 text-yellow-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-xs text-yellow-300 font-bold tracking-wider">AGUARDANDO VALIDAÇÃO DA FOTO ENVIADA</span>
+              </div>
+            ) : (
+              <p className="text-xs text-blue-200/50 mt-3">Clique para fazer upload de foto</p>
+            )}
           </div>
 
           {/* Stats section */}

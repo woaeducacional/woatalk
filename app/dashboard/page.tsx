@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { playClick, playBubble } from '@/lib/sounds'
 import { EagleTip } from '@/src/components/EagleTip'
 import { BadgesModal } from '@/src/components/BadgesModal'
+import { NotificationBell } from '@/src/components/NotificationBell'
 import { calcLevel } from '@/lib/level'
 
 interface TickerPost {
@@ -19,12 +20,12 @@ interface TickerPost {
   users: { id: string; name: string; avatar_url: string | null }
 }
 
-type JourneyItem = { phase_id: number; title: string; description: string; blocked: boolean; is_pro: boolean }
+type JourneyItem = { phase_id: number; title: string; description: string; blocked: boolean; is_pro: boolean; icon_url?: string | null }
 
-const OCEAN_ICONS_LIST = ['/images/icon_pacifico.png', '/images/icon_indico.png', '/images/icon_atlantico.png']
+const OCEAN_ICONS_DEFAULT = '/images/jornada-secreta.png'
 
 function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boolean }) {
-  const iconSrc = OCEAN_ICONS_LIST[(journey.phase_id - 1) % OCEAN_ICONS_LIST.length]
+  const iconSrc = journey.icon_url || OCEAN_ICONS_DEFAULT
   const locked = journey.blocked
   const size = isCenter ? 176 : 136
   return (
@@ -67,8 +68,8 @@ function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boo
       <Image
         src={iconSrc}
         alt={journey.title}
-        width={isCenter ? 88 : 54}
-        height={isCenter ? 88 : 54}
+        width={isCenter ? 130 : 80}
+        height={isCenter ? 130 : 80}
         className={`object-contain relative z-10 ${locked ? 'grayscale opacity-35' : ''}`}
       />
       {locked && (
@@ -97,10 +98,12 @@ function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boo
 
 function JourneyGlobeCarousel({
   journeys,
+  lastPhaseId,
   isAdmin,
   onToggleBlocked,
 }: {
   journeys: JourneyItem[]
+  lastPhaseId: number | null
   isAdmin: boolean
   onToggleBlocked: (phaseId: number) => void
 }) {
@@ -214,6 +217,15 @@ function JourneyGlobeCarousel({
           >
             🔒 EM BREVE
           </div>
+        ) : lastPhaseId === centerJ.phase_id ? (
+          <Link
+            href={`/challenge/${centerJ.phase_id}`}
+            onClick={() => playClick()}
+            className="inline-block px-8 py-2.5 text-xs font-black tracking-widest text-white rounded-full transition-all hover:scale-105 active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #00DD00, #00AA00)', boxShadow: '0 0 22px rgba(0,221,0,0.5)' }}
+          >
+            ▶ CONTINUAR
+          </Link>
         ) : (
           <Link
             href={`/challenge/${centerJ.phase_id}`}
@@ -280,6 +292,7 @@ export default function DashboardPage() {
   const [levelOpen, setLevelOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [journeys, setJourneys] = useState<JourneyItem[]>([])
+  const [lastPhaseId, setLastPhaseId] = useState<number | null>(null)
   const [isEmailVerified, setIsEmailVerified] = useState(true)
   const [recentPosts, setRecentPosts] = useState<TickerPost[]>([])
   const [showVerifyModal, setShowVerifyModal] = useState(false)
@@ -308,7 +321,31 @@ export default function DashboardPage() {
       .catch(() => {})
     fetch('/api/journey')
       .then(r => r.ok ? r.json() : { journeys: [] })
-      .then(d => setJourneys(d.journeys ?? []))
+      .then(d => {
+        const allJourneys = d.journeys ?? []
+        
+        // Fetch last accessed journey
+        fetch('/api/history?limit=1')
+          .then(hr => hr.ok ? hr.json() : { history: [] })
+          .then(hd => {
+            const lastEntry = (hd.history ?? [])[0]
+            if (lastEntry?.phase_id) {
+              setLastPhaseId(lastEntry.phase_id)
+              
+              // Reorder: move last accessed to first position
+              const lastIdx = allJourneys.findIndex((j: JourneyItem) => j.phase_id === lastEntry.phase_id)
+              if (lastIdx > 0) {
+                const reordered = [allJourneys[lastIdx], ...allJourneys.slice(0, lastIdx), ...allJourneys.slice(lastIdx + 1)]
+                setJourneys(reordered)
+              } else {
+                setJourneys(allJourneys)
+              }
+            } else {
+              setJourneys(allJourneys)
+            }
+          })
+          .catch(() => setJourneys(allJourneys))
+      })
       .catch(() => {})
     fetch('/api/community/recent')
       .then(r => r.ok ? r.json() : { posts: [] })
@@ -428,6 +465,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <NotificationBell />
             <Link
               href="/premium"
               onClick={() => playClick()}
@@ -646,6 +684,7 @@ export default function DashboardPage() {
             <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-6">— FASES OCEÂNICAS —</h3>
             <JourneyGlobeCarousel
               journeys={journeys}
+              lastPhaseId={lastPhaseId}
               isAdmin={isAdmin}
               onToggleBlocked={handleToggleBlocked}
             />

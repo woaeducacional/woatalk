@@ -34,7 +34,6 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "src/components/journey_01/_deprecated"
+    "node_modules"
   ]
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/authOptions"
-import { communityService, Reaction, CommentPhrase } from "../services/community.service"
+import { communityService, Reaction, CommentPhrase } from "./community.service"
 import { supabase } from "../lib/supabaseClient"
 
 async function getUserId(email: string): Promise<string | null> {

@@ -39,12 +39,12 @@ export default function PremiumPage() {
       price: '29,90',
       period: '/ mês',
       features: [
-        'Acesso a todas as jornadas',
-        '5 WOA coins por dia apenas por entrar na plataforma',
-        'Desafios avançados',
-        'Comunidade premium',
-        'Análise completa de progresso',
-        'Bônus mensal de moedas'
+        'Módulos Especiais',
+        'Tutor com IA',
+        'Prática de Conversação guiada',
+        'Desbloqueio total do app',
+        'Sem anúncios',
+        'Técnicas WOA integradas'
       ],
       gradient: 'linear-gradient(135deg, #B05000, #FF6B00)',
       border: '#FF9A00',

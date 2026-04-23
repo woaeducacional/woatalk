@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { addReaction, removeReaction } from "@/src/controllers/community.controller"
+import { addReaction, removeReaction } from "@/src/services/community.controller"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params

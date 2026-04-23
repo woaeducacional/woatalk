@@ -75,24 +75,30 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Get public URL
+      // Get public URL with cache-busting timestamp
       const { data: publicUrlData } = supabaseServer.storage
         .from('avatars')
         .getPublicUrl(fileName)
       
-      avatarUrl = publicUrlData?.publicUrl || null
+      const baseUrl = publicUrlData?.publicUrl || null
+      avatarUrl = baseUrl ? `${baseUrl}?t=${Date.now()}` : null
     }
 
     // Extract profile fields
-    const profile = {
+    const profile: Record<string, unknown> = {
       nickname: formData.get('nickname') || null,
       phone: formData.get('phone') || null,
       bio: formData.get('bio') || null,
       country: formData.get('country') || null,
       language: formData.get('language') || 'pt-BR',
       gender: formData.get('gender') || null,
-      ...(avatarUrl && { avatar_url: avatarUrl }),
       updated_at: new Date().toISOString(),
+    }
+
+    // If avatar was uploaded, set it as pending moderation
+    if (avatarUrl) {
+      profile.avatar_url = avatarUrl
+      profile.avatar_status = 'pending'
     }
 
     // Update user profile in database
@@ -109,9 +115,45 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // If avatar was uploaded, notify all admins for approval
+    if (avatarUrl) {
+      // Get the user's ID and name
+      const { data: userData } = await supabaseServer
+        .from('users')
+        .select('id, name')
+        .eq('email', session.user.email)
+        .single()
+
+      if (userData) {
+        // Find all admin users
+        const { data: admins } = await supabaseServer
+          .from('users')
+          .select('id')
+          .eq('role', 'admin')
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map((admin) => ({
+            user_id: admin.id,
+            type: 'photo_approval',
+            title: 'Nova foto de perfil para aprovar',
+            message: `${userData.name} enviou uma nova foto de perfil para aprovação.`,
+            data: {
+              requester_id: userData.id,
+              requester_name: userData.name,
+              requester_email: session.user.email,
+              avatar_url: avatarUrl,
+            },
+          }))
+
+          await supabaseServer.from('notifications').insert(notifications)
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       avatar_url: avatarUrl,
+      avatar_status: avatarUrl ? 'pending' : undefined,
       message: 'Profile updated successfully',
     })
   } catch (error) {
@@ -138,7 +180,7 @@ export async function GET(request: NextRequest) {
     // Fetch user profile from database
     const { data, error } = await supabaseServer
       .from('users')
-      .select('id, name, email, nickname, phone, bio, country, language, gender, avatar_url, xp_total, streak_count, badges, created_at, updated_at')
+      .select('id, name, email, nickname, phone, bio, country, language, gender, avatar_url, avatar_status, xp_total, streak_count, badges, created_at, updated_at')
       .eq('email', session.user.email)
       .single()
 

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
+import { ImageUpload } from '@/src/components/ImageUpload'
 import type {
   JourneyContent,
   MissionGroupDef,
@@ -232,6 +233,7 @@ const defaultBlock5: Block5Content = {
 interface PhaseMeta {
   title: string
   description: string
+  icon_url?: string
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -250,6 +252,7 @@ export default function NewJourneyWizard() {
   const [phase, setPhase] = useState<PhaseMeta>({
     title: '',
     description: '',
+    icon_url: undefined,
   })
 
   // Content
@@ -304,10 +307,11 @@ export default function NewJourneyWizard() {
       const newPhaseId = Math.max(...existingIds, 2) + 1
 
       // Save journey content (upsert on phase_id)
-      const contentPayload: JourneyContent = {
+      const contentPayload: any = {
         phase_id: newPhaseId,
         title: phase.title,
         description: phase.description,
+        icon_url: phase.icon_url || null,
         mission_groups: missionGroups,
         block1,
         block2,
@@ -368,6 +372,12 @@ export default function NewJourneyWizard() {
         onChange={(v) => setPhase({ ...phase, description: v })}
         textarea
         placeholder="Nesta jornada você vai aprender a se apresentar em inglês..."
+      />
+      <ImageUpload
+        label="Ícone de Capa da Jornada 🎨"
+        value={phase.icon_url}
+        onUpload={(url) => setPhase({ ...phase, icon_url: url })}
+        phaseId={3}
       />
     </div>
   )

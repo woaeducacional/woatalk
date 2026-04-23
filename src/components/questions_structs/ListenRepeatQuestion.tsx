@@ -93,6 +93,12 @@ interface ListenRepeatQuestionProps {
    * Se não fornecido, o progresso não é salvo.
    */
   persistKey?: string
+
+  /**
+   * Array de traduções para as frases (um-para-um com sentences)
+   * Se não fornecido, tenta traduzir automaticamente via API
+   */
+  translations?: string[]
 }
 
 /**
@@ -103,10 +109,12 @@ interface ListenRepeatQuestionProps {
  * - Reconhecimento de fala (Web Speech API)
  * - Cálculo de score com threshold de 80%
  * - Limite de 3 tentativas com opção de pular
+ * - Exibição de tradução em português
  *
  * @example
  * <ListenRepeatQuestion
  *   sentences={["I watch movies.", "I listen to music."]}
+ *   translations={["Eu assisto filmes.", "Eu escuto música."]}
  *   onComplete={(xp) => console.log(`Completed with ${xp} XP`)}
  *   xpReward={25}
  *   icon="🎧"
@@ -129,6 +137,7 @@ export function ListenRepeatQuestion({
   onBack,
   onSentenceChange,
   persistKey,
+  translations,
 }: ListenRepeatQuestionProps) {
   const [repeatIndex, setRepeatIndex] = useState(() => {
     if (persistKey) {
@@ -140,6 +149,7 @@ export function ListenRepeatQuestion({
     }
     return 0
   })
+  const [autoTranslations, setAutoTranslations] = useState<Record<number, string>>({})
   const [isListening, setIsListening] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -161,6 +171,39 @@ export function ListenRepeatQuestion({
       onBack?.()
     }
   }, [sentences, onBack])
+
+  // Busca traduções automaticamente se não fornecidas
+  useEffect(() => {
+    if (translations) return // Se fornecidas via prop, não precisa buscar
+
+    const fetchTranslations = async () => {
+      const translated: Record<number, string> = {}
+      for (let i = 0; i < sentences.length; i++) {
+        try {
+          const res = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: sentences[i] }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            let translation = data.translation || data.translated_text
+            // Garante que não retornou a mesma frase (fallback falhado)
+            if (!translation || translation.toLowerCase() === sentences[i].toLowerCase()) {
+              translation = `(tradução: ${sentences[i].toLowerCase()})`
+            }
+            translated[i] = translation
+          }
+        } catch (err) {
+          console.error(`Erro ao traduzir frase ${i}:`, err)
+          translated[i] = `(tradução: ${sentences[i].toLowerCase()})`
+        }
+      }
+      setAutoTranslations(translated)
+    }
+
+    fetchTranslations()
+  }, [sentences, translations])
 
   // Notifica o parent sobre mudança de frase (para activity tracking)
   useEffect(() => {
@@ -370,7 +413,13 @@ export function ListenRepeatQuestion({
         >
           {sentences[repeatIndex]}
         </p>
-
+        
+        {/* Tradução */}
+        {(translations?.[repeatIndex] || autoTranslations[repeatIndex]) && (
+          <p className="text-sm mt-3 leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            {translations?.[repeatIndex] || autoTranslations[repeatIndex]}
+          </p>
+        )}
       </div>
 
       {/* ── LISTEN LOCK COUNTER ── */}

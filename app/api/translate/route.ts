@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
   // Primary: MyMemory (free, no token, no cold start)
   try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=pt|en`
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|pt`
     const response = await fetch(url, { signal: AbortSignal.timeout(10000) })
 
     if (response.ok) {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   if (hfToken) {
     try {
       const response = await fetch(
-        'https://api-inference.huggingface.co/models/Helsinki-NLP/opus-mt-pt-en',
+        'https://api-inference.huggingface.co/models/Helsinki-NLP/opus-mt-en-pt',
         {
           method: 'POST',
           headers: {
