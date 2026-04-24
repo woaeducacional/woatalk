@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { ImageUpload } from '@/src/components/ImageUpload'
 import type { JourneyContent, MissionGroupDef } from '@/lib/journeyContent'
 
 /* ─── Shared styles ────────────────────────────────────────── */
@@ -395,6 +396,13 @@ export default function AdminJourneyContentEditor() {
               placeholder="Ex: Self Introduction in English"
             />
           </div>
+
+          <ImageUpload
+            label="Ícone de Capa da Jornada 🎨"
+            value={(content as any).icon_url}
+            onUpload={(url) => updateField('icon_url' as any, url)}
+            phaseId={phaseId}
+          />
 
           <p className="text-xs font-bold text-white/50 mt-4 mb-2">
             Blocos de Missão (cards que o aluno vê)

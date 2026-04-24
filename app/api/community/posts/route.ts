@@ -1,6 +1,3 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createPost } from "@/src/controllers/community.controller";
-
-export async function POST(request: NextRequest) {
-  return await createPost(request);
-}
+export {}
+// Posts are created automatically via triggers (mission completion, streak milestones, etc.)
+// No manual post creation endpoint needed.

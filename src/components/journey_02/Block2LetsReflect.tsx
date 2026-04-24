@@ -147,13 +147,28 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
 
   // --- Your Turn ---
   if (stage === 'yourTurn') {
-    const templateDisplay = content.sentenceTemplate.replace('{first}', '______').replace('{second}', '______')
+    // Supports both {first}/{second} and _____ placeholder styles
+    const fillBlanks = (tpl: string, f: string, s: string): string => {
+      if (tpl.includes('{first}') || tpl.includes('{second}')) {
+        return tpl.replace('{first}', f).replace('{second}', s)
+      }
+      let count = 0
+      return tpl.replace(/_{3,}/g, () => { count++; return count === 1 ? f : count === 2 ? s : '______' })
+    }
+    const livePreview = fillBlanks(content.sentenceTemplate, firstBlank || '______', secondBlank || '______')
+    const livePtPreview = fillBlanks(
+      content.sentenceTemplatePt,
+      content.firstBlanks.find(b => b.en === firstBlank)?.pt || '______',
+      content.secondBlanks.find(b => b.en === secondBlank)?.pt || '______',
+    )
+    const bothSelected = !!(firstBlank && secondBlank)
+
     return (
       <div className="space-y-6" style={{ animation: 'fadeIn 0.5s ease-in' }}>
         <div className="p-6 rounded-xl border border-yellow-400/30" style={{ background: 'rgba(250,204,21,0.06)' }}>
           <p className="text-yellow-300 font-bold text-sm tracking-widest mb-0.5">🎤 SUA VEZ</p>
           <p className="text-white/40 text-[10px] mb-3">Sua vez</p>
-          <p className="text-blue-200/80 mb-4">👉 Monte sua frase: <span className="text-white font-bold">{templateDisplay}</span></p>
+          <p className="text-blue-200/80 mb-4">👉 Monte sua frase: <span className="text-white font-bold">{livePreview}</span></p>
 
           <p className="text-cyan-300 text-sm font-bold mb-2">{content.firstBlanksLabel}</p>
           <div className="grid grid-cols-1 gap-2 mb-4">
@@ -173,12 +188,12 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
             ))}
           </div>
 
-          {firstBlank && secondBlank && (
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <p className="text-white text-lg font-semibold">
-                  &quot;{content.sentenceTemplate.replace('{first}', firstBlank).replace('{second}', secondBlank)}&quot;
-                </p>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <p className={`text-lg font-semibold transition-colors ${bothSelected ? 'text-white' : 'text-white/40'}`}>
+                &quot;{livePreview}&quot;
+              </p>
+              {bothSelected && (
                 <button
                   onClick={() => setShowTranslation((v) => !v)}
                   title="Ver tradução"
@@ -189,17 +204,15 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
                     color: showTranslation ? '#00D4FF' : 'rgba(255,255,255,0.4)',
                   }}
                 >?</button>
-              </div>
-              {showTranslation && (
-                <p className="text-white/40 text-sm mb-4 -mt-2">
-                  &quot;{content.sentenceTemplatePt
-                    .replace('{first}', content.firstBlanks.find(b => b.en === firstBlank)?.pt ?? '')
-                    .replace('{second}', content.secondBlanks.find(b => b.en === secondBlank)?.pt ?? '')}&quot;
-                </p>
               )}
+            </div>
+            {bothSelected && showTranslation && (
+              <p className="text-white/40 text-sm mb-4 -mt-2">&quot;{livePtPreview}&quot;</p>
+            )}
+            {bothSelected && (
               <button
                 onClick={() => {
-                  const s = content.sentenceTemplate.replace('{first}', firstBlank).replace('{second}', secondBlank)
+                  const s = fillBlanks(content.sentenceTemplate, firstBlank, secondBlank)
                   setBuiltSentence(s)
                   setCookie(builtCookieKey, s)
                   setXpEarned((p) => p + 10)
@@ -208,8 +221,8 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
                 className="px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
                 style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
               >✅ Confirmar (+10 XP)</button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         <div className="p-4 rounded-lg border border-blue-400/20" style={{ background: 'rgba(0,100,255,0.06)' }}>
           <p className="text-blue-300 text-sm">💡 <strong>Precisa de ajuda?</strong> {content.helpText}</p>
