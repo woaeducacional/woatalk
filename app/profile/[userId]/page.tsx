@@ -4,9 +4,7 @@ import { ClientProfileContent } from './client-profile'
 interface UserProfile {
   id: string
   name: string
-  email: string
   nickname?: string
-  phone?: string
   bio?: string
   country?: string
   language?: string

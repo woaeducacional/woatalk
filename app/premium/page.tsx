@@ -1,21 +1,66 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { playClick } from '@/lib/sounds'
 
 export default function PremiumPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [isPremium, setIsPremium] = useState(false)
+  const [loadingCheckout, setLoadingCheckout] = useState(false)
+  const [loadingPortal, setLoadingPortal] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
     }
   }, [status, router])
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetch('/api/user/subscription')
+        .then(r => r.json())
+        .then(d => setIsPremium(d.isPremium === true))
+        .catch(() => {})
+    }
+  }, [status])
+
+  async function handlePremiumCheckout() {
+    setLoadingCheckout(true)
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Erro ao iniciar checkout.')
+      }
+    } catch {
+      alert('Erro ao iniciar checkout. Tente novamente.')
+    } finally {
+      setLoadingCheckout(false)
+    }
+  }
+
+  async function handleManageSubscription() {
+    setLoadingPortal(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Erro ao abrir portal.')
+      }
+    } catch {
+      alert('Erro ao abrir portal. Tente novamente.')
+    } finally {
+      setLoadingPortal(false)
+    }
+  }
 
   const plans = [
     {
@@ -48,7 +93,7 @@ export default function PremiumPage() {
       ],
       gradient: 'linear-gradient(135deg, #B05000, #FF6B00)',
       border: '#FF9A00',
-      cta: 'Ativar Premium',
+      cta: isPremium ? (loadingPortal ? 'Aguarde...' : 'Gerenciar Assinatura') : (loadingCheckout ? 'Aguarde...' : 'Ativar Premium'),
       ctaDisabled: false,
       popular: true
     },
@@ -67,8 +112,9 @@ export default function PremiumPage() {
       ],
       gradient: 'linear-gradient(135deg, #1a0533, #3b0764)',
       border: '#A855F7',
-      cta: 'Entrar no Club',
-      ctaDisabled: false
+      cta: 'Em Breve',
+      ctaDisabled: true,
+      comingSoon: true
     }
   ]
 
@@ -112,6 +158,32 @@ export default function PremiumPage() {
             </p>
           </div>
 
+          {/* Premium active banner */}
+          {isPremium && (
+            <div
+              className="flex items-center gap-4 px-6 py-4 rounded-2xl border"
+              style={{
+                background: 'linear-gradient(135deg, rgba(176,80,0,0.2), rgba(255,107,0,0.1))',
+                border: '2px solid #FF9A00',
+                boxShadow: '0 0 30px rgba(255,154,0,0.2)',
+              }}
+            >
+              <span className="text-3xl">👑</span>
+              <div className="flex-1">
+                <p className="text-white font-black tracking-wide">VOCÊ JÁ É PREMIUM!</p>
+                <p className="text-orange-200/70 text-sm">Sua assinatura está ativa. Gerencie ou cancele a qualquer momento.</p>
+              </div>
+              <button
+                onClick={handleManageSubscription}
+                disabled={loadingPortal}
+                className="px-4 py-2 rounded-xl font-black tracking-widest text-xs transition-all hover:scale-105 active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #B05000, #FF6B00)', color: 'white' }}
+              >
+                {loadingPortal ? 'Aguarde...' : 'Gerenciar'}
+              </button>
+            </div>
+          )}
+
           {/* Pricing Cards */}
           <div className="grid md:grid-cols-3 gap-6 relative">
             {plans.map((plan, idx) => (
@@ -122,8 +194,25 @@ export default function PremiumPage() {
                   background: plan.popular ? 'rgba(168,85,247,0.08)' : 'rgba(5,14,26,0.65)',
                   border: `2px solid ${plan.popular ? plan.border : 'rgba(' + (plan.border === '#00D4FF' ? '0,212,255' : plan.border === '#FF9A00' ? '255,154,0' : '168,85,247') + ',0.25)'}`,
                   boxShadow: plan.popular ? `0 0 30px ${plan.border}40` : 'none',
+                  opacity: (plan as { comingSoon?: boolean }).comingSoon ? 0.65 : 1,
                 }}
               >
+                {(plan as { comingSoon?: boolean }).comingSoon && (
+                  <div
+                    className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-black tracking-widest"
+                    style={{ background: 'linear-gradient(135deg, #1a0533, #3b0764)', border: '1px solid #A855F7', color: '#A855F7' }}
+                  >
+                    EM BREVE
+                  </div>
+                )}
+                {isPremium && plan.name === 'PREMIUM' && (
+                  <div
+                    className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-black tracking-widest"
+                    style={{ background: 'linear-gradient(135deg, #B05000, #FF6B00)', color: 'white' }}
+                  >
+                    ATIVO 👑
+                  </div>
+                )}
                 <div className="p-8 space-y-6 flex-1">
                   {/* Plan header */}
                   <div className="space-y-2">
@@ -153,20 +242,28 @@ export default function PremiumPage() {
                 <div className="px-8 pb-8">
                   {/* CTA Button */}
                   <button
-                    onClick={() => playClick()}
-                    disabled={plan.ctaDisabled}
+                    onClick={() => {
+                      playClick()
+                      if (plan.name === 'PREMIUM') {
+                        if (isPremium) handleManageSubscription()
+                        else handlePremiumCheckout()
+                      }
+                    }}
+                    disabled={plan.ctaDisabled || (plan.name === 'PREMIUM' && (loadingCheckout || loadingPortal))}
                     className="w-full py-3 rounded-xl font-black tracking-widest text-sm transition-all hover:scale-105 active:scale-95"
                     style={{
                       background: plan.ctaDisabled
                         ? 'rgba(255,255,255,0.1)'
+                        : plan.name === 'PREMIUM' && (loadingCheckout || loadingPortal)
+                        ? 'rgba(255,255,255,0.15)'
                         : plan.gradient,
                       color: plan.ctaDisabled ? 'rgba(255,255,255,0.4)' : 'white',
-                      cursor: plan.ctaDisabled ? 'not-allowed' : 'pointer',
+                      cursor: (plan.ctaDisabled || (plan.name === 'PREMIUM' && (loadingCheckout || loadingPortal))) ? 'not-allowed' : 'pointer',
                       border: `1px solid ${plan.border}40`,
                       boxShadow: !plan.ctaDisabled ? `0 0 20px ${plan.border}30` : 'none',
                     }}
                   >
-                    {plan.cta}
+                    {plan.name === 'PREMIUM' && isPremium && '✓ '}{plan.cta}
                   </button>
                 </div>
               </div>
