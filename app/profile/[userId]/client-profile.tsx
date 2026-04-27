@@ -222,7 +222,7 @@ export function ClientProfileContent({ profile }: { profile: UserProfile }) {
               )}
             </div>
           </div>
-
+        </div>
 
         <footer className="py-6 text-center border-t border-cyan-400/10 mt-12">
           <p className="text-[11px] text-blue-200/30 tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
