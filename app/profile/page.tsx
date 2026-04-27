@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { playClick } from '@/lib/sounds'
 import { NotificationBell } from '@/src/components/NotificationBell'
 import { calcLevel } from '@/lib/level'
+import { SkillRadarChart, type SkillData } from '@/src/components/SkillRadarChart'
 
 interface UserProfile {
   id: string
@@ -35,6 +36,8 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [avatarStatus, setAvatarStatus] = useState<string>('none')
   const [badgesModalOpen, setBadgesModalOpen] = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
+  const [skills, setSkills] = useState<SkillData[]>([])
   const [profile, setProfile] = useState<UserProfile>({
     id: '',
     name: '',
@@ -104,6 +107,24 @@ export default function ProfilePage() {
       loadProfile()
     }
   }, [status, session, router])
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetch('/api/user/subscription')
+        .then(r => r.json())
+        .then(d => {
+          const premium = d.isPremium === true
+          setIsPremium(premium)
+          if (premium) {
+            fetch('/api/user/skills')
+              .then(r => r.json())
+              .then(d => { if (Array.isArray(d.skills)) setSkills(d.skills) })
+              .catch(() => {})
+          }
+        })
+        .catch(() => {})
+    }
+  }, [status])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -372,6 +393,50 @@ export default function ProfilePage() {
                     <p className="text-[11px] text-purple-200/50 mt-2">conquistadas</p>
                   </div>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Skills Radar Chart — Premium only */}
+          {isPremium && skills.length === 5 && (
+            <div
+              className="rounded-2xl backdrop-blur-sm border-2 p-6 sm:p-8"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,215,0,0.06), rgba(184,134,11,0.04))',
+                borderColor: 'rgba(255,215,0,0.25)',
+                boxShadow: '0 8px 32px rgba(255,215,0,0.08), inset 0 1px 1px rgba(255,255,255,0.05)'
+              }}
+            >
+              <h3
+                className="text-sm font-black text-yellow-300/80 mb-1 tracking-widest uppercase"
+                style={{ textShadow: '0 0 8px rgba(255,215,0,0.4)' }}
+              >
+                🏆 SKILL RADAR
+              </h3>
+              <p className="text-[11px] text-blue-200/40 mb-4 tracking-wide">
+                Baseado nas atividades completadas por habilidade
+              </p>
+              <SkillRadarChart skills={skills} />
+              {/* Skill bars */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {skills.map((skill) => (
+                  <div key={skill.name} className="flex items-center gap-3">
+                    <span className="text-[11px] font-black text-blue-200/60 w-20 tracking-wider uppercase">{skill.name}</span>
+                    <div className="flex-1 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${skill.value}%`,
+                          background: 'linear-gradient(90deg, #B8860B, #FFD700)',
+                          boxShadow: '0 0 6px rgba(255,215,0,0.4)'
+                        }}
+                      />
+                    </div>
+                    <span className="text-[11px] font-black w-8 text-right" style={{ color: '#FFD700' }}>
+                      {skill.value}%
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

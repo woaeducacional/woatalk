@@ -12,10 +12,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 })
     }
 
-    // Fetch all available columns from users table by id
+    // Fetch only public-safe columns — never expose email or password_hash
     const { data, error } = await supabaseServer
       .from('users')
-      .select('*')
+      .select('id, name, nickname, bio, country, language, gender, avatar_url, avatar_status, xp_total, streak_count, badges, created_at')
       .eq('id', id)
       .maybeSingle()
 

@@ -9,7 +9,6 @@ import { playClick } from '@/lib/sounds'
 interface UserProfile {
   id: string
   name: string
-  email: string
   nickname?: string
   phone?: string
   bio?: string
@@ -224,20 +223,7 @@ export function ClientProfileContent({ profile }: { profile: UserProfile }) {
             </div>
           </div>
 
-          {/* Email section (read-only) */}
-          <div className="rounded-2xl backdrop-blur-md border border-cyan-400/20 p-6 sm:p-8" style={{ background: 'rgba(5,14,26,0.65)' }}>
-            <h3 className="font-black text-white mb-4 tracking-wider">INFORMAÇÕES VERIFICADAS</h3>
-            <div>
-              <label className="block text-xs font-black text-blue-200/70 mb-2 tracking-wider uppercase">Email (Verificado)</label>
-              <div className="px-4 py-2.5 rounded-lg bg-white/5 border border-cyan-400/30 text-cyan-300/80 text-sm flex items-center gap-2">
-                <span>✓</span>
-                {profile.email}
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Footer */}
         <footer className="py-6 text-center border-t border-cyan-400/10 mt-12">
           <p className="text-[11px] text-blue-200/30 tracking-[0.2em]">WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS</p>
         </footer>
