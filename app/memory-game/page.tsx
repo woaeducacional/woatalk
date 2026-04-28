@@ -35,8 +35,8 @@ function buildDeck(pairsData?: PairsData): { blueCards: Card[]; orangeCards: Car
   if (!pairsData || !pairsData.length) {
     return { blueCards: [], orangeCards: [] }
   }
-  const enShuffled = shuffle(pairsData.map((p, i) => ({ pairIndex: i, word: p.en || p.word || '' })))
-  const ptShuffled = shuffle(pairsData.map((p, i) => ({ pairIndex: i, word: p.pt || p.translationPt || '' })))
+  const enShuffled = shuffle(pairsData.map((p, i) => ({ pairIndex: i, word: p.en || '' })))
+  const ptShuffled = shuffle(pairsData.map((p, i) => ({ pairIndex: i, word: p.pt || '' })))
   return {
     blueCards:   enShuffled.map((c, i) => ({ id: `b${i}`, ...c, isFlipped: false, isMatched: false })),
     orangeCards: ptShuffled.map((c, i) => ({ id: `o${i}`, ...c, isFlipped: false, isMatched: false })),
