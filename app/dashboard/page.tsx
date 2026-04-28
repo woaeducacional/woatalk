@@ -28,6 +28,30 @@ function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boo
   const iconSrc = journey.icon_url || OCEAN_ICONS_DEFAULT
   const locked = journey.blocked
   const size = isCenter ? 176 : 136
+  const isMemoryGame = journey.phase_id === -1
+  
+  let bgColor = locked
+    ? 'linear-gradient(135deg, #0d0d1a, #1a1a2e)'
+    : isMemoryGame
+    ? isCenter ? 'radial-gradient(circle at 35% 30%, #FFD700, #DAA520)' : 'radial-gradient(circle at 35% 30%, #FFC700, #CC8800)'
+    : isCenter
+    ? 'radial-gradient(circle at 35% 30%, #0055FF, #001A60)'
+    : 'radial-gradient(circle at 35% 30%, #003AB0, #000D30)'
+  
+  let borderColor = locked
+    ? '2px solid rgba(255,255,255,0.12)'
+    : isMemoryGame
+    ? isCenter ? '3px solid #FFD700' : '2px solid rgba(255,215,0,0.5)'
+    : isCenter
+    ? '3px solid #00D4FF'
+    : '2px solid rgba(0,212,255,0.35)'
+  
+  let glowShadow = isCenter && !locked
+    ? isMemoryGame
+      ? '0 0 50px rgba(255,215,0,0.45), inset 0 0 25px rgba(255,255,255,0.2)'
+      : '0 0 50px rgba(0,212,255,0.45), inset 0 0 25px rgba(0,102,255,0.2)'
+    : 'none'
+  
   return (
     <div className="flex flex-col items-center gap-2">
     <div
@@ -35,19 +59,9 @@ function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boo
       style={{
         width: size,
         height: size,
-        background: locked
-          ? 'linear-gradient(135deg, #0d0d1a, #1a1a2e)'
-          : isCenter
-          ? 'radial-gradient(circle at 35% 30%, #0055FF, #001A60)'
-          : 'radial-gradient(circle at 35% 30%, #003AB0, #000D30)',
-        border: locked
-          ? '2px solid rgba(255,255,255,0.12)'
-          : isCenter
-          ? '3px solid #00D4FF'
-          : '2px solid rgba(0,212,255,0.35)',
-        boxShadow: isCenter && !locked
-          ? '0 0 50px rgba(0,212,255,0.45), inset 0 0 25px rgba(0,102,255,0.2)'
-          : 'none',
+        background: bgColor,
+        border: borderColor,
+        boxShadow: glowShadow,
         transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
@@ -59,38 +73,60 @@ function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boo
             left: isCenter ? 22 : 14,
             width: isCenter ? 56 : 34,
             height: isCenter ? 36 : 22,
-            background: 'radial-gradient(ellipse, rgba(255,255,255,0.28), transparent)',
+            background: isMemoryGame 
+              ? 'radial-gradient(ellipse, rgba(255,255,255,0.4), transparent)'
+              : 'radial-gradient(ellipse, rgba(255,255,255,0.28), transparent)',
             borderRadius: '50%',
             transform: 'rotate(-20deg)',
           }}
         />
       )}
-      <Image
-        src={iconSrc}
-        alt={journey.title}
-        width={isCenter ? 130 : 80}
-        height={isCenter ? 130 : 80}
-        className={`object-contain relative z-10 ${locked ? 'grayscale opacity-35' : ''}`}
-      />
-      {locked && (
+      {isMemoryGame ? (
+        <span style={{ fontSize: isCenter ? 80 : 50 }}>🎮</span>
+      ) : (
+        <Image
+          src={iconSrc}
+          alt={journey.title}
+          width={isCenter ? 130 : 80}
+          height={isCenter ? 130 : 80}
+          className={`object-contain relative z-10 ${locked ? 'grayscale opacity-35' : ''}`}
+        />
+      )}
+      {locked && !isMemoryGame && (
         <div className="absolute inset-0 flex items-center justify-center">
           <span style={{ fontSize: isCenter ? 32 : 20, opacity: 0.5 }}>🔒</span>
         </div>
       )}
     </div>
     {!isCenter && (
-      <p
-        className="text-center font-bold tracking-wide"
-        style={{
-          fontSize: 9,
-          color: locked ? 'rgba(255,255,255,0.3)' : 'rgba(0,212,255,0.7)',
-          letterSpacing: '0.12em',
-          maxWidth: size,
-          lineHeight: 1.3,
-        }}
-      >
-        {journey.title.toUpperCase()}
-      </p>
+      <>
+        <p
+          className="text-center font-bold tracking-wide"
+          style={{
+            fontSize: 9,
+            color: locked ? 'rgba(255,255,255,0.3)' : isMemoryGame ? '#FFD700' : 'rgba(0,212,255,0.7)',
+            letterSpacing: '0.12em',
+            maxWidth: size,
+            lineHeight: 1.3,
+          }}
+        >
+          {journey.title.toUpperCase()}
+        </p>
+        {isMemoryGame && (
+          <p
+            className="text-center font-bold tracking-wide"
+            style={{
+              fontSize: 7,
+              color: '#FFD700',
+              letterSpacing: '0.1em',
+              maxWidth: size,
+              lineHeight: 1.2,
+            }}
+          >
+            RECURSO PREMIUM
+          </p>
+        )}
+      </>
     )}
     </div>
   )
@@ -100,11 +136,13 @@ function JourneyGlobeCarousel({
   journeys,
   lastPhaseId,
   isAdmin,
+  isPremium,
   onToggleBlocked,
 }: {
   journeys: JourneyItem[]
   lastPhaseId: number | null
   isAdmin: boolean
+  isPremium: boolean
   onToggleBlocked: (phaseId: number) => void
 }) {
   const [current, setCurrent] = useState(0)
@@ -217,6 +255,16 @@ function JourneyGlobeCarousel({
           >
             🔒 EM BREVE
           </div>
+        ) : centerJ.phase_id === -1 ? (
+          // WOA Memory Game
+          <Link
+            href={isPremium ? '/memory-game' : '/premium'}
+            onClick={() => playClick()}
+            className="inline-block px-8 py-2.5 text-xs font-black tracking-widest text-white rounded-full transition-all hover:scale-105 active:scale-95"
+            style={{ background: isPremium ? 'linear-gradient(135deg, #FFD700, #DAA520)' : 'linear-gradient(135deg, #CC4A00, #FF6B35)', boxShadow: isPremium ? '0 0 22px rgba(255,215,0,0.5)' : '0 0 22px rgba(255,107,53,0.4)' }}
+          >
+            {isPremium ? '▶ JOGAR AGORA' : '🔒 PREMIUM'}
+          </Link>
         ) : lastPhaseId === centerJ.phase_id ? (
           <Link
             href={`/challenge/${centerJ.phase_id}`}
@@ -237,7 +285,7 @@ function JourneyGlobeCarousel({
           </Link>
         )}
 
-        {isAdmin && (
+        {isAdmin && centerJ.phase_id !== -1 && (
           <div className="flex items-center justify-center gap-3 pt-1">
             <button
               onClick={() => { playClick(); onToggleBlocked(centerJ.phase_id) }}
@@ -301,6 +349,7 @@ export default function DashboardPage() {
   const [verifyError, setVerifyError] = useState<string | null>(null)
   const [verifyLoading, setVerifyLoading] = useState(false)
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [isPremium, setIsPremium] = useState(false)
 
   useEffect(() => {
     fetch('/api/user/stats')
@@ -322,7 +371,17 @@ export default function DashboardPage() {
     fetch('/api/journey')
       .then(r => r.ok ? r.json() : { journeys: [] })
       .then(d => {
-        const allJourneys = d.journeys ?? []
+        let allJourneys = d.journeys ?? []
+        
+        // Add WOA Memory game as a special item
+        allJourneys.push({
+          phase_id: -1, // Special ID for memory game
+          title: 'WOA Memory',
+          description: 'Jogo de Memória - Recurso Premium',
+          blocked: false,
+          is_pro: true,
+          icon_url: '/images/logo.png', // Will be styled differently
+        })
         
         // Fetch last accessed journey
         fetch('/api/history?limit=1')
@@ -350,6 +409,10 @@ export default function DashboardPage() {
     fetch('/api/community/recent')
       .then(r => r.ok ? r.json() : { posts: [] })
       .then(d => setRecentPosts(d.posts ?? []))
+      .catch(() => {})
+    fetch('/api/user/subscription')
+      .then(r => r.ok ? r.json() : { isPremium: false })
+      .then(d => setIsPremium(d.isPremium ?? false))
       .catch(() => {})
   }, [])
 
@@ -433,8 +496,8 @@ export default function DashboardPage() {
       {/* ── Background ── */}
       <div className="fixed inset-0 z-0">
         <Image
-          src="/images/fundo_do_mar.png"
-          alt="Fundo do Mar"
+          src={isPremium ? '/images/plano-de-fundo-atlantida.png' : '/images/fundo_do_mar.png'}
+          alt={isPremium ? 'Atlântida' : 'Fundo do Mar'}
           fill
           className="object-cover object-bottom"
           priority
@@ -686,6 +749,7 @@ export default function DashboardPage() {
               journeys={journeys}
               lastPhaseId={lastPhaseId}
               isAdmin={isAdmin}
+              isPremium={isPremium}
               onToggleBlocked={handleToggleBlocked}
             />
           </section>
