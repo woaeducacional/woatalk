@@ -30,11 +30,17 @@ export default function PremiumPage() {
 
   async function handlePremiumCheckout() {
     setLoadingCheckout(true)
-    const paymentLink = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK
-    if (paymentLink) {
-      window.location.href = paymentLink
-    } else {
-      alert('Link de pagamento não configurado.')
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Erro ao iniciar checkout.')
+        setLoadingCheckout(false)
+      }
+    } catch {
+      alert('Erro ao iniciar checkout. Tente novamente.')
       setLoadingCheckout(false)
     }
   }

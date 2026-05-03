@@ -28,10 +28,18 @@ export async function POST(_req: NextRequest) {
 
   const baseUrl = (process.env.NEXTAUTH_URL || 'http://localhost:3003').replace(/\/$/, '')
 
-  const portalSession = await stripe.billingPortal.sessions.create({
-    customer: user.stripe_customer_id,
-    return_url: `${baseUrl}/premium`,
-  })
+  let portalSession
+  try {
+    portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.stripe_customer_id,
+      configuration: 'bpc_1TT1kQFjc2YVREH5f1VMRsXc',
+      return_url: `${baseUrl}/premium`,
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[Portal] ❌ Erro ao criar sessão do portal:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 
   return NextResponse.json({ url: portalSession.url })
 }

@@ -1,16 +1,26 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { playClick } from '@/lib/sounds'
 
 export default function PremiumSuccessPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
+    const sessionId = searchParams.get('session_id')
+    if (sessionId) {
+      fetch('/api/stripe/verify-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      }).catch(err => console.error('[Success] Erro ao verificar sessão:', err))
+    }
+
     const t = setTimeout(() => router.push('/dashboard'), 5000)
     return () => clearTimeout(t)
-  }, [router])
+  }, [router, searchParams])
 
   return (
     <div
