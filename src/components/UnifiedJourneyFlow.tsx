@@ -8,9 +8,81 @@ import {
   Block4PracticeSpeak,
   Block5WOAChallenge,
 } from '@/src/components/journey_02'
+import { useRouter } from 'next/navigation'
 import { StreakModal, type StreakUpdateStatus } from '@/src/components/StreakModal'
 import { BadgeUnlockedModal } from '@/src/components/BadgeUnlockedModal'
 import type { JourneyContent, MissionGroupDef } from '@/lib/journeyContent'
+
+const DAILY_MODULE_LIMIT = 2
+
+function DailyLimitModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter()
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}>
+      <div className="relative w-full max-w-md rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(5,14,26,0.97), rgba(10,20,40,0.97))', border: '2px solid rgba(255,154,0,0.4)', boxShadow: '0 0 60px rgba(255,154,0,0.15)' }}>
+        {/* Header glow */}
+        <div className="absolute inset-x-0 top-0 h-1 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #FF6B00, #FFD700, #FF6B00)' }} />
+
+        <div className="p-8 space-y-6">
+          {/* Icon + title */}
+          <div className="text-center space-y-3">
+            <div className="text-5xl">⏳</div>
+            <h2 className="text-2xl font-black tracking-wider text-white">LIMITE DIÁRIO ATINGIDO</h2>
+            <p className="text-sm text-blue-200/70 leading-relaxed">
+              Você já completou <span className="text-orange-400 font-bold">{DAILY_MODULE_LIMIT} módulos hoje</span>. No plano gratuito o limite é de {DAILY_MODULE_LIMIT} módulos por dia.
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,154,0,0.3), transparent)' }} />
+
+          {/* Premium pitch */}
+          <div className="rounded-2xl p-5 space-y-3" style={{ background: 'linear-gradient(135deg, rgba(176,80,0,0.2), rgba(255,107,0,0.1))', border: '1px solid rgba(255,154,0,0.3)' }}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">👑</span>
+              <div>
+                <p className="text-base font-black text-white tracking-wide">PREMIUM — R$ 29,90/mês</p>
+                <p className="text-xs text-orange-200/70">Módulos ilimitados por dia</p>
+              </div>
+            </div>
+            <ul className="space-y-2">
+              {[
+                'Módulos ilimitados por dia',
+                'Tutor com IA',
+                'Prática de Conversação guiada',
+                'Desbloqueio total do app',
+                'Sem anúncios',
+              ].map((feature) => (
+                <li key={feature} className="flex items-center gap-2 text-sm text-orange-100/80">
+                  <span className="text-green-400 text-xs">✓</span>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* CTAs */}
+          <div className="space-y-3">
+            <button
+              onClick={() => router.push('/premium')}
+              className="w-full py-3.5 rounded-xl font-black tracking-widest text-white transition-all hover:scale-105 active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #B05000, #FF6B00)', boxShadow: '0 0 24px rgba(255,107,0,0.4)' }}
+            >
+              👑 VER PLANOS PREMIUM
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-3 rounded-xl text-sm font-bold tracking-widest transition-all hover:scale-105 active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}
+            >
+              VOLTAR
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 interface UnifiedJourneyFlowProps {
   phaseId: number
@@ -91,6 +163,9 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   const [badgeUnlocked, setBadgeUnlocked] = useState<{ title: string; challenge: string; icon: string } | null>(null)
   const [activityInfo, setActivityInfo] = useState<{ current: number; total: number }>({ current: 1, total: 1 })
   const [isRedoing, setIsRedoing] = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
+  const [dailyModuleCount, setDailyModuleCount] = useState(0)
+  const [showDailyLimitModal, setShowDailyLimitModal] = useState(false)
 
   const currentGroupRef = useRef(0)
   const totalXpRef = useRef(0)
@@ -105,6 +180,17 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
       .then((data: JourneyContent) => setContent(data))
       .catch(() => setLoadError(true))
   }, [phaseId])
+
+  useEffect(() => {
+    fetch('/api/user/subscription')
+      .then(r => r.ok ? r.json() : { isPremium: false })
+      .then(d => setIsPremium(d.isPremium === true))
+      .catch(() => {})
+    fetch('/api/mission-groups/daily-count')
+      .then(r => r.ok ? r.json() : { count: 0 })
+      .then(d => setDailyModuleCount(d.count ?? 0))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch(`/api/mission-groups/${phaseId}/completed`)
@@ -178,7 +264,14 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
     const newTotal = totalXpRef.current + xp
     setTotalXp(newTotal)
 
-    saveMissionGroupCompletion(groupId, xp).finally(() => { isSavingRef.current = false })
+    saveMissionGroupCompletion(groupId, xp).finally(() => {
+      isSavingRef.current = false
+      // Refresh daily count after completing a module
+      fetch('/api/mission-groups/daily-count')
+        .then(r => r.ok ? r.json() : { count: 0 })
+        .then(d => setDailyModuleCount(d.count ?? 0))
+        .catch(() => {})
+    })
     setTimeout(() => setGroupCompleted(groupId), 600)
 
     if (groupId === missionGroups.length - 1) {
@@ -189,6 +282,11 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   }
 
   const handleStartMissionGroup = (groupIndex: number, isRedo = false) => {
+    // Free users: block starting a new (non-redo) module after daily limit
+    if (!isPremium && !isRedo && dailyModuleCount >= DAILY_MODULE_LIMIT) {
+      setShowDailyLimitModal(true)
+      return
+    }
     setCurrentGroup(groupIndex)
     currentGroupRef.current = groupIndex
     setIsRedoing(isRedo)
@@ -241,30 +339,54 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
 
   // Groups list
   if (showGroups) {
+    const atDailyLimit = !isPremium && dailyModuleCount >= DAILY_MODULE_LIMIT
     return (
       <>
         <div className="space-y-8">
           <div className="p-8 rounded-lg backdrop-blur-md border border-cyan-400/20" style={{ background: 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(34,197,94,0.05))' }}>
-            <h2 className="text-3xl font-black text-white mb-2">{'\uD83C\uDF0A'} {content.title}</h2>
-            <p className="text-blue-200/80">{content.description} {'\u2014'} complete os {missionGroups.length} blocos na sequ{'e\u0302'}ncia!</p>
+            <h2 className="text-3xl font-black text-white mb-2">{'🌊'} {content.title}</h2>
+            <p className="text-blue-200/80">{content.description} {'—'} complete os {missionGroups.length} blocos na sequ{'ê'}ncia!</p>
           </div>
+
+          {/* Daily limit warning banner */}
+          {atDailyLimit && (
+            <div
+              className="flex items-center gap-4 px-5 py-4 rounded-2xl"
+              style={{ background: 'linear-gradient(135deg, rgba(176,80,0,0.2), rgba(255,107,0,0.1))', border: '1px solid rgba(255,154,0,0.4)' }}
+            >
+              <span className="text-2xl flex-shrink-0">⏳</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black text-orange-300 tracking-wide">LIMITE DIÁRIO ATINGIDO</p>
+                <p className="text-xs text-orange-200/70 mt-0.5">Você já completou {DAILY_MODULE_LIMIT} módulos hoje. Volte amanhã ou assine o Premium.</p>
+              </div>
+              <button
+                onClick={() => setShowDailyLimitModal(true)}
+                className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black tracking-widest text-white transition-all hover:scale-105 active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #B05000, #FF6B00)' }}
+              >
+                👑 PREMIUM
+              </button>
+            </div>
+          )}
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {missionGroups.slice(0, 3).map((group) => {
                 const isCompleted = completedGroupIds.includes(group.id)
                 const isLocked = group.id > 0 && !completedGroupIds.includes(group.id - 1) && !isCompleted
-                const canStart = !isLocked && !isCompleted
-                return <GroupCard key={group.id} group={group} isCompleted={isCompleted} isLocked={isLocked} canStart={canStart} onClick={() => { if (!isLocked) handleStartMissionGroup(group.id, isCompleted) }} />
+                const isBlockedByDailyLimit = !isPremium && atDailyLimit && !isCompleted
+                const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
+                return <GroupCard key={group.id} group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
               })}
             </div>
             <div className="flex gap-6 justify-center">
               {missionGroups.slice(3).map((group) => {
                 const isCompleted = completedGroupIds.includes(group.id)
                 const isLocked = group.id > 0 && !completedGroupIds.includes(group.id - 1) && !isCompleted
-                const canStart = !isLocked && !isCompleted
+                const isBlockedByDailyLimit = !isPremium && atDailyLimit && !isCompleted
+                const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
                 return (
                   <div key={group.id} className="w-[calc(33.333%-12px)]" style={{ minWidth: '200px' }}>
-                    <GroupCard group={group} isCompleted={isCompleted} isLocked={isLocked} canStart={canStart} onClick={() => { if (!isLocked) handleStartMissionGroup(group.id, isCompleted) }} />
+                    <GroupCard group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
                   </div>
                 )
               })}
@@ -273,6 +395,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
         </div>
         {streakUpdate && <StreakModal status={streakUpdate.status} streak={streakUpdate.streak} recoveryCost={streakUpdate.recoveryCost} onClose={() => setStreakUpdate(null)} />}
         {badgeUnlocked && <BadgeUnlockedModal title={badgeUnlocked.title} challenge={badgeUnlocked.challenge} icon={badgeUnlocked.icon} onClose={() => setBadgeUnlocked(null)} />}
+        {showDailyLimitModal && <DailyLimitModal onClose={() => setShowDailyLimitModal(false)} />}
       </>
     )
   }
