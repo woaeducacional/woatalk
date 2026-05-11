@@ -533,7 +533,7 @@ export default function MemoryGamePage() {
         </div>
       ) : (
         /* ── GAME AREA ── */
-        <div className="flex gap-2 px-2 pb-8 pt-1">
+        <div className="flex flex-col md:flex-row gap-2 md:gap-2 px-2 pb-8 pt-1">
           {/* BLUE — English */}
           <div className="flex-1 min-w-0">
             <div className="text-center mb-2.5">
@@ -544,7 +544,7 @@ export default function MemoryGamePage() {
                 🇺🇸 &nbsp;INGLÊS
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 gap-3">
               {blueCards.map(card => (
                 <MemCard
                   key={card.id}
@@ -561,8 +561,14 @@ export default function MemoryGamePage() {
 
           {/* divider */}
           <div
-            className="w-px self-stretch flex-shrink-0"
+            className="w-px self-stretch flex-shrink-0 hidden md:block"
             style={{ background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12) 20%, rgba(255,255,255,0.12) 80%, transparent)' }}
+          />
+
+          {/* divider horizontal mobile */}
+          <div
+            className="h-px self-stretch flex-shrink-0 md:hidden"
+            style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12) 20%, rgba(255,255,255,0.12) 80%, transparent)' }}
           />
 
           {/* ORANGE — Portuguese */}
@@ -575,7 +581,7 @@ export default function MemoryGamePage() {
                 🇧🇷 &nbsp;PORTUGUÊS
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 gap-3">
               {orangeCards.map(card => (
                 <MemCard
                   key={card.id}

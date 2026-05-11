@@ -350,6 +350,7 @@ export default function DashboardPage() {
   const [verifyLoading, setVerifyLoading] = useState(false)
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [isPremium, setIsPremium] = useState(false)
+  const [lastWOAPlayCourse, setLastWOAPlayCourse] = useState<{ id: string; title: string; cover_url: string | null; module_count: number; watched_count: number } | null>(null)
 
   useEffect(() => {
     fetch('/api/user/stats')
@@ -412,7 +413,23 @@ export default function DashboardPage() {
       .catch(() => {})
     fetch('/api/user/subscription')
       .then(r => r.ok ? r.json() : { isPremium: false })
-      .then(d => setIsPremium(d.isPremium ?? false))
+      .then(d => {
+        const premium = d.isPremium ?? false
+        setIsPremium(premium)
+        if (premium) {
+          fetch('/api/woaplay')
+            .then(r => r.ok ? r.json() : { courses: [] })
+            .then(d2 => {
+              const courses: { id: string; title: string; cover_url: string | null; module_count: number; watched_count: number }[] = d2.courses ?? []
+              const withProgress = courses.filter(c => c.watched_count > 0)
+              const toShow = withProgress.length > 0
+                ? withProgress.sort((a, b) => b.watched_count - a.watched_count)[0]
+                : courses[0] ?? null
+              setLastWOAPlayCourse(toShow)
+            })
+            .catch(() => {})
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -753,6 +770,88 @@ export default function DashboardPage() {
               onToggleBlocked={handleToggleBlocked}
             />
           </section>
+
+          {/* ── WOAPLAY (PREMIUM) ── */}
+          {isPremium && (
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 rounded" style={{ background: 'linear-gradient(180deg, #FFD700, #CC8800)' }} />
+                  <h3 className="text-xs font-black tracking-[0.2em]" style={{ color: '#FFD700' }}>— WOA PLAY —</h3>
+                  <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>PREMIUM</span>
+                </div>
+                <Link
+                  href="/woaplay"
+                  onClick={() => playClick()}
+                  className="text-[10px] font-black tracking-widest px-4 py-2 rounded-lg transition-all hover:scale-105"
+                  style={{ border: '1px solid rgba(255,215,0,0.35)', color: '#FFD700', background: 'rgba(255,215,0,0.08)' }}
+                >
+                  VER TODOS →
+                </Link>
+              </div>
+
+              {lastWOAPlayCourse ? (
+                <Link
+                  href={`/woaplay/${lastWOAPlayCourse.id}`}
+                  onClick={() => playClick()}
+                  className="group flex items-center gap-4 p-4 rounded-2xl transition-all hover:scale-[1.01]"
+                  style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.7), rgba(20,14,0,0.7))', border: '1px solid rgba(255,215,0,0.25)', boxShadow: '0 0 24px rgba(255,180,0,0.08)' }}
+                >
+                  {/* Thumbnail */}
+                  <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0"
+                    style={{ background: 'rgba(80,60,0,0.3)', border: '1px solid rgba(255,215,0,0.2)' }}>
+                    {lastWOAPlayCourse.cover_url ? (
+                      <Image src={lastWOAPlayCourse.cover_url} alt={lastWOAPlayCourse.title} fill className="object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-2xl">🎬</div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.45)' }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,215,0,0.85)' }}>
+                        <span className="text-black text-xs ml-0.5 font-black">▶</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: 'rgba(255,215,0,0.5)' }}>
+                      {lastWOAPlayCourse.watched_count > 0 ? '▶ CONTINUAR ASSISTINDO' : '▶ COMEÇAR AGORA'}
+                    </p>
+                    <p className="text-white font-black text-sm truncate group-hover:text-yellow-300 transition-colors">{lastWOAPlayCourse.title}</p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,215,0,0.1)' }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: lastWOAPlayCourse.module_count > 0 ? `${Math.round((lastWOAPlayCourse.watched_count / lastWOAPlayCourse.module_count) * 100)}%` : '0%',
+                            background: 'linear-gradient(90deg, #FFD700, #CC8800)'
+                          }}
+                        />
+                      </div>
+                      <span className="text-[9px] font-black flex-shrink-0" style={{ color: 'rgba(255,215,0,0.5)' }}>
+                        {lastWOAPlayCourse.watched_count}/{lastWOAPlayCourse.module_count} aulas
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className="text-yellow-400/40 group-hover:text-yellow-400 transition-colors text-lg flex-shrink-0">›</span>
+                </Link>
+              ) : (
+                <Link
+                  href="/woaplay"
+                  onClick={() => playClick()}
+                  className="flex items-center justify-center gap-4 p-6 rounded-2xl transition-all hover:scale-[1.01] text-center"
+                  style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.5), rgba(20,14,0,0.5))', border: '1px dashed rgba(255,215,0,0.25)' }}
+                >
+                  <div>
+                    <p className="text-3xl mb-2">🎬</p>
+                    <p className="font-black text-sm" style={{ color: '#FFD700' }}>Explore os cursos WOA Play</p>
+                    <p className="text-white/30 text-xs mt-1">Conteúdo exclusivo para assinantes premium</p>
+                  </div>
+                </Link>
+              )}
+            </section>
+          )}
 
           {/* ── METHOD WOA ── */}
           <section>
