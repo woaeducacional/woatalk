@@ -5,6 +5,9 @@ import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'crypto'
 import type { WOAPlayModule, WOAPlayMaterial } from '@/lib/woaplay'
 
+// Aumentar timeout para uploads grandes
+export const maxDuration = 120 // 2 minutos
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -18,7 +21,7 @@ const ALLOWED_TYPES = [
   'image/png', 'image/jpeg', 'image/webp',
   'audio/mpeg', 'audio/mp3',
 ]
-const MAX_SIZE = 20 * 1024 * 1024 // 20MB for documents
+const MAX_SIZE = 50 * 1024 * 1024 // 50MB para documentos
 const BUCKET = 'journey-assets'
 
 async function requireAdmin() {
@@ -48,7 +51,7 @@ export async function POST(
   if (!moduleId) return NextResponse.json({ error: 'moduleId obrigatório' }, { status: 400 })
 
   if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: 'Arquivo muito grande. Máximo 20MB.' }, { status: 400 })
+    return NextResponse.json({ error: 'Arquivo muito grande. Máximo 50MB.' }, { status: 413 })
   }
 
   const materialId = randomUUID()
