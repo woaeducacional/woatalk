@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import ModuleForm from '@/src/components/ModuleForm'
@@ -86,18 +85,13 @@ export default function AdminWOAPlayEdit() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasChanges])
 
-  // Aviso ao tentar navegar para outra rota Next.js
-  useEffect(() => {
-    const handleRouteChange = (url: string) => {
-      if (hasChanges && !window.confirm('Você tem edições não salvas. Tem certeza que deseja sair sem salvar?')) {
-        router.prefetch(url)
-        throw new Error('Navegação cancelada pelo usuário')
-      }
+  // Proteger navegação via Link
+  const handleNavigateBack = () => {
+    if (hasChanges && !window.confirm('Você tem edições não salvas. Tem certeza que deseja sair sem salvar?')) {
+      return false
     }
-
-    router.events?.on('routeChangeStart', handleRouteChange)
-    return () => router.events?.off('routeChangeStart', handleRouteChange)
-  }, [hasChanges, router])
+    return true
+  }
 
   async function handleSave() {
     if (!title.trim()) return
@@ -240,11 +234,11 @@ export default function AdminWOAPlayEdit() {
             style={{ background: 'linear-gradient(135deg, #0055FF, #00AAFF)', boxShadow: '0 0 16px rgba(0,150,255,0.3)' }}>
             {saving ? 'SALVANDO...' : '💾 SALVAR'}
           </button>
-          <Link href="/admin/woaplay"
+          <button onClick={() => handleNavigateBack() && router.push('/admin/woaplay')}
             className="px-4 py-2 text-[10px] font-black tracking-widest rounded-full transition-all hover:scale-105"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}>
             ← LISTA
-          </Link>
+          </button>
         </div>
       </header>
 
