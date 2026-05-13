@@ -26,6 +26,13 @@ export default function AdminWOAPlayEdit() {
   const [editingModule, setEditingModule] = useState<WOAPlayModule | null>(null)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [uploadingMaterialFor, setUploadingMaterialFor] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+
+  // Rastrear estado original para detectar mudanças
+  const [originalState, setOriginalState] = useState({
+    title: '', description: '', isPublished: false, coverUrl: '', modules: [] as WOAPlayModule[]
+  })
+  const [hasChanges, setHasChanges] = useState(false)
 
   const coverInputRef = useRef<HTMLInputElement>(null)
   const materialInputRef = useRef<HTMLInputElement>(null)
@@ -40,15 +47,57 @@ export default function AdminWOAPlayEdit() {
       .then((d) => {
         if (!d) { router.push('/admin/woaplay'); return }
         const c: WOAPlayCourse = d.course
-        setTitle(c.title)
-        setDescription(c.description ?? '')
-        setIsPublished(c.is_published)
-        setCoverUrl(c.cover_url ?? '')
-        setModules(Array.isArray(c.modules) ? c.modules : [])
+        const state = {
+          title: c.title,
+          description: c.description ?? '',
+          isPublished: c.is_published,
+          coverUrl: c.cover_url ?? '',
+          modules: Array.isArray(c.modules) ? c.modules : []
+        }
+        setTitle(state.title)
+        setDescription(state.description)
+        setIsPublished(state.isPublished)
+        setCoverUrl(state.coverUrl)
+        setModules(state.modules)
+        setOriginalState(state)
       })
       .catch(() => router.push('/admin/woaplay'))
       .finally(() => setLoading(false))
   }, [status, session, router, courseId])
+
+  // Detectar mudanças e avisar ao sair sem salvar
+  useEffect(() => {
+    const currentState = { title, description, isPublished, coverUrl, modules }
+    const changed = JSON.stringify(currentState) !== JSON.stringify(originalState)
+    setHasChanges(changed)
+  }, [title, description, isPublished, coverUrl, modules, originalState])
+
+  // Aviso quando tentar sair da página
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+        return ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasChanges])
+
+  // Aviso ao tentar navegar para outra rota Next.js
+  useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      if (hasChanges && !window.confirm('Você tem edições não salvas. Tem certeza que deseja sair sem salvar?')) {
+        router.prefetch(url)
+        throw new Error('Navegação cancelada pelo usuário')
+      }
+    }
+
+    router.events?.on('routeChangeStart', handleRouteChange)
+    return () => router.events?.off('routeChangeStart', handleRouteChange)
+  }, [hasChanges, router])
 
   async function handleSave() {
     if (!title.trim()) return
@@ -61,6 +110,9 @@ export default function AdminWOAPlayEdit() {
       })
       const data = await res.json()
       if (!res.ok) { setSaveMsg(data.error ?? 'Erro ao salvar'); return }
+      // Atualizar estado original após salvar com sucesso
+      const newState = { title, description, isPublished, coverUrl, modules }
+      setOriginalState(newState)
       setSaveMsg('✓ Salvo com sucesso!')
       setTimeout(() => setSaveMsg(''), 3000)
     } finally {
@@ -83,13 +135,49 @@ export default function AdminWOAPlayEdit() {
     const modId = activeMaterialModuleId.current
     if (!file || !modId) return
     setUploadingMaterialFor(modId)
-    const fd = new FormData(); fd.append('file', file); fd.append('moduleId', modId)
-    const res = await fetch(`/api/woaplay/${courseId}/upload-material`, { method: 'POST', body: fd })
-    const data = await res.json()
-    if (res.ok) {
-      setModules((prev) => prev.map((m) => m.id === modId ? { ...m, materials: [...m.materials, data.material] } : m))
-    }
-    setUploadingMaterialFor(null); e.target.value = ''
+    setUploadProgress(0)
+
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest()
+
+      // Monitorar progresso
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100)
+          setUploadProgress(percentComplete)
+        }
+      })
+
+      // Sucesso
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText)
+          setModules((prev) =>
+            prev.map((m) =>
+              m.id === modId ? { ...m, materials: [...m.materials, data.material] } : m
+            )
+          )
+        }
+        setUploadingMaterialFor(null)
+        setUploadProgress(0)
+        e.target.value = ''
+        resolve(undefined)
+      })
+
+      // Erro
+      xhr.addEventListener('error', () => {
+        setUploadingMaterialFor(null)
+        setUploadProgress(0)
+        e.target.value = ''
+        resolve(undefined)
+      })
+
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('moduleId', modId)
+      xhr.open('POST', `/api/woaplay/${courseId}/upload-material`)
+      xhr.send(fd)
+    })
   }
 
   async function handleDeleteMaterial(moduleId: string, materialId: string) {
@@ -146,6 +234,7 @@ export default function AdminWOAPlayEdit() {
         </div>
         <div className="flex items-center gap-3">
           {saveMsg && <span className={`text-xs font-bold ${saveMsg.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{saveMsg}</span>}
+          {hasChanges && <span className="text-xs font-bold text-yellow-400 animate-pulse">● Mudanças não salvas</span>}
           <button onClick={handleSave} disabled={saving || !title.trim()}
             className="px-4 py-2 text-[10px] font-black tracking-widest rounded-full text-white transition-all hover:scale-105 disabled:opacity-40"
             style={{ background: 'linear-gradient(135deg, #0055FF, #00AAFF)', boxShadow: '0 0 16px rgba(0,150,255,0.3)' }}>
@@ -273,7 +362,7 @@ export default function AdminWOAPlayEdit() {
                       <button onClick={() => { activeMaterialModuleId.current = mod.id; materialInputRef.current?.click() }}
                         className="text-[8px] font-black tracking-widest px-2 py-0.5 rounded-md transition-all hover:scale-105"
                         style={{ background: 'rgba(0,150,255,0.1)', border: '1px solid rgba(0,200,255,0.2)', color: '#00AAFF' }}>
-                        {uploadingMaterialFor === mod.id ? '...' : '+ ADD'}
+                        {uploadingMaterialFor === mod.id ? `${uploadProgress}%` : '+ ADD'}
                       </button>
                     </div>
                     <div className="flex gap-1.5 justify-center">
