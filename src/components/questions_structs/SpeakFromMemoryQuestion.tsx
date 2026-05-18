@@ -4,6 +4,13 @@ import { useState, useRef, useEffect } from 'react'
 import { getCookie, setCookie } from '@/lib/utils'
 import { playTTS } from '@/src/lib/ttsService'
 import { blobToWavBase64 } from '@/src/lib/audioUtils'
+import {
+  transcribeBlob,
+  transcribeFreeBlob,
+  startLiveRecognition,
+  isNativeWebSpeechSupported,
+  type LiveRecognitionHandle,
+} from '@/src/lib/transcriptionService'
 
 interface SpeakFromMemoryQuestionProps {
   /**
@@ -44,6 +51,17 @@ interface SpeakFromMemoryQuestionProps {
    * @default 30
    */
   xpReward?: number
+
+  /**
+   * Se o usuário tem acesso premium (para ativar opção ALICE no modal de voz)
+   * @default false
+   */
+  isPremium?: boolean
+
+  /**
+   * Callback para redirecionar para página premium quando clica em ALICE sem premium
+   */
+  onPremiumRequired?: () => void
 }
 
 type Phase = 'ready' | 'recording' | 'revealing' | 'result'
@@ -64,6 +82,8 @@ export function SpeakFromMemoryQuestion({
   icon = '🧠',
   instruction = 'Diga qualquer uma das frases que você aprendeu — sem ler!',
   xpReward = 30,
+  isPremium = false,
+  onPremiumRequired = () => {},
 }: SpeakFromMemoryQuestionProps) {
   const [phase, setPhase] = useState<Phase>('ready')
   const [liveTranscript, setLiveTranscript] = useState('')
@@ -80,6 +100,7 @@ export function SpeakFromMemoryQuestion({
   const [showTtsModal, setShowTtsModal] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const liveRecognitionRef = useRef<LiveRecognitionHandle | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
 
@@ -134,21 +155,30 @@ export function SpeakFromMemoryQuestion({
     }
   }, [phase, won])
 
-  function blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve((reader.result as string).split(',')[1])
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
+  // ── Lógica compartilhada: processa transcrição e avança fase ──
+  function processSpoken(spoken: string) {
+    setLiveTranscript(spoken)
+    let bestIdx = 0
+    let topScore = 0
+    sentences.forEach((s, i) => {
+      const sc = calculateScore(spoken, s)
+      if (sc > topScore) { topScore = sc; bestIdx = i }
     })
+    const best = sentences[bestIdx]
+    setBestSentence(best)
+    setBestScore(topScore)
+    setWordResults(buildWordResults(spoken, best))
+    setWon(topScore >= WIN_THRESHOLD)
+    setPhase('revealing')
   }
 
+  // ── PREMIUM: MediaRecorder → Azure via /api/transcribe ──
   const handleRecord = async () => {
     if (phase !== 'ready') return
+    if (!isPremium) { handleFreeRecord(); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
@@ -160,45 +190,18 @@ export function SpeakFromMemoryQuestion({
       chunksRef.current = []
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mediaRecorderRef.current = mr
-
       mr.onstop = async () => {
         streamRef.current?.getTracks().forEach((t) => t.stop())
         const blob = new Blob(chunksRef.current, { type: mr.mimeType })
-        const mimeBase = (mr.mimeType || 'audio/webm').split(';')[0]
         let spoken = ''
         try {
           setIsTranscribing(true)
-          const base64 = await blobToWavBase64(blob)
-          const res = await fetch('/api/transcribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audio: base64, mimeType: 'audio/wav' }),
-          })
-          const text = await res.text()
-          if (text) {
-            const data = JSON.parse(text)
-            if (res.ok) spoken = data.transcript || ''
-          }
+          spoken = await transcribeBlob(blob, 'en-US')
         } catch { /* spoken stays empty */ } finally {
           setIsTranscribing(false)
         }
-
-        setLiveTranscript(spoken)
-
-        let bestIdx = 0
-        let topScore = 0
-        sentences.forEach((s, i) => {
-          const sc = calculateScore(spoken, s)
-          if (sc > topScore) { topScore = sc; bestIdx = i }
-        })
-        const best = sentences[bestIdx]
-        setBestSentence(best)
-        setBestScore(topScore)
-        setWordResults(buildWordResults(spoken, best))
-        setWon(topScore >= WIN_THRESHOLD)
-        setPhase('revealing')
+        processSpoken(spoken)
       }
-
       mr.start()
       setLiveTranscript('')
       setPhase('recording')
@@ -208,8 +211,70 @@ export function SpeakFromMemoryQuestion({
   }
 
   const handleStopRecording = () => {
+    if (!isPremium) {
+      if (liveRecognitionRef.current) {
+        // Web Speech API path
+        liveRecognitionRef.current.stop()
+        liveRecognitionRef.current = null
+      } else {
+        // Whisper.js path
+        const m = mediaRecorderRef.current
+        if (m && m.state !== 'inactive') m.stop()
+      }
+      return
+    }
+    // Premium: Azure path
     const m = mediaRecorderRef.current
     if (m && m.state !== 'inactive') m.stop()
+  }
+
+  // ── FREE: Web Speech API nativa ou Whisper.js (Firefox/Safari) ──
+  function handleFreeRecord() {
+    if (isNativeWebSpeechSupported()) {
+      // Chrome, Edge, Android — reconhecimento ao vivo
+      setLiveTranscript('')
+      setPhase('recording')
+      const handle = startLiveRecognition('en-US', {
+        onResult: (transcript, _isFinal) => { setLiveTranscript(transcript) },
+        onEnd: (finalTranscript) => { setIsTranscribing(false); processSpoken(finalTranscript) },
+        onError: () => { setIsTranscribing(false); processSpoken('') },
+      })
+      liveRecognitionRef.current = handle
+    } else {
+      // Firefox, Safari — MediaRecorder + Whisper.js local
+      handleWhisperFreeRecord()
+    }
+  }
+
+  async function handleWhisperFreeRecord() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      chunksRef.current = []
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mediaRecorderRef.current = mr
+      mr.onstop = async () => {
+        streamRef.current?.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType })
+        let spoken = ''
+        try {
+          setIsTranscribing(true)
+          spoken = await transcribeFreeBlob(blob, 'en-US')
+        } catch { /* spoken stays empty */ } finally {
+          setIsTranscribing(false)
+        }
+        processSpoken(spoken)
+      }
+      mr.start()
+      setLiveTranscript('')
+      setPhase('recording')
+    } catch {
+      alert('Erro ao acessar microfone')
+    }
   }
 
   const handleContinue = () => {
@@ -309,21 +374,33 @@ export function SpeakFromMemoryQuestion({
             <div className="space-y-2">
               <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Voz</p>
               <div className="flex gap-2">
-                {(['oliver', 'alice'] as const).map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => { setTtsVoice(v); setCookie('tts_voice', v) }}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
-                    style={{
-                      background: ttsVoice === v ? 'linear-gradient(135deg, #ea580c, #f97316)' : 'rgba(255,255,255,0.06)',
-                      border: ttsVoice === v ? '1px solid rgba(251,146,60,0.6)' : '1px solid rgba(255,255,255,0.1)',
-                      color: ttsVoice === v ? '#fff' : 'rgba(255,255,255,0.4)',
-                      boxShadow: ttsVoice === v ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
-                    }}
-                  >
-                    {v === 'oliver' ? '👨 Oliver' : '👩 Alice'}
-                  </button>
-                ))}
+                {(['oliver', 'alice'] as const).map((v) => {
+                  const isAliceAndNotPremium = v === 'alice' && !isPremium
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => {
+                        if (isAliceAndNotPremium) {
+                          onPremiumRequired()
+                          return
+                        }
+                        setTtsVoice(v)
+                        setCookie('tts_voice', v)
+                      }}
+                      disabled={isAliceAndNotPremium}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
+                      style={{
+                        background: ttsVoice === v ? 'linear-gradient(135deg, #ea580c, #f97316)' : isAliceAndNotPremium ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
+                        border: ttsVoice === v ? '1px solid rgba(251,146,60,0.6)' : isAliceAndNotPremium ? '1px solid rgba(217,119,6,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                        color: ttsVoice === v ? '#fff' : isAliceAndNotPremium ? 'rgba(217,119,6,0.6)' : 'rgba(255,255,255,0.4)',
+                        boxShadow: ttsVoice === v ? '0 0 12px rgba(249,115,22,0.4)' : isAliceAndNotPremium ? '0 0 8px rgba(217,119,6,0.2)' : 'none',
+                        cursor: isAliceAndNotPremium ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {v === 'oliver' ? '👨 Oliver' : isAliceAndNotPremium ? '🔒 Alice' : '👩 Alice'}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 

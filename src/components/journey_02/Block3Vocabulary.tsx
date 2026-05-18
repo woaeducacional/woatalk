@@ -12,11 +12,13 @@ interface Block3VocabularyProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
+  isPremium?: boolean
+  onPremiumRequired?: () => void
 }
 
 type Stage = 'matchIntro' | 'matchWord' | 'fillBlank' | 'fillRepeat' | 'memory' | 'complete'
 
-export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block3VocabularyProps) {
+export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block3VocabularyProps) {
   const cookieKey = `woa_p${phaseId}_b3_stage`
   const fillIdxKey = `woa_p${phaseId}_b3_fill`
   const [stage, setStage] = useState<Stage>(() => {
@@ -135,6 +137,8 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
         onComplete={handleMatchComplete}
         onSentenceChange={(idx) => setMatchWordIdx(idx)}
         persistKey={`woa_p${phaseId}_b3_mw`}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -188,8 +192,8 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
         instruction="Listen and repeat the full sentence!"
         instructionPt="Ouça e repita a frase completa!"
         xpReward={0}
-        onComplete={handleFillRepeatComplete}
-      />
+        onComplete={handleFillRepeatComplete}        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}      />
     )
   }
 
@@ -204,6 +208,8 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
         instruction="Fale qualquer uma das frases que você aprendeu — sem ler!"
         xpReward={25}
         onComplete={(xp) => { setXpEarned((p) => p + xp); setStage('complete') }}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }

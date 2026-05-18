@@ -11,6 +11,8 @@ interface Block5WOAChallengeProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
+  isPremium?: boolean
+  onPremiumRequired?: () => void
 }
 
 type Stage = 'write' | 'translate' | 'listen' | 'repeat' | 'understand' | 'speakFree' | 'complete'
@@ -61,7 +63,7 @@ function clearProgress(phaseId: number) {
   deleteCookie(`woa_p${phaseId}_b5_stage`)
 }
 
-export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block5WOAChallengeProps) {
+export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block5WOAChallengeProps) {
   const [stage, setStage] = useState<Stage>(() => {
     const saved = loadProgress(phaseId)
     const s = saved?.stage as Stage | null
@@ -247,6 +249,8 @@ export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityCha
         instruction="Ouça e repita cada frase:"
         onSentenceChange={(idx) => setRepeatLrIdx(idx)}
         persistKey={`woa_p${phaseId}_b5_lr`}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -293,6 +297,8 @@ export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityCha
         title="Fale Sem Apoio"
         icon="🔥"
         instruction="Diga cada frase de memória — sem ouvir!"
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }

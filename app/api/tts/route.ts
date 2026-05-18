@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { AzureTTSProvider } from '@/lib/speech/azure'
 
 export async function POST(request: NextRequest) {
   const { text, voice, rate } = await request.json()
@@ -9,43 +10,25 @@ export async function POST(request: NextRequest) {
   const key = process.env.AZURE_SPEECH_KEY
   const region = process.env.AZURE_SPEECH_REGION
   if (!key || !region) {
-    return NextResponse.json({ error: 'Azure Speech not configured' }, { status: 500 })
+    return NextResponse.json({ error: 'Azure credentials not configured' }, { status: 503 })
   }
 
-  const voiceName = voice === 'oliver' ? 'en-US-GuyNeural' : 'en-US-JennyNeural'
-  const rateValue = rate === 'slow' ? '-40%' : '-25%'
+  try {
+    const provider = new AzureTTSProvider(key, region)
+    const audioBuffer = await provider.synthesize(text, { voice, rate })
 
-  const ssml = `<speak version='1.0' xml:lang='en-US'>
-    <voice name='${voiceName}'>
-      <prosody rate='${rateValue}'>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</prosody>
-    </voice>
-  </speak>`
-
-  const res = await fetch(
-    `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`,
-    {
-      method: 'POST',
+    return new NextResponse(audioBuffer as unknown as BodyInit, {
+      status: 200,
       headers: {
-        'Ocp-Apim-Subscription-Key': key,
-        'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=86400',
       },
-      body: ssml,
-    }
-  )
-
-  if (!res.ok) {
-    const err = await res.text()
-    return NextResponse.json({ error: `Azure error: ${err}` }, { status: 502 })
+    })
+  } catch (error) {
+    console.error('TTS error:', error)
+    return NextResponse.json(
+      { error: `TTS error: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { status: 502 }
+    )
   }
-
-  const audioBuffer = await res.arrayBuffer()
-
-  return new NextResponse(audioBuffer, {
-    status: 200,
-    headers: {
-      'Content-Type': 'audio/mpeg',
-      'Cache-Control': 'public, max-age=86400',
-    },
-  })
 }

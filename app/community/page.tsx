@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { CommunityPostCard } from '@/src/components/CommunityPostCard'
 import { UserNameLink } from '@/src/components/UserNameLink'
+import { ChatGroupGrid } from '@/src/components/community/ChatGroupGrid'
 import { playClick } from '@/lib/sounds'
 
 interface CommunityPost {
@@ -220,6 +221,9 @@ export default function CommunityPage() {
             ← DASHBOARD
           </Link>
         </div>
+
+        {/* ── Chat groups grid ── */}
+        <ChatGroupGrid />
 
         {/* ── MOBILE: tabs ── */}
         <div className="lg:hidden">

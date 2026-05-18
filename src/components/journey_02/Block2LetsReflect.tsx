@@ -11,6 +11,8 @@ interface Block2LetsReflectProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
+  isPremium?: boolean
+  onPremiumRequired?: () => void
 }
 
 type Stage =
@@ -52,7 +54,7 @@ async function speak(text: string): Promise<void> {
   }
 }
 
-export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block2LetsReflectProps) {
+export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block2LetsReflectProps) {
   const cookieKey = `woa_p${phaseId}_b2_stage`
   const builtCookieKey = `woa_p${phaseId}_b2_built`
   const [stage, setStage] = useState<Stage>(() => {
@@ -117,6 +119,8 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
         xpReward={10}
         onComplete={(xp) => { setXpEarned((p) => p + xp); setStage('listenThink') }}
         onBack={() => setStage('quote')}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -243,6 +247,8 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
         xpReward={20}
         onComplete={(xp) => { setXpEarned((p) => p + xp); setStage('repeatNoAudio') }}
         onBack={() => setStage('yourTurn')}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -258,6 +264,8 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
         instruction="Agora diga sua frase sem ler — de memória!"
         xpReward={25}
         onComplete={(xp) => { setXpEarned((p) => p + xp); setStage('quickBoost') }}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -272,6 +280,8 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
         icon="⚡"
         xpReward={0}
         onComplete={() => setStage('boostNoAudio')}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -287,6 +297,8 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
         instruction="Diga uma das duas frases que você praticou — sem ouvir!"
         xpReward={15}
         onComplete={(xp) => { setXpEarned((p) => p + xp); setStage('complete') }}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }

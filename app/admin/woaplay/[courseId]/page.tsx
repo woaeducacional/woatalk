@@ -24,8 +24,11 @@ export default function AdminWOAPlayEdit() {
   const [showModuleForm, setShowModuleForm] = useState(false)
   const [editingModule, setEditingModule] = useState<WOAPlayModule | null>(null)
   const [uploadingCover, setUploadingCover] = useState(false)
-  const [uploadingMaterialFor, setUploadingMaterialFor] = useState<string | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadingMaterials, setUploadingMaterials] = useState<Map<string, { progress: number; error: string }>>(new Map())
+  const [uploadError, setUploadError] = useState('')
+
+  // Rastrear AbortControllers para cada upload de material
+  const uploadControllers = useRef<Map<string, AbortController>>(new Map())
 
   // Rastrear estado original para detectar mudanças
   const [originalState, setOriginalState] = useState({
@@ -34,8 +37,7 @@ export default function AdminWOAPlayEdit() {
   const [hasChanges, setHasChanges] = useState(false)
 
   const coverInputRef = useRef<HTMLInputElement>(null)
-  const materialInputRef = useRef<HTMLInputElement>(null)
-  const activeMaterialModuleId = useRef<string | null>(null)
+  const materialInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
   useEffect(() => {
     if (status === 'loading') return
@@ -124,54 +126,128 @@ export default function AdminWOAPlayEdit() {
     setUploadingCover(false); e.target.value = ''
   }
 
-  async function handleMaterialUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleMaterialUpload(e: React.ChangeEvent<HTMLInputElement>, moduleId: string) {
     const file = e.target.files?.[0]
-    const modId = activeMaterialModuleId.current
-    if (!file || !modId) return
-    setUploadingMaterialFor(modId)
-    setUploadProgress(0)
+    if (!file) return
+    
+    // Validar tamanho
+    const MAX_SIZE_MB = 50
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: 0, error: `Arquivo muito grande. Máximo permitido: ${MAX_SIZE_MB}MB. Seu arquivo: ${(file.size / 1024 / 1024).toFixed(2)}MB` }))
+      e.target.value = ''
+      setTimeout(() => {
+        setUploadingMaterials(prev => {
+          const next = new Map(prev)
+          next.delete(moduleId)
+          return next
+        })
+      }, 4000)
+      return
+    }
 
-    return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest()
+    // Cancelar upload anterior se existir
+    const existingController = uploadControllers.current.get(moduleId)
+    if (existingController) existingController.abort()
 
-      // Monitorar progresso
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100)
-          setUploadProgress(percentComplete)
-        }
-      })
+    const controller = new AbortController()
+    uploadControllers.current.set(moduleId, controller)
+    setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: 0, error: '' }))
 
-      // Sucesso
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          const data = JSON.parse(xhr.responseText)
-          setModules((prev) =>
-            prev.map((m) =>
-              m.id === modId ? { ...m, materials: [...m.materials, data.material] } : m
-            )
-          )
-        }
-        setUploadingMaterialFor(null)
-        setUploadProgress(0)
-        e.target.value = ''
-        resolve(undefined)
-      })
+    const xhr = new XMLHttpRequest()
 
-      // Erro
-      xhr.addEventListener('error', () => {
-        setUploadingMaterialFor(null)
-        setUploadProgress(0)
-        e.target.value = ''
-        resolve(undefined)
-      })
-
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('moduleId', modId)
-      xhr.open('POST', `/api/woaplay/${courseId}/upload-material`)
-      xhr.send(fd)
+    // Monitorar progresso
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && !controller.signal.aborted) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100)
+        setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: percentComplete, error: '' }))
+      }
     })
+
+    // Sucesso
+    xhr.addEventListener('load', () => {
+      if (controller.signal.aborted) return
+
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        setModules((prev) =>
+          prev.map((m) =>
+            m.id === moduleId ? { ...m, materials: [...m.materials, data.material] } : m
+          )
+        )
+        setSaveMsg('✓ Material carregado com sucesso!')
+        setTimeout(() => setSaveMsg(''), 3000)
+        setUploadingMaterials(prev => {
+          const next = new Map(prev)
+          next.delete(moduleId)
+          return next
+        })
+      } else if (xhr.status === 413) {
+        setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: 0, error: 'Arquivo muito grande. Máximo permitido: 50MB.' }))
+        setTimeout(() => {
+          setUploadingMaterials(prev => {
+            const next = new Map(prev)
+            next.delete(moduleId)
+            return next
+          })
+        }, 4000)
+      } else {
+        try {
+          const data = JSON.parse(xhr.responseText)
+          setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: 0, error: data.error || 'Erro ao carregar arquivo' }))
+        } catch {
+          setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: 0, error: `Erro ao carregar arquivo (${xhr.status})` }))
+        }
+        setTimeout(() => {
+          setUploadingMaterials(prev => {
+            const next = new Map(prev)
+            next.delete(moduleId)
+            return next
+          })
+        }, 4000)
+      }
+      uploadControllers.current.delete(moduleId)
+      e.target.value = ''
+    })
+
+    // Erro de conexão
+    xhr.addEventListener('error', () => {
+      if (!controller.signal.aborted) {
+        setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: 0, error: 'Erro na conexão. Tente novamente.' }))
+        setTimeout(() => {
+          setUploadingMaterials(prev => {
+            const next = new Map(prev)
+            next.delete(moduleId)
+            return next
+          })
+        }, 4000)
+      }
+      uploadControllers.current.delete(moduleId)
+      e.target.value = ''
+    })
+
+    // Timeout
+    xhr.addEventListener('timeout', () => {
+      if (!controller.signal.aborted) {
+        setUploadingMaterials(prev => new Map(prev).set(moduleId, { progress: 0, error: 'Timeout ao carregar arquivo. Arquivo muito grande ou conexão lenta.' }))
+        setTimeout(() => {
+          setUploadingMaterials(prev => {
+            const next = new Map(prev)
+            next.delete(moduleId)
+            return next
+          })
+        }, 4000)
+      }
+      uploadControllers.current.delete(moduleId)
+      e.target.value = ''
+    })
+
+    xhr.timeout = 300000 // 5 minutos
+
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('moduleId', moduleId)
+    xhr.open('POST', `/api/woaplay/${courseId}/upload-material`)
+    xhr.send(fd)
   }
 
   async function handleDeleteMaterial(moduleId: string, materialId: string) {
@@ -353,11 +429,20 @@ export default function AdminWOAPlayEdit() {
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-white/50 font-black text-xs">{mod.materials.length}</span>
-                      <button onClick={() => { activeMaterialModuleId.current = mod.id; materialInputRef.current?.click() }}
+                      <button onClick={() => materialInputRefs.current.get(mod.id)?.click()}
                         className="text-[8px] font-black tracking-widest px-2 py-0.5 rounded-md transition-all hover:scale-105"
                         style={{ background: 'rgba(0,150,255,0.1)', border: '1px solid rgba(0,200,255,0.2)', color: '#00AAFF' }}>
-                        {uploadingMaterialFor === mod.id ? `${uploadProgress}%` : '+ ADD'}
+                        {uploadingMaterials.has(mod.id) ? `${uploadingMaterials.get(mod.id)?.progress}%` : '+ ADD'}
                       </button>
+                      {uploadingMaterials.get(mod.id)?.error && (
+                        <span className="text-[7px] text-red-400 text-center max-w-[80px]">{uploadingMaterials.get(mod.id)?.error}</span>
+                      )}
+                      <input 
+                        ref={(el) => { if (el) materialInputRefs.current.set(mod.id, el) }}
+                        type="file" 
+                        className="hidden" 
+                        onChange={(e) => handleMaterialUpload(e, mod.id)} 
+                      />
                     </div>
                     <div className="flex gap-1.5 justify-center">
                       <button onClick={() => { setEditingModule(mod); setShowModuleForm(true) }}
@@ -389,7 +474,6 @@ export default function AdminWOAPlayEdit() {
               ))}
             </div>
           )}
-          <input ref={materialInputRef} type="file" className="hidden" onChange={handleMaterialUpload} />
         </section>
       </div>
 

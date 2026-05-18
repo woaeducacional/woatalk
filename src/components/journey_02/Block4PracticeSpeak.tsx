@@ -11,6 +11,8 @@ interface Block4PracticeSpeakProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
+  isPremium?: boolean
+  onPremiumRequired?: () => void
 }
 
 type Stage =
@@ -19,7 +21,7 @@ type Stage =
   | 'upgrade' | 'upgradeRepeat'
   | 'final' | 'complete'
 
-export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block4PracticeSpeakProps) {
+export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block4PracticeSpeakProps) {
   const cookieKey = `woa_p${phaseId}_b4_stage`
   const selKey = `woa_p${phaseId}_b4_sel`
   const csKey = `woa_p${phaseId}_b4_cs`
@@ -135,6 +137,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         onComplete={handleListenRepeatComplete}
         onSentenceChange={(idx) => setLrIdx(idx)}
         persistKey={`woa_p${phaseId}_b4_lr`}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -183,6 +187,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         onComplete={() => setStage('speakNoText')}
         onSentenceChange={(idx) => setSwIdx(idx)}
         persistKey={`woa_p${phaseId}_b4_sw`}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -198,6 +204,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         instruction="Diga uma das suas frases — sem ler!"
         xpReward={30}
         onComplete={handleSpeakNoTextComplete}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -250,6 +258,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         onComplete={handleUpgradeRepeatComplete}
         onSentenceChange={(idx) => setUrIdx(idx)}
         persistKey={`woa_p${phaseId}_b4_ur`}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
@@ -265,6 +275,8 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
         instruction="Diga qualquer expressão que você praticou — sem áudio!"
         xpReward={25}
         onComplete={handleFinalComplete}
+        isPremium={isPremium}
+        onPremiumRequired={onPremiumRequired}
       />
     )
   }
