@@ -255,6 +255,10 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
     } catch { /* silent */ }
   }
 
+  const handlePremiumRequired = () => {
+    router.push('/premium')
+  }
+
   const handleGroupComplete = (xp: number) => {
     if (isRedoing) { setIsRedoing(false); setShowGroups(true); return }
     if (isSavingRef.current) return
@@ -282,8 +286,8 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   }
 
   const handleStartMissionGroup = (groupIndex: number, isRedo = false) => {
-    // Free users: block starting a new (non-redo) module after daily limit
-    if (!isPremium && !isRedo && dailyModuleCount >= DAILY_MODULE_LIMIT) {
+    // Block starting a new (non-redo) module after daily limit
+    if (!isRedo && dailyModuleCount >= DAILY_MODULE_LIMIT) {
       setShowDailyLimitModal(true)
       return
     }
@@ -339,7 +343,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
 
   // Groups list
   if (showGroups) {
-    const atDailyLimit = !isPremium && dailyModuleCount >= DAILY_MODULE_LIMIT
+    const atDailyLimit = dailyModuleCount >= DAILY_MODULE_LIMIT
     return (
       <>
         <div className="space-y-8">
@@ -373,7 +377,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
               {missionGroups.slice(0, 3).map((group) => {
                 const isCompleted = completedGroupIds.includes(group.id)
                 const isLocked = group.id > 0 && !completedGroupIds.includes(group.id - 1) && !isCompleted
-                const isBlockedByDailyLimit = !isPremium && atDailyLimit && !isCompleted
+                const isBlockedByDailyLimit = atDailyLimit && !isCompleted
                 const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
                 return <GroupCard key={group.id} group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
               })}
@@ -382,7 +386,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
               {missionGroups.slice(3).map((group) => {
                 const isCompleted = completedGroupIds.includes(group.id)
                 const isLocked = group.id > 0 && !completedGroupIds.includes(group.id - 1) && !isCompleted
-                const isBlockedByDailyLimit = !isPremium && atDailyLimit && !isCompleted
+                const isBlockedByDailyLimit = atDailyLimit && !isCompleted
                 const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
                 return (
                   <div key={group.id} className="w-[calc(33.333%-12px)]" style={{ minWidth: '200px' }}>
@@ -430,11 +434,11 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
           )}
         </div>
         <div style={{ animation: 'fadeIn 0.6s ease-in' }}>
-          {currentGroup === 0 && <Block1VideoInsight  content={content.block1} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
-          {currentGroup === 1 && <Block2LetsReflect    content={content.block2} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
-          {currentGroup === 2 && <Block3Vocabulary     content={content.block3} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
-          {currentGroup === 3 && <Block4PracticeSpeak  content={content.block4} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
-          {currentGroup === 4 && <Block5WOAChallenge   content={content.block5} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} />}
+          {currentGroup === 0 && <Block1VideoInsight  content={content.block1} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} isPremium={isPremium} onPremiumRequired={handlePremiumRequired} />}
+          {currentGroup === 1 && <Block2LetsReflect    content={content.block2} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} isPremium={isPremium} onPremiumRequired={handlePremiumRequired} />}
+          {currentGroup === 2 && <Block3Vocabulary     content={content.block3} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} isPremium={isPremium} onPremiumRequired={handlePremiumRequired} />}
+          {currentGroup === 3 && <Block4PracticeSpeak  content={content.block4} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} isPremium={isPremium} onPremiumRequired={handlePremiumRequired} />}
+          {currentGroup === 4 && <Block5WOAChallenge   content={content.block5} phaseId={phaseId} onComplete={handleGroupComplete} onActivityChange={handleActivityChange} alreadyCompleted={isRedoing} isPremium={isPremium} onPremiumRequired={handlePremiumRequired} />}
         </div>
         <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
       </div>

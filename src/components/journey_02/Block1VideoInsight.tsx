@@ -11,11 +11,13 @@ interface Block1VideoInsightProps {
   onComplete: (xp: number) => void
   onActivityChange?: (current: number, total: number) => void
   alreadyCompleted?: boolean
+  isPremium?: boolean
+  onPremiumRequired?: () => void
 }
 
 type Stage = 'video' | 'choose' | 'listenRepeat' | 'complete'
 
-export function Block1VideoInsight({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false }: Block1VideoInsightProps) {
+export function Block1VideoInsight({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block1VideoInsightProps) {
   const cookieKey = `woa_p${phaseId}_b1_stage`
   const [stage, setStage] = useState<Stage>(() => {
     const s = getCookie(cookieKey) as Stage | null
@@ -76,6 +78,8 @@ export function Block1VideoInsight({ content, phaseId, onComplete, onActivityCha
           onComplete={handleListenRepeatComplete}
           onSentenceChange={(idx) => setLrIdx(idx)}
           persistKey={`woa_p${phaseId}_b1_lr`}
+          isPremium={isPremium}
+          onPremiumRequired={onPremiumRequired}
         />
       )}
 

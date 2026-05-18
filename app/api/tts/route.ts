@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getTTSProvider, createTTSProvider, loadSpeechConfig } from '@/lib/speech'
+import { AzureTTSProvider } from '@/lib/speech/azure'
 
 export async function POST(request: NextRequest) {
   const { text, voice, rate } = await request.json()
@@ -6,46 +8,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing text' }, { status: 400 })
   }
 
-  const key = process.env.AZURE_SPEECH_KEY
-  const region = process.env.AZURE_SPEECH_REGION
-  if (!key || !region) {
-    return NextResponse.json({ error: 'Azure Speech not configured' }, { status: 500 })
-  }
-
-  const voiceName = voice === 'oliver' ? 'en-US-GuyNeural' : 'en-US-JennyNeural'
-  const rateValue = rate === 'slow' ? '-40%' : '-25%'
-
-  const ssml = `<speak version='1.0' xml:lang='en-US'>
-    <voice name='${voiceName}'>
-      <prosody rate='${rateValue}'>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</prosody>
-    </voice>
-  </speak>`
-
-  const res = await fetch(
-    `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`,
-    {
-      method: 'POST',
-      headers: {
-        'Ocp-Apim-Subscription-Key': key,
-        'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
-      },
-      body: ssml,
+  try {
+    // Tenta usar o provider configurado
+    try {
+      const provider = getTTSProvider()
+      const audioBuffer = await provider.synthesize(text, { voice, rate })
+      
+      return new NextResponse(audioBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      })
+    } catch (primaryError) {
+      console.warn('Primary TTS provider failed, falling back to Azure:', primaryError)
+      
+      // Fallback para Azure se o provider primário falhar
+      const config = loadSpeechConfig()
+      if (!config.azure.speechKey || !config.azure.speechRegion) {
+        throw new Error('No fallback provider available: Azure credentials missing')
+      }
+      
+      const azureProvider = new AzureTTSProvider(config.azure.speechKey, config.azure.speechRegion)
+      const audioBuffer = await azureProvider.synthesize(text, { voice, rate })
+      
+      return new NextResponse(audioBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      })
     }
-  )
-
-  if (!res.ok) {
-    const err = await res.text()
-    return NextResponse.json({ error: `Azure error: ${err}` }, { status: 502 })
+  } catch (error) {
+    console.error('TTS error:', error)
+    return NextResponse.json(
+      {
+        error: `TTS error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      },
+      { status: 502 }
+    )
   }
-
-  const audioBuffer = await res.arrayBuffer()
-
-  return new NextResponse(audioBuffer, {
-    status: 200,
-    headers: {
-      'Content-Type': 'audio/mpeg',
-      'Cache-Control': 'public, max-age=86400',
-    },
-  })
 }

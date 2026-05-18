@@ -4,6 +4,13 @@ import { useState, useRef, useEffect } from 'react'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 import { playTTS } from '@/src/lib/ttsService'
 import { blobToWavBase64 } from '@/src/lib/audioUtils'
+import {
+  transcribeBlob,
+  transcribeFreeBlob,
+  startLiveRecognition,
+  isNativeWebSpeechSupported,
+  type LiveRecognitionHandle,
+} from '@/src/lib/transcriptionService'
 
 interface ListenRepeatQuestionProps {
   /**
@@ -99,6 +106,17 @@ interface ListenRepeatQuestionProps {
    * Se não fornecido, tenta traduzir automaticamente via API
    */
   translations?: string[]
+
+  /**
+   * Se o usuário tem acesso premium (para ativar opção ALICE no modal de voz)
+   * @default false
+   */
+  isPremium?: boolean
+
+  /**
+   * Callback para redirecionar para página premium quando clica em ALICE sem premium
+   */
+  onPremiumRequired?: () => void
 }
 
 /**
@@ -107,7 +125,7 @@ interface ListenRepeatQuestionProps {
  * Gerencia:
  * - Síntese de fala (Text-to-Speech) com velocidade reduzida (0.6x)
  * - Reconhecimento de fala (Web Speech API)
- * - Cálculo de score com threshold de 80%
+ * - Cálculo de score com threshold de 60%
  * - Limite de 3 tentativas com opção de pular
  * - Exibição de tradução em português
  *
@@ -138,6 +156,8 @@ export function ListenRepeatQuestion({
   onSentenceChange,
   persistKey,
   translations,
+  isPremium = false,
+  onPremiumRequired = () => {},
 }: ListenRepeatQuestionProps) {
   const [repeatIndex, setRepeatIndex] = useState(() => {
     if (persistKey) {
@@ -150,6 +170,7 @@ export function ListenRepeatQuestion({
     return 0
   })
   const [autoTranslations, setAutoTranslations] = useState<Record<number, string>>({})
+  const [isLoadingTranslation, setIsLoadingTranslation] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -158,9 +179,10 @@ export function ListenRepeatQuestion({
   const [passed, setPassed] = useState(false)
   const [listenCount, setListenCount] = useState(0)
   const [ttsVoice, setTtsVoice] = useState<'oliver' | 'alice'>(() => (getCookie('tts_voice') as 'oliver' | 'alice') || 'oliver')
-  const [ttsRate, setTtsRate] = useState<'normal' | 'slow'>(() => (getCookie('tts_rate') as 'normal' | 'slow') || 'normal')
+  const [ttsRate, setTtsRate] = useState<'normal' | 'slow' | 'superslow'>(() => (getCookie('tts_rate') as 'normal' | 'slow' | 'superslow') || 'normal')
   const [showTtsModal, setShowTtsModal] = useState(false)
-  const recognitionRef = useRef<any>(null)
+  const [showPremiumVoiceModal, setShowPremiumVoiceModal] = useState(false)
+  const recognitionRef = useRef<LiveRecognitionHandle | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
@@ -176,7 +198,20 @@ export function ListenRepeatQuestion({
   useEffect(() => {
     if (translations) return // Se fornecidas via prop, não precisa buscar
 
+    // Remove pontuação e espaços para comparação. Rejeita se ≥80% das palavras
+    // da tradução já existem no original (indica que continua em inglês).
+    const stripForCompare = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
+    const isValidTranslation = (translated: string, original: string) => {
+      if (!translated || stripForCompare(translated) === stripForCompare(original)) return false
+      const origWords = new Set(original.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/))
+      const transWords = translated.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2)
+      if (transWords.length === 0) return false
+      const overlap = transWords.filter(w => origWords.has(w)).length
+      return overlap / transWords.length < 0.8
+    }
+
     const fetchTranslations = async () => {
+      setIsLoadingTranslation(true)
       const translated: Record<number, string> = {}
       for (let i = 0; i < sentences.length; i++) {
         try {
@@ -187,19 +222,18 @@ export function ListenRepeatQuestion({
           })
           if (res.ok) {
             const data = await res.json()
-            let translation = data.translation || data.translated_text
-            // Garante que não retornou a mesma frase (fallback falhado)
-            if (!translation || translation.toLowerCase() === sentences[i].toLowerCase()) {
-              translation = `(tradução: ${sentences[i].toLowerCase()})`
+            const translation = data.translation || data.translated_text
+            // Se a API devolveu inglês (mesmo texto ou subconjunto), não exibe
+            if (isValidTranslation(translation, sentences[i])) {
+              translated[i] = translation
             }
-            translated[i] = translation
           }
         } catch (err) {
           console.error(`Erro ao traduzir frase ${i}:`, err)
-          translated[i] = `(tradução: ${sentences[i].toLowerCase()})`
         }
       }
       setAutoTranslations(translated)
+      setIsLoadingTranslation(false)
     }
 
     fetchTranslations()
@@ -250,7 +284,7 @@ export function ListenRepeatQuestion({
     const score = calculateScore(text, sentences[repeatIndex])
     setLastScore(score)
     console.log(`Tentativa ${attemptCount + 1}: "${text}" - Score: ${score}%`)
-    if (score >= 80) {
+    if (score >= 60) {
       setPassed(true)
     } else {
       new Audio('/audio/falou-errado.mp3').play().catch(() => {})
@@ -268,14 +302,11 @@ export function ListenRepeatQuestion({
     })
   }
 
-  // Inicia gravação: getUserMedia → AudioContext → createMediaStreamSource → MediaRecorder
-  async function startRecording() {
+  // ── PREMIUM: MediaRecorder → Azure via /api/transcribe ──
+  async function startPremiumRecording() {
     try {
-      // Pede permissão para usar o microfone
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-
-      // MediaRecorder captura o áudio real do stream
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
@@ -296,29 +327,18 @@ export function ListenRepeatQuestion({
     }
   }
 
-  // Para a gravação, envia o áudio para transcrição
-  function stopRecording() {
+  function stopPremiumRecording() {
     const mr = mediaRecorderRef.current
     if (!mr || mr.state === 'inactive') return
     mr.onstop = async () => {
       streamRef.current?.getTracks().forEach((t) => t.stop())
       const blob = new Blob(chunksRef.current, { type: mr.mimeType })
-      const mimeBase = (mr.mimeType || 'audio/webm').split(';')[0]
       try {
         setIsTranscribing(true)
-        const base64 = await blobToWavBase64(blob)
-        const res = await fetch('/api/transcribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audio: base64, mimeType: 'audio/wav' }),
-        })
-        const text = await res.text()
-        if (!text) throw new Error('Resposta vazia do servidor')
-        const data = JSON.parse(text)
-        if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
-        if (!data.transcript) throw new Error('Transcrição vazia')
-        processTranscript(data.transcript)
-      } catch (err: any) {
+        const transcript = await transcribeBlob(blob, 'en-US')
+        if (!transcript) throw new Error('Transcrição vazia')
+        processTranscript(transcript)
+      } catch {
         new Audio('/audio/falou-errado.mp3').play().catch(() => {})
         setAttemptCount((c) => c + 1)
       } finally {
@@ -329,13 +349,94 @@ export function ListenRepeatQuestion({
     setIsRecording(false)
   }
 
+  // ── FREE: Web Speech API nativa (sem servidor) ou Whisper.js (Firefox/Safari) ──
+  function startFreeRecognition() {
+    if (isNativeWebSpeechSupported()) {
+      // Chrome, Edge, Android — reconhecimento ao vivo
+      setPassed(false)
+      setIsRecording(true)
+      const handle = startLiveRecognition('en-US', {
+        onResult: (_t, _final) => { /* interim não usado aqui */ },
+        onEnd: (finalTranscript) => {
+          setIsRecording(false)
+          if (finalTranscript) {
+            processTranscript(finalTranscript)
+          } else {
+            new Audio('/audio/falou-errado.mp3').play().catch(() => {})
+            setAttemptCount((c) => c + 1)
+          }
+        },
+        onError: (error) => {
+          setIsRecording(false)
+          if (error !== 'no-speech') {
+            new Audio('/audio/falou-errado.mp3').play().catch(() => {})
+            setAttemptCount((c) => c + 1)
+          }
+        },
+      })
+      recognitionRef.current = handle
+    } else {
+      // Firefox, Safari — MediaRecorder + Whisper.js local
+      startWhisperFreeRecording()
+    }
+  }
+
+  async function startWhisperFreeRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      chunksRef.current = []
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = async () => {
+        streamRef.current?.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType })
+        try {
+          setIsTranscribing(true)
+          const transcript = await transcribeFreeBlob(blob, 'en-US')
+          if (!transcript) throw new Error('vazia')
+          processTranscript(transcript)
+        } catch {
+          new Audio('/audio/falou-errado.mp3').play().catch(() => {})
+          setAttemptCount((c) => c + 1)
+        } finally {
+          setIsTranscribing(false)
+        }
+      }
+      mr.start()
+      mediaRecorderRef.current = mr
+      setIsRecording(true)
+      setPassed(false)
+    } catch {
+      alert('Erro ao acessar microfone')
+    }
+  }
+
+  function stopFreeRecognition() {
+    if (recognitionRef.current) {
+      // Web Speech API path
+      recognitionRef.current.stop()
+      recognitionRef.current = null
+      setIsRecording(false)
+    } else {
+      // Whisper.js path
+      const mr = mediaRecorderRef.current
+      if (mr && mr.state !== 'inactive') { mr.stop(); setIsRecording(false) }
+    }
+  }
+
   // Função para gravar a voz do usuário
   const handleSpeak = () => {
     if (isRecording) {
-      stopRecording()
+      if (isPremium) stopPremiumRecording()
+      else stopFreeRecognition()
       return
     }
-    startRecording()
+    if (isPremium) startPremiumRecording()
+    else startFreeRecognition()
   }
 
   // Função para resetar e ir para próxima sentença
@@ -415,11 +516,13 @@ export function ListenRepeatQuestion({
         </p>
         
         {/* Tradução */}
-        {(translations?.[repeatIndex] || autoTranslations[repeatIndex]) && (
+        {isLoadingTranslation ? (
+          <p className="text-sm mt-3" style={{ color: 'rgba(255,255,255,0.2)' }}>Traduzindo...</p>
+        ) : (translations?.[repeatIndex] || autoTranslations[repeatIndex]) ? (
           <p className="text-sm mt-3 leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
             {translations?.[repeatIndex] || autoTranslations[repeatIndex]}
           </p>
-        )}
+        ) : null}
       </div>
 
       {/* ── LISTEN LOCK COUNTER ── */}
@@ -494,14 +597,14 @@ export function ListenRepeatQuestion({
         <div
           className="rounded-xl p-4 text-center"
           style={{
-            background: lastScore >= 80 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-            border: `1px solid ${lastScore >= 80 ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}`,
+            background: lastScore >= 60 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+            border: `1px solid ${lastScore >= 60 ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}`,
           }}
         >
-          <p className="font-bold text-base" style={{ color: lastScore >= 80 ? '#4ade80' : '#f87171' }}>
-            {lastScore >= 80 ? '✅ Perfeito!' : `❌ Score: ${lastScore}% — mínimo 80%`}
+          <p className="font-bold text-base" style={{ color: lastScore >= 60 ? '#4ade80' : '#f87171' }}>
+            {lastScore >= 60 ? '✅ Perfeito!' : `❌ Score: ${lastScore}% — mínimo 60%`}
           </p>
-          {attemptCount > 0 && lastScore < 80 && (
+          {attemptCount > 0 && lastScore < 60 && (
             <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
               Tentativa {attemptCount} de 3
             </p>
@@ -570,31 +673,51 @@ export function ListenRepeatQuestion({
 
               {/* Voice selection */}
               <div className="space-y-2">
-                <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Voz</p>
-                <div className="flex gap-2">
-                  {(['oliver', 'alice'] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => { setTtsVoice(v); setCookie('tts_voice', v) }}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
-                      style={{
-                        background: ttsVoice === v ? 'linear-gradient(135deg, #ea580c, #f97316)' : 'rgba(255,255,255,0.06)',
-                        border: ttsVoice === v ? '1px solid rgba(251,146,60,0.6)' : '1px solid rgba(255,255,255,0.1)',
-                        color: ttsVoice === v ? '#fff' : 'rgba(255,255,255,0.4)',
-                        boxShadow: ttsVoice === v ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
-                      }}
-                    >
-                      {v === 'oliver' ? '👨 Oliver' : '👩 Alice'}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Voz</p>
+                  {!isPremium && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171' }}>🤖 VOZ ROBÓTICA</span>
+                  )}
                 </div>
+                <div className="flex gap-2">
+                  {(['oliver', 'alice'] as const).map((v) => {
+                    const isAliceAndNotPremium = v === 'alice' && !isPremium
+                    return (
+                      <button
+                        key={v}
+                        onClick={() => {
+                          if (!isPremium) {
+                            setShowPremiumVoiceModal(true)
+                            return
+                          }
+                          setTtsVoice(v)
+                          setCookie('tts_voice', v)
+                        }}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
+                        style={{
+                          background: ttsVoice === v && isPremium ? 'linear-gradient(135deg, #ea580c, #f97316)' : !isPremium ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.06)',
+                          border: ttsVoice === v && isPremium ? '1px solid rgba(251,146,60,0.6)' : !isPremium ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(255,255,255,0.1)',
+                          color: ttsVoice === v && isPremium ? '#fff' : !isPremium ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.4)',
+                          boxShadow: ttsVoice === v && isPremium ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
+                        }}
+                      >
+                        {v === 'oliver' ? '🤖 Oliver' : '🔒 Alice'}
+                      </button>
+                    )
+                  })}
+                </div>
+                {!isPremium && (
+                  <p className="text-[11px] text-center" style={{ color: 'rgba(251,191,36,0.7)' }}>
+                    ✨ Vozes naturais disponíveis com <span style={{ color: '#fbbf24', fontWeight: 700 }}>Premium</span>
+                  </p>
+                )}
               </div>
 
               {/* Speed selection */}
               <div className="space-y-2">
                 <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Velocidade</p>
                 <div className="flex gap-2">
-                  {(['normal', 'slow'] as const).map((s) => (
+                  {(['normal', 'slow', 'superslow'] as const).map((s) => (
                     <button
                       key={s}
                       onClick={() => { setTtsRate(s); setCookie('tts_rate', s) }}
@@ -606,7 +729,7 @@ export function ListenRepeatQuestion({
                         boxShadow: ttsRate === s ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
                       }}
                     >
-                      {s === 'normal' ? '▶ Normal' : '🐢 Lento'}
+                      {s === 'normal' ? '▶ Normal' : s === 'slow' ? '🐢 Lento' : '🐌 Super'}
                     </button>
                   ))}
                 </div>
@@ -624,7 +747,49 @@ export function ListenRepeatQuestion({
           </div>
         )}
 
-        {/* FALAR — só aparece após 3 escutas */}
+        {/* MODAL: PREMIUM VOICE UPSELL */}
+        {showPremiumVoiceModal && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.85)' }}
+            onClick={() => setShowPremiumVoiceModal(false)}
+          >
+            <div
+              className="rounded-2xl p-6 space-y-4 w-80 text-center"
+              style={{ background: '#0a1628', border: '1px solid rgba(251,191,36,0.4)', boxShadow: '0 0 50px rgba(251,191,36,0.12)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-4xl">🤖</div>
+              <p className="text-yellow-400 font-black tracking-widest text-sm">VOZ ROBÓTICA</p>
+              <p className="text-white/70 text-sm leading-relaxed">
+                No plano <span className="text-white font-bold">gratuito</span>, o áudio é gerado por uma voz sintetizada — funciona, mas soa mais mecânica.
+              </p>
+              <div
+                className="rounded-xl p-4 space-y-1"
+                style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)' }}
+              >
+                <p className="text-yellow-300 font-black text-xs tracking-widest">✨ COM PREMIUM</p>
+                <p className="text-white/80 text-sm">Vozes neurais naturais <span className="font-bold text-white">Oliver</span> e <span className="font-bold text-white">Alice</span> via Azure — muito mais parecidas com humanos.</p>
+              </div>
+              <button
+                onClick={() => { setShowPremiumVoiceModal(false); onPremiumRequired() }}
+                className="w-full py-3 rounded-xl font-black tracking-widest text-sm text-white transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', boxShadow: '0 0 20px rgba(251,191,36,0.3)' }}
+              >
+                🚀 VER PLANOS PREMIUM
+              </button>
+              <button
+                onClick={() => setShowPremiumVoiceModal(false)}
+                className="w-full py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all duration-200"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}
+              >
+                Continuar com voz robótica
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* FALAR */}
         {speakUnlocked && (
           <button
             onClick={handleSpeak}
@@ -637,13 +802,13 @@ export function ListenRepeatQuestion({
                 ? '0 0 20px rgba(220,38,38,0.4)'
                 : '0 0 20px rgba(34,197,94,0.3)',
               animation: !isRecording ? 'pulseGreen 2s ease-in-out infinite' : 'none',
-              border: attemptCount > 0 && lastScore < 80
+              border: attemptCount > 0 && lastScore < 60
                 ? '2px solid rgba(248,113,113,0.7)'
                 : 'none',
             }}
           >
             <span>{isRecording ? '🛑 APERTE PARA PARAR DE FALAR' : speakButtonText}</span>
-            {attemptCount > 0 && lastScore < 80 && (
+            {attemptCount > 0 && lastScore < 60 && (
               <span className="flex gap-1 ml-1">
                 {Array.from({ length: Math.min(attemptCount, 3) }).map((_, i) => (
                   <span
