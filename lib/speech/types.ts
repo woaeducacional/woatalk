@@ -12,7 +12,7 @@ export interface STTOptions {
 
 export interface TTSOptions {
   voice?: 'male' | 'female' | string
-  rate?: 'normal' | 'slow' | number
+  rate?: 'normal' | 'slow' | 'superslow' | number
   language?: string
 }
 

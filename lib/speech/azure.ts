@@ -24,7 +24,7 @@ export class AzureSTTProvider implements STTProvider {
           'Content-Type': 'audio/wav; codecs=audio/pcm; samplerate=16000',
           'Accept': 'application/json',
         },
-        body: audioBuffer,
+        body: audioBuffer as unknown as BodyInit,
       }
     )
 
