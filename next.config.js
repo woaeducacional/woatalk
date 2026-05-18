@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // @xenova/transformers usa módulos nativos Node (onnxruntime-node, sharp) que não
-  // devem ser bundlados para o browser — os aliases abaixo desativam os imports no client.
+  // @xenova/transformers só roda no browser (Whisper.js client-side).
+  // Exclui do bundle de serverless functions para não estourar o limite de memória do Vercel.
+  serverExternalPackages: ['@xenova/transformers', 'onnxruntime-node', 'onnxruntime-web', 'sharp'],
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
