@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { ChatMessage } from './ChatMessage'
 import { ChatDateDivider } from './ChatDateDivider'
 import type { ChatMessage as ChatMessageType } from '@/src/services/chat.service'
@@ -39,7 +39,7 @@ export function ChatMessageList({ messages, currentUserId }: ChatMessageListProp
     )
   }
 
-  const items: JSX.Element[] = []
+  const items: React.ReactElement[] = []
   let lastDateKey = ''
 
   for (const msg of messages) {

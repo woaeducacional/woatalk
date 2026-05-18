@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Block1VideoInsight,
   Block2LetsReflect,
@@ -8,7 +9,6 @@ import {
   Block4PracticeSpeak,
   Block5WOAChallenge,
 } from '@/src/components/journey_02'
-import { useRouter } from 'next/navigation'
 import { StreakModal, type StreakUpdateStatus } from '@/src/components/StreakModal'
 import { BadgeUnlockedModal } from '@/src/components/BadgeUnlockedModal'
 import type { JourneyContent, MissionGroupDef } from '@/lib/journeyContent'
@@ -166,6 +166,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   const [isPremium, setIsPremium] = useState(false)
   const [dailyModuleCount, setDailyModuleCount] = useState(0)
   const [showDailyLimitModal, setShowDailyLimitModal] = useState(false)
+  const router = useRouter()
 
   const currentGroupRef = useRef(0)
   const totalXpRef = useRef(0)

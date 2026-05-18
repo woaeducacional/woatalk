@@ -17,6 +17,8 @@ export class WhisperSTTProvider implements STTProvider {
     // Requer: npm install whisper-node
 
     try {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore – whisper-node is optional; only available in local dev with Python
       const { default: Whisper } = await import('whisper-node')
       const whisper = new Whisper({
         modelSize: this.modelSize,

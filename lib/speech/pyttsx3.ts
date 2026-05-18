@@ -62,9 +62,10 @@ engine.runAndWait()
     }
   }
 
-  private getRate(rate?: 'normal' | 'slow' | number): number {
+  private getRate(rate?: 'normal' | 'slow' | 'superslow' | number): number {
     if (typeof rate === 'number') return rate
     if (rate === 'slow') return 150
+    if (rate === 'superslow') return 100
     return 200 // normal
   }
 
@@ -110,7 +111,6 @@ export class SimpleTTSProvider implements TTSProvider {
       // Converter WAV para MP3 com ffmpeg
       await execAsync(`ffmpeg -i "${wavFile}" -q:a 9 -y "${mp3File}"`, {
         timeout: 30000,
-        stdio: 'pipe',
       })
 
       const audioBuffer = await fs.readFile(mp3File)
@@ -127,9 +127,10 @@ export class SimpleTTSProvider implements TTSProvider {
     }
   }
 
-  private getRate(rate?: 'normal' | 'slow' | number): number {
+  private getRate(rate?: 'normal' | 'slow' | 'superslow' | number): number {
     if (typeof rate === 'number') return rate
     if (rate === 'slow') return 150
+    if (rate === 'superslow') return 100
     return 200 // normal
   }
 }
