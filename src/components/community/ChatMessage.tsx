@@ -27,20 +27,20 @@ export function ChatMessage({ message, isOwn }: ChatMessageProps) {
 
       {/* Bubble */}
       <div className={`flex flex-col max-w-[72%] ${isOwn ? 'items-end' : 'items-start'}`}>
-        <span className="text-[10px] font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+        <span className="text-[10px] font-semibold mb-1" style={{ color: 'rgba(0,0,0,0.45)' }}>
           {isOwn ? 'Você' : message.user_name}
         </span>
         <div
           className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
           style={
             isOwn
-              ? { background: 'rgba(0,212,255,0.18)', border: '1px solid rgba(0,212,255,0.30)', color: '#E0F7FF', borderBottomRightRadius: 4 }
-              : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)', borderBottomLeftRadius: 4 }
+              ? { background: 'rgba(0,180,220,0.18)', border: '1px solid rgba(0,180,220,0.35)', color: '#005F7A', borderBottomRightRadius: 4 }
+              : { background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.80)', borderBottomLeftRadius: 4 }
           }
         >
           {message.content}
         </div>
-        <span className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+        <span className="text-[10px] mt-1" style={{ color: 'rgba(0,0,0,0.30)' }}>
           {formatTime(message.created_at)}
         </span>
       </div>

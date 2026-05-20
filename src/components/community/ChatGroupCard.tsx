@@ -7,9 +7,9 @@ interface ChatGroupCardProps {
 
 export function ChatGroupCard({ group }: ChatGroupCardProps) {
   return (
-    <Link href={`/community/chat/${group.id}`}>
+    <Link href={`/community/chat/${group.id}`} className="block h-full">
       <div
-        className="rounded-2xl p-5 flex flex-col gap-2 cursor-pointer transition-all hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
+        className="h-full rounded-2xl p-5 flex flex-col gap-2 cursor-pointer transition-all hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
         style={{
           background: 'rgba(5,14,26,0.80)',
           border: `1px solid ${group.color}40`,

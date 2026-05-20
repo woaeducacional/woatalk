@@ -181,7 +181,6 @@ export function ListenRepeatQuestion({
   const [ttsVoice, setTtsVoice] = useState<'oliver' | 'alice'>(() => (getCookie('tts_voice') as 'oliver' | 'alice') || 'oliver')
   const [ttsRate, setTtsRate] = useState<'normal' | 'slow' | 'superslow'>(() => (getCookie('tts_rate') as 'normal' | 'slow' | 'superslow') || 'normal')
   const [showTtsModal, setShowTtsModal] = useState(false)
-  const [showPremiumVoiceModal, setShowPremiumVoiceModal] = useState(false)
   const recognitionRef = useRef<LiveRecognitionHandle | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -673,44 +672,27 @@ export function ListenRepeatQuestion({
 
               {/* Voice selection */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Voz</p>
-                  {!isPremium && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171' }}>🤖 VOZ ROBÓTICA</span>
-                  )}
-                </div>
+                <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Voz</p>
                 <div className="flex gap-2">
-                  {(['oliver', 'alice'] as const).map((v) => {
-                    const isAliceAndNotPremium = v === 'alice' && !isPremium
-                    return (
-                      <button
-                        key={v}
-                        onClick={() => {
-                          if (!isPremium) {
-                            setShowPremiumVoiceModal(true)
-                            return
-                          }
-                          setTtsVoice(v)
-                          setCookie('tts_voice', v)
-                        }}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
-                        style={{
-                          background: ttsVoice === v && isPremium ? 'linear-gradient(135deg, #ea580c, #f97316)' : !isPremium ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.06)',
-                          border: ttsVoice === v && isPremium ? '1px solid rgba(251,146,60,0.6)' : !isPremium ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(255,255,255,0.1)',
-                          color: ttsVoice === v && isPremium ? '#fff' : !isPremium ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.4)',
-                          boxShadow: ttsVoice === v && isPremium ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
-                        }}
-                      >
-                        {v === 'oliver' ? '🤖 Oliver' : '🔒 Alice'}
-                      </button>
-                    )
-                  })}
+                  {(['oliver', 'alice'] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => {
+                        setTtsVoice(v)
+                        setCookie('tts_voice', v)
+                      }}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
+                      style={{
+                        background: ttsVoice === v ? 'linear-gradient(135deg, #ea580c, #f97316)' : 'rgba(255,255,255,0.06)',
+                        border: ttsVoice === v ? '1px solid rgba(251,146,60,0.6)' : '1px solid rgba(255,255,255,0.1)',
+                        color: ttsVoice === v ? '#fff' : 'rgba(255,255,255,0.4)',
+                        boxShadow: ttsVoice === v ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
+                      }}
+                    >
+                      {v === 'oliver' ? '👨 Oliver' : '👩 Alice'}
+                    </button>
+                  ))}
                 </div>
-                {!isPremium && (
-                  <p className="text-[11px] text-center" style={{ color: 'rgba(251,191,36,0.7)' }}>
-                    ✨ Vozes naturais disponíveis com <span style={{ color: '#fbbf24', fontWeight: 700 }}>Premium</span>
-                  </p>
-                )}
               </div>
 
               {/* Speed selection */}
@@ -747,47 +729,7 @@ export function ListenRepeatQuestion({
           </div>
         )}
 
-        {/* MODAL: PREMIUM VOICE UPSELL */}
-        {showPremiumVoiceModal && (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.85)' }}
-            onClick={() => setShowPremiumVoiceModal(false)}
-          >
-            <div
-              className="rounded-2xl p-6 space-y-4 w-80 text-center"
-              style={{ background: '#0a1628', border: '1px solid rgba(251,191,36,0.4)', boxShadow: '0 0 50px rgba(251,191,36,0.12)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-4xl">🤖</div>
-              <p className="text-yellow-400 font-black tracking-widest text-sm">VOZ ROBÓTICA</p>
-              <p className="text-white/70 text-sm leading-relaxed">
-                No plano <span className="text-white font-bold">gratuito</span>, o áudio é gerado por uma voz sintetizada — funciona, mas soa mais mecânica.
-              </p>
-              <div
-                className="rounded-xl p-4 space-y-1"
-                style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)' }}
-              >
-                <p className="text-yellow-300 font-black text-xs tracking-widest">✨ COM PREMIUM</p>
-                <p className="text-white/80 text-sm">Vozes neurais naturais <span className="font-bold text-white">Oliver</span> e <span className="font-bold text-white">Alice</span> via Azure — muito mais parecidas com humanos.</p>
-              </div>
-              <button
-                onClick={() => { setShowPremiumVoiceModal(false); onPremiumRequired() }}
-                className="w-full py-3 rounded-xl font-black tracking-widest text-sm text-white transition-all duration-200 hover:scale-105 active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', boxShadow: '0 0 20px rgba(251,191,36,0.3)' }}
-              >
-                🚀 VER PLANOS PREMIUM
-              </button>
-              <button
-                onClick={() => setShowPremiumVoiceModal(false)}
-                className="w-full py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all duration-200"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}
-              >
-                Continuar com voz robótica
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* FALAR */}
         {speakUnlocked && (

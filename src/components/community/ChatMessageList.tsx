@@ -34,7 +34,7 @@ export function ChatMessageList({ messages, currentUserId }: ChatMessageListProp
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-50">
         <span className="text-4xl">💬</span>
-        <p className="text-sm text-white/40">Seja o primeiro a mandar uma mensagem!</p>
+        <p className="text-sm text-gray-400">Seja o primeiro a mandar uma mensagem!</p>
       </div>
     )
   }

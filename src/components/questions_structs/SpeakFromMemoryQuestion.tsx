@@ -374,33 +374,24 @@ export function SpeakFromMemoryQuestion({
             <div className="space-y-2">
               <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Voz</p>
               <div className="flex gap-2">
-                {(['oliver', 'alice'] as const).map((v) => {
-                  const isAliceAndNotPremium = v === 'alice' && !isPremium
-                  return (
-                    <button
-                      key={v}
-                      onClick={() => {
-                        if (isAliceAndNotPremium) {
-                          onPremiumRequired()
-                          return
-                        }
-                        setTtsVoice(v)
-                        setCookie('tts_voice', v)
-                      }}
-                      disabled={isAliceAndNotPremium}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
-                      style={{
-                        background: ttsVoice === v ? 'linear-gradient(135deg, #ea580c, #f97316)' : isAliceAndNotPremium ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
-                        border: ttsVoice === v ? '1px solid rgba(251,146,60,0.6)' : isAliceAndNotPremium ? '1px solid rgba(217,119,6,0.4)' : '1px solid rgba(255,255,255,0.1)',
-                        color: ttsVoice === v ? '#fff' : isAliceAndNotPremium ? 'rgba(217,119,6,0.6)' : 'rgba(255,255,255,0.4)',
-                        boxShadow: ttsVoice === v ? '0 0 12px rgba(249,115,22,0.4)' : isAliceAndNotPremium ? '0 0 8px rgba(217,119,6,0.2)' : 'none',
-                        cursor: isAliceAndNotPremium ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {v === 'oliver' ? '👨 Oliver' : isAliceAndNotPremium ? '🔒 Alice' : '👩 Alice'}
-                    </button>
-                  )
-                })}
+                {(['oliver', 'alice'] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => {
+                      setTtsVoice(v)
+                      setCookie('tts_voice', v)
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-black tracking-widest uppercase transition-all duration-200 hover:scale-105 active:scale-95"
+                    style={{
+                      background: ttsVoice === v ? 'linear-gradient(135deg, #ea580c, #f97316)' : 'rgba(255,255,255,0.06)',
+                      border: ttsVoice === v ? '1px solid rgba(251,146,60,0.6)' : '1px solid rgba(255,255,255,0.1)',
+                      color: ttsVoice === v ? '#fff' : 'rgba(255,255,255,0.4)',
+                      boxShadow: ttsVoice === v ? '0 0 12px rgba(249,115,22,0.4)' : 'none',
+                    }}
+                  >
+                    {v === 'oliver' ? '👨 Oliver' : '👩 Alice'}
+                  </button>
+                ))}
               </div>
             </div>
 

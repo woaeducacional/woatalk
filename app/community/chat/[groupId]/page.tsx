@@ -84,18 +84,22 @@ export default function ChatGroupPage({ params }: PageProps) {
         </div>
       </header>
 
-      {/* Message list — fills remaining height */}
-      <div className="relative z-10 flex-1 flex flex-col min-h-0">
-        <ChatMessageList messages={messages} currentUserId={currentUserId} />
+      {/* Message list — white card, 80% width */}
+      <div className="relative z-10 flex-1 flex flex-col items-center min-h-0 py-4 px-4">
+        <div className="w-4/5 flex-1 flex flex-col min-h-0 rounded-2xl overflow-hidden shadow-2xl" style={{ background: 'white' }}>
+          <ChatMessageList messages={messages} currentUserId={currentUserId} />
+        </div>
       </div>
 
-      {/* Input — sticks to bottom */}
-      <div className="relative z-10">
-        <ChatMessageInput
-          onSend={sendMessage}
-          sending={sending}
-          groupColor={groupColor}
-        />
+      {/* Input — 80% width, sticks to bottom */}
+      <div className="relative z-10 flex justify-center px-4 pb-4">
+        <div className="w-4/5">
+          <ChatMessageInput
+            onSend={sendMessage}
+            sending={sending}
+            groupColor={groupColor}
+          />
+        </div>
       </div>
     </main>
   )
