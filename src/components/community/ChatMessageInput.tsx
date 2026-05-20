@@ -32,8 +32,8 @@ export function ChatMessageInput({ onSend, sending, groupColor }: ChatMessageInp
 
   return (
     <div
-      className="shrink-0 px-4 py-3 flex gap-3 items-end"
-      style={{ background: 'rgba(5,14,26,0.92)', borderTop: '1px solid rgba(255,255,255,0.08)' }}
+      className="shrink-0 px-4 py-3 flex gap-3 items-end rounded-2xl shadow-lg"
+      style={{ background: 'white', border: '1px solid rgba(0,0,0,0.10)' }}
     >
       <div className="flex-1 relative">
         <textarea
@@ -46,9 +46,9 @@ export function ChatMessageInput({ onSend, sending, groupColor }: ChatMessageInp
           maxLength={520}
           className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none transition-all"
           style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: `1px solid ${isOverLimit ? '#FF6B6B' : 'rgba(255,255,255,0.12)'}`,
-            color: 'rgba(255,255,255,0.85)',
+            background: 'rgba(0,0,0,0.05)',
+            border: `1px solid ${isOverLimit ? '#FF6B6B' : 'rgba(0,0,0,0.12)'}`,
+            color: 'rgba(0,0,0,0.80)',
             minHeight: 44,
             maxHeight: 120,
           }}
@@ -56,7 +56,7 @@ export function ChatMessageInput({ onSend, sending, groupColor }: ChatMessageInp
         {text.length > 400 && (
           <span
             className="absolute bottom-2 right-3 text-[10px] font-bold"
-            style={{ color: isOverLimit ? '#FF6B6B' : 'rgba(255,255,255,0.3)' }}
+            style={{ color: isOverLimit ? '#FF6B6B' : 'rgba(0,0,0,0.35)' }}
           >
             {remaining}
           </span>

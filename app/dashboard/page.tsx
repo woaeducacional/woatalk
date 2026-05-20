@@ -351,8 +351,13 @@ export default function DashboardPage() {
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [isPremium, setIsPremium] = useState(false)
   const [lastWOAPlayCourse, setLastWOAPlayCourse] = useState<{ id: string; title: string; cover_url: string | null; module_count: number; watched_count: number } | null>(null)
+  const [banner, setBanner] = useState<{ image_url: string; link_url: string | null } | null>(null)
 
   useEffect(() => {
+    fetch('/api/admin/banner')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.banner) setBanner(d.banner) })
+      .catch(() => {})
     fetch('/api/user/stats')
       .then(r => r.ok ? r.json() : { xp_total: 0, coins_balance: 0 })
       .then(d => {
@@ -569,6 +574,23 @@ export default function DashboardPage() {
             </button>
           </div>
         </header>
+
+        {/* ── BANNER ── */}
+        {banner && (
+          <div className="relative z-10 max-w-5xl mx-auto w-full px-4 pt-6">
+            {banner.link_url ? (
+              <a href={banner.link_url} target="_blank" rel="noopener noreferrer" className="block w-full">
+                <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: '4/1', maxHeight: 180 }}>
+                  <Image src={banner.image_url} alt="Banner" fill className="object-cover" priority />
+                </div>
+              </a>
+            ) : (
+              <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: '4/1', maxHeight: 180 }}>
+                <Image src={banner.image_url} alt="Banner" fill className="object-cover" priority />
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-10 space-y-10">
 

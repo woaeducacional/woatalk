@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import Image from 'next/image'
 
 interface Level {
   id: number
@@ -18,6 +19,68 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
+  // ── Banner ──
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null)
+  const [bannerLinkUrl, setBannerLinkUrl] = useState('')
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const [bannerRemoving, setBannerRemoving] = useState(false)
+  const [bannerError, setBannerError] = useState<string | null>(null)
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null)
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/banner')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.banner) setBannerUrl(d.banner.image_url) })
+      .catch(() => {})
+  }, [])
+
+  const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBannerFile(file)
+    setBannerPreview(URL.createObjectURL(file))
+    setBannerError(null)
+  }
+
+  const handleBannerUpload = async () => {
+    if (!bannerFile) return
+    setBannerUploading(true)
+    setBannerError(null)
+    try {
+      const form = new FormData()
+      form.append('file', bannerFile)
+      if (bannerLinkUrl.trim()) form.append('link_url', bannerLinkUrl.trim())
+      const res = await fetch('/api/admin/banner/upload', { method: 'POST', body: form })
+      const data = await res.json()
+      if (!res.ok) { setBannerError(data.error ?? 'Erro no upload'); return }
+      setBannerUrl(data.banner.image_url)
+      setBannerPreview(null)
+      setBannerFile(null)
+      setBannerLinkUrl('')
+      if (bannerInputRef.current) bannerInputRef.current.value = ''
+    } catch {
+      setBannerError('Erro de conexão')
+    } finally {
+      setBannerUploading(false)
+    }
+  }
+
+  const handleBannerRemove = async () => {
+    setBannerRemoving(true)
+    setBannerError(null)
+    try {
+      const res = await fetch('/api/admin/banner', { method: 'DELETE' })
+      if (res.ok) setBannerUrl(null)
+      else { const d = await res.json(); setBannerError(d.error ?? 'Erro ao remover') }
+    } catch {
+      setBannerError('Erro de conexão')
+    } finally {
+      setBannerRemoving(false)
+    }
+  }
 
   useEffect(() => {
     if (status !== 'authenticated') return
@@ -77,6 +140,90 @@ export default function AdminDashboard() {
               className="px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
             >
               + Criar Nova Jornada
+            </button>
+          </div>
+        </div>
+
+        {/* ── BANNER MANAGEMENT ── */}
+        <div className="rounded-2xl p-5 space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black text-white tracking-wide">🖼️ Banner do Dashboard</p>
+              <p className="text-[11px] text-white/40 mt-0.5">Imagem exibida no topo da tela dos usuários</p>
+            </div>
+            {bannerUrl && (
+              <button
+                onClick={handleBannerRemove}
+                disabled={bannerRemoving}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-all disabled:opacity-50"
+              >
+                {bannerRemoving ? 'Removendo...' : '🗑️ Remover banner'}
+              </button>
+            )}
+          </div>
+
+          {/* Preview do banner atual */}
+          {bannerUrl && !bannerPreview && (
+            <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '4/1' }}>
+              <Image src={bannerUrl} alt="Banner ativo" fill className="object-cover" />
+              <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/80 text-white">
+                ● ATIVO
+              </div>
+            </div>
+          )}
+
+          {/* Preview do novo arquivo selecionado */}
+          {bannerPreview && (
+            <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '4/1' }}>
+              <Image src={bannerPreview} alt="Pré-visualização" fill className="object-cover" />
+              <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/80 text-white">
+                PRÉVIA
+              </div>
+            </div>
+          )}
+
+          {/* Form de upload */}
+          <div className="space-y-3">
+            <div className="flex gap-3 items-center">
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={handleBannerFileChange}
+                className="hidden"
+                id="banner-file-input"
+              />
+              <label
+                htmlFor="banner-file-input"
+                className="cursor-pointer px-4 py-2 rounded-xl text-sm font-bold text-white border border-white/20 hover:bg-white/5 transition-all"
+              >
+                📁 Escolher imagem
+              </label>
+              {bannerFile && (
+                <span className="text-xs text-white/50 truncate max-w-[200px]">{bannerFile.name}</span>
+              )}
+            </div>
+
+            <input
+              type="url"
+              placeholder="Link ao clicar no banner (opcional)"
+              value={bannerLinkUrl}
+              onChange={e => setBannerLinkUrl(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)' }}
+            />
+
+            {bannerError && (
+              <p className="text-xs text-red-400">{bannerError}</p>
+            )}
+
+            <button
+              onClick={handleBannerUpload}
+              disabled={!bannerFile || bannerUploading}
+              className="px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg, #0055FF, #00D4FF)', boxShadow: bannerFile ? '0 0 16px rgba(0,212,255,0.3)' : 'none' }}
+            >
+              {bannerUploading ? 'Enviando...' : '⬆️ Publicar banner'}
             </button>
           </div>
         </div>
