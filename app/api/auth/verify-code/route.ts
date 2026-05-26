@@ -3,6 +3,7 @@ import { verifyEmailSchema } from '@/lib/validation'
 import { verifyOTP } from '@/lib/otp'
 import { getUserByEmail } from '@/lib/db'
 import { apiService } from '@/lib/api.service'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,6 +33,15 @@ export async function POST(request: NextRequest) {
 
     // Atualizar status de email verificado no banco de dados
     await apiService.setEmailVerified(user.id)
+
+    // Enviar email de boas-vindas
+    const welcomeResult = await sendWelcomeEmail(user.email, user.name)
+    if (welcomeResult.success) {
+      console.log('🎉 Email de boas-vindas enviado com sucesso para:', user.email)
+    } else {
+      console.warn('⚠️ Email de boas-vindas não foi enviado:', welcomeResult.error)
+      // Não falha — o usuário ainda consegue fazer login mesmo sem receber o email de boas-vindas
+    }
 
     return NextResponse.json(
       {
