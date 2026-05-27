@@ -3,6 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { signInSchema } from '@/lib/validation'
 import { apiService } from '@/lib/api.service'
 import { hasUnverifiedEmail } from '@/lib/otp'
+import { sendWelcomeEmail } from '@/lib/email'
 import type { NextAuthOptions } from 'next-auth'
 
 declare module 'next-auth' {
@@ -75,6 +76,19 @@ export const authOptions: NextAuthOptions = {
             name: user.name ?? 'Usuário',
             avatar_url: user.image ?? null,
           })
+          
+          // Se email_verified é false (primeira vez), enviar email de boas-vindas
+          if (!dbUser.email_verified) {
+            const welcomeResult = await sendWelcomeEmail(dbUser.email, dbUser.name)
+            if (welcomeResult.success) {
+              console.log('🎉 [GOOGLE AUTH] Email de boas-vindas enviado para:', dbUser.email)
+              // Marcar email como verificado após envio bem-sucedido
+              await apiService.setEmailVerified(dbUser.id)
+            } else {
+              console.warn('⚠️ [GOOGLE AUTH] Falha ao enviar email de boas-vindas:', welcomeResult.error)
+            }
+          }
+          
           // Attach our DB id/role so the jwt callback can pick them up
           user.id = dbUser.id
           user.role = dbUser.role ?? 'user'
