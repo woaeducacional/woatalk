@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { UnifiedJourneyFlow } from '@/src/components/UnifiedJourneyFlow'
 import { playClick } from '@/lib/sounds'
@@ -35,12 +35,72 @@ export default function ChallengePage() {
   const router = useRouter()
   const { status } = useSession()
   const phaseId = parseInt(params.phaseId as string)
+  const [accessChecked, setAccessChecked] = useState(false)
+  const [accessBlocked, setAccessBlocked] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status, router])
 
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    fetch('/api/journey/daily-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phaseId }),
+    })
+      .then(r => r.ok ? r.json() : { blocked: false })
+      .then(d => {
+        if (d.blocked) {
+          setAccessBlocked(true)
+          setTimeout(() => router.push('/dashboard'), 3500)
+        } else {
+          setAccessChecked(true)
+        }
+      })
+      .catch(() => setAccessChecked(true))
+  }, [status, phaseId, router])
+
   const phase = OCEAN_PHASES.find(p => p.id === phaseId)
+
+  if (accessBlocked) {
+    return (
+      <main className="min-h-screen flex items-center justify-center" style={{ background: '#050E1A' }}>
+        <div className="text-center space-y-5 p-8 max-w-sm mx-auto">
+          <div className="text-6xl">⏳</div>
+          <h2 className="text-2xl font-black text-white tracking-wider">LIMITE DIÁRIO</h2>
+          <p className="text-blue-200/70 text-sm leading-relaxed">
+            Você já acessou <span className="text-orange-400 font-bold">2 jornadas hoje</span>. No plano gratuito o limite é de 2 jornadas por dia.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={() => router.push('/premium')}
+              className="w-full py-3 rounded-xl font-black tracking-widest text-white transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #B05000, #FF6B00)', boxShadow: '0 0 24px rgba(255,107,0,0.4)' }}
+            >
+              👑 VER PLANOS PREMIUM
+            </button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full py-3 rounded-xl font-bold text-sm tracking-widest transition-all hover:scale-105"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}
+            >
+              ← VOLTAR AO DASHBOARD
+            </button>
+          </div>
+          <p className="text-xs text-blue-300/30">Redirecionando automaticamente...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (status === 'authenticated' && !accessChecked) {
+    return (
+      <main className="min-h-screen flex items-center justify-center" style={{ background: '#050E1A' }}>
+        <div className="w-10 h-10 rounded-full border-2 border-cyan-400/30 border-t-cyan-400 animate-spin" />
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen relative" style={{ background: '#050E1A' }}>

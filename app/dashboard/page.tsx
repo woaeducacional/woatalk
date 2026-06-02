@@ -24,22 +24,26 @@ type JourneyItem = { phase_id: number; title: string; description: string; block
 
 const OCEAN_ICONS_DEFAULT = '/images/jornada-secreta.png'
 
-function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boolean }) {
+function CircleCard({ journey, isCenter, isDailyLocked = false }: { journey: JourneyItem; isCenter: boolean; isDailyLocked?: boolean }) {
   const iconSrc = journey.icon_url || OCEAN_ICONS_DEFAULT
-  const locked = journey.blocked
+  const locked = journey.blocked || isDailyLocked
   const size = isCenter ? 176 : 136
   const isMemoryGame = journey.phase_id === -1
   
-  let bgColor = locked
+  let bgColor = journey.blocked
     ? 'linear-gradient(135deg, #0d0d1a, #1a1a2e)'
+    : isDailyLocked
+    ? 'linear-gradient(135deg, #1a0d00, #2e1500)'
     : isMemoryGame
     ? isCenter ? 'radial-gradient(circle at 35% 30%, #FFD700, #DAA520)' : 'radial-gradient(circle at 35% 30%, #FFC700, #CC8800)'
     : isCenter
     ? 'radial-gradient(circle at 35% 30%, #0055FF, #001A60)'
     : 'radial-gradient(circle at 35% 30%, #003AB0, #000D30)'
   
-  let borderColor = locked
+  let borderColor = journey.blocked
     ? '2px solid rgba(255,255,255,0.12)'
+    : isDailyLocked
+    ? isCenter ? '3px solid rgba(255,107,0,0.5)' : '2px solid rgba(255,107,0,0.3)'
     : isMemoryGame
     ? isCenter ? '3px solid #FFD700' : '2px solid rgba(255,215,0,0.5)'
     : isCenter
@@ -92,9 +96,9 @@ function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boo
           className={`object-contain relative z-10 ${locked ? 'grayscale opacity-35' : ''}`}
         />
       )}
-      {locked && !isMemoryGame && (
+      {(journey.blocked || isDailyLocked) && !isMemoryGame && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: isCenter ? 32 : 20, opacity: 0.5 }}>🔒</span>
+          <span style={{ fontSize: isCenter ? 32 : 20, opacity: 0.6 }}>{isDailyLocked ? '⏳' : '🔒'}</span>
         </div>
       )}
     </div>
@@ -104,7 +108,7 @@ function CircleCard({ journey, isCenter }: { journey: JourneyItem; isCenter: boo
           className="text-center font-bold tracking-wide"
           style={{
             fontSize: 9,
-            color: locked ? 'rgba(255,255,255,0.3)' : isMemoryGame ? '#FFD700' : 'rgba(0,212,255,0.7)',
+            color: journey.blocked ? 'rgba(255,255,255,0.3)' : isDailyLocked ? 'rgba(255,107,0,0.5)' : isMemoryGame ? '#FFD700' : 'rgba(0,212,255,0.7)',
             letterSpacing: '0.12em',
             maxWidth: size,
             lineHeight: 1.3,
@@ -137,12 +141,14 @@ function JourneyGlobeCarousel({
   lastPhaseId,
   isAdmin,
   isPremium,
+  dailyAccessedPhaseIds,
   onToggleBlocked,
 }: {
   journeys: JourneyItem[]
   lastPhaseId: number | null
   isAdmin: boolean
   isPremium: boolean
+  dailyAccessedPhaseIds: number[]
   onToggleBlocked: (phaseId: number) => void
 }) {
   const [current, setCurrent] = useState(0)
@@ -156,6 +162,10 @@ function JourneyGlobeCarousel({
   const centerJ = journeys[current]
   const leftJ = len >= 2 ? journeys[(current - 1 + len) % len] : null
   const rightJ = len >= 2 ? journeys[(current + 1) % len] : null
+
+  const atDailyJourneyLimit = !isPremium && dailyAccessedPhaseIds.length >= 2
+  const isDailyLocked = (j: JourneyItem) =>
+    atDailyJourneyLimit && j.phase_id !== -1 && !dailyAccessedPhaseIds.includes(j.phase_id)
 
   return (
     <div className="select-none">
@@ -189,7 +199,7 @@ function JourneyGlobeCarousel({
             transformOrigin: 'left center',
           }}
         >
-          {leftJ && <CircleCard journey={leftJ} isCenter={false} />}
+          {leftJ && <CircleCard journey={leftJ} isCenter={false} isDailyLocked={isDailyLocked(leftJ)} />}
         </div>
 
         {/* Center card — absolute, truly centered */}
@@ -203,7 +213,7 @@ function JourneyGlobeCarousel({
             transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <CircleCard journey={centerJ} isCenter={true} />
+          <CircleCard journey={centerJ} isCenter={true} isDailyLocked={isDailyLocked(centerJ)} />
         </div>
 
         {/* Right card — absolute, anchored to right */}
@@ -220,7 +230,7 @@ function JourneyGlobeCarousel({
             transformOrigin: 'right center',
           }}
         >
-          {rightJ && <CircleCard journey={rightJ} isCenter={false} />}
+          {rightJ && <CircleCard journey={rightJ} isCenter={false} isDailyLocked={isDailyLocked(rightJ)} />}
         </div>
 
         {/* Right arrow */}
@@ -255,6 +265,14 @@ function JourneyGlobeCarousel({
           >
             🔒 EM BREVE
           </div>
+        ) : isDailyLocked(centerJ) ? (
+          <button
+            onClick={() => router.push('/premium')}
+            className="inline-block px-6 py-2.5 text-xs font-black tracking-widest text-white rounded-full transition-all hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, #B05000, #FF6B00)', boxShadow: '0 0 18px rgba(255,107,0,0.35)' }}
+          >
+            ⏳ LIMITE DIÁRIO — 👑 PREMIUM
+          </button>
         ) : centerJ.phase_id === -1 ? (
           // WOA Memory Game
           <Link
@@ -350,6 +368,7 @@ export default function DashboardPage() {
   const [verifyLoading, setVerifyLoading] = useState(false)
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [isPremium, setIsPremium] = useState(false)
+  const [dailyAccessedPhaseIds, setDailyAccessedPhaseIds] = useState<number[]>([])
   const [lastWOAPlayCourse, setLastWOAPlayCourse] = useState<{ id: string; title: string; cover_url: string | null; module_count: number; watched_count: number } | null>(null)
   const [banner, setBanner] = useState<{ image_url: string; link_url: string | null } | null>(null)
 
@@ -415,6 +434,10 @@ export default function DashboardPage() {
     fetch('/api/community/recent')
       .then(r => r.ok ? r.json() : { posts: [] })
       .then(d => setRecentPosts(d.posts ?? []))
+      .catch(() => {})
+    fetch('/api/journey/daily-access')
+      .then(r => r.ok ? r.json() : { accessedPhaseIds: [] })
+      .then(d => setDailyAccessedPhaseIds(d.accessedPhaseIds ?? []))
       .catch(() => {})
     fetch('/api/user/subscription')
       .then(r => r.ok ? r.json() : { isPremium: false })
@@ -789,6 +812,7 @@ export default function DashboardPage() {
               lastPhaseId={lastPhaseId}
               isAdmin={isAdmin}
               isPremium={isPremium}
+              dailyAccessedPhaseIds={dailyAccessedPhaseIds}
               onToggleBlocked={handleToggleBlocked}
             />
           </section>

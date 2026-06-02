@@ -29,7 +29,7 @@ function DailyLimitModal({ onClose }: { onClose: () => void }) {
             <div className="text-5xl">⏳</div>
             <h2 className="text-2xl font-black tracking-wider text-white">LIMITE DIÁRIO ATINGIDO</h2>
             <p className="text-sm text-blue-200/70 leading-relaxed">
-              Você já completou <span className="text-orange-400 font-bold">{DAILY_MODULE_LIMIT} módulos hoje</span>. No plano gratuito o limite é de {DAILY_MODULE_LIMIT} módulos por dia.
+              Você já abriu <span className="text-orange-400 font-bold">{DAILY_MODULE_LIMIT} blocos hoje</span>. No plano gratuito o limite é de {DAILY_MODULE_LIMIT} blocos por dia.
             </p>
           </div>
 
@@ -164,7 +164,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   const [activityInfo, setActivityInfo] = useState<{ current: number; total: number }>({ current: 1, total: 1 })
   const [isRedoing, setIsRedoing] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
-  const [dailyModuleCount, setDailyModuleCount] = useState(0)
+  const [dailyAccessedBlocks, setDailyAccessedBlocks] = useState<{ phaseId: number; missionGroupId: number }[]>([])
   const [showDailyLimitModal, setShowDailyLimitModal] = useState(false)
   const router = useRouter()
 
@@ -187,9 +187,9 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
       .then(r => r.ok ? r.json() : { isPremium: false })
       .then(d => setIsPremium(d.isPremium === true))
       .catch(() => {})
-    fetch('/api/mission-groups/daily-count')
-      .then(r => r.ok ? r.json() : { count: 0 })
-      .then(d => setDailyModuleCount(d.count ?? 0))
+    fetch('/api/mission-groups/daily-access')
+      .then(r => r.ok ? r.json() : { accessedBlocks: [] })
+      .then(d => setDailyAccessedBlocks(d.accessedBlocks ?? []))
       .catch(() => {})
   }, [])
 
@@ -271,11 +271,6 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
 
     saveMissionGroupCompletion(groupId, xp).finally(() => {
       isSavingRef.current = false
-      // Refresh daily count after completing a module
-      fetch('/api/mission-groups/daily-count')
-        .then(r => r.ok ? r.json() : { count: 0 })
-        .then(d => setDailyModuleCount(d.count ?? 0))
-        .catch(() => {})
     })
     setTimeout(() => setGroupCompleted(groupId), 600)
 
@@ -287,10 +282,23 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   }
 
   const handleStartMissionGroup = (groupIndex: number, isRedo = false) => {
-    // Block starting a new (non-redo) module after daily limit
-    if (!isRedo && dailyModuleCount >= DAILY_MODULE_LIMIT) {
-      setShowDailyLimitModal(true)
-      return
+    if (!isRedo && !isPremium) {
+      const alreadyOpenedToday = dailyAccessedBlocks.some(
+        b => b.phaseId === phaseId && b.missionGroupId === groupIndex
+      )
+      if (!alreadyOpenedToday) {
+        if (dailyAccessedBlocks.length >= DAILY_MODULE_LIMIT) {
+          setShowDailyLimitModal(true)
+          return
+        }
+        // Record access optimistically in local state, then persist in background
+        setDailyAccessedBlocks(prev => [...prev, { phaseId, missionGroupId: groupIndex }])
+        fetch('/api/mission-groups/daily-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phaseId, missionGroupId: groupIndex }),
+        }).catch(() => {})
+      }
     }
     setCurrentGroup(groupIndex)
     currentGroupRef.current = groupIndex
@@ -344,13 +352,15 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
 
   // Groups list
   if (showGroups) {
-    const atDailyLimit = dailyModuleCount >= DAILY_MODULE_LIMIT
+    const atDailyLimit = !isPremium && dailyAccessedBlocks.length >= DAILY_MODULE_LIMIT
+    const isBlockOpenedToday = (groupId: number) =>
+      dailyAccessedBlocks.some(b => b.phaseId === phaseId && b.missionGroupId === groupId)
     return (
       <>
         <div className="space-y-8">
           <div className="p-8 rounded-lg backdrop-blur-md border border-cyan-400/20" style={{ background: 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(34,197,94,0.05))' }}>
             <h2 className="text-3xl font-black text-white mb-2">{'🌊'} {content.title}</h2>
-            <p className="text-blue-200/80">{content.description} {'—'} complete os {missionGroups.length} blocos na sequ{'ê'}ncia!</p>
+            <p className="text-blue-200/80">{content.description} {'—'} complete os {missionGroups.length} blocos na sequ{'ê'}ncia!</p>
           </div>
 
           {/* Daily limit warning banner */}
@@ -362,7 +372,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
               <span className="text-2xl flex-shrink-0">⏳</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-black text-orange-300 tracking-wide">LIMITE DIÁRIO ATINGIDO</p>
-                <p className="text-xs text-orange-200/70 mt-0.5">Você já completou {DAILY_MODULE_LIMIT} módulos hoje. Volte amanhã ou assine o Premium.</p>
+                <p className="text-xs text-orange-200/70 mt-0.5">Você já abriu {DAILY_MODULE_LIMIT} blocos hoje. Volte amanhã ou assine o Premium.</p>
               </div>
               <button
                 onClick={() => setShowDailyLimitModal(true)}
@@ -378,7 +388,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
               {missionGroups.slice(0, 3).map((group) => {
                 const isCompleted = completedGroupIds.includes(group.id)
                 const isLocked = group.id > 0 && !completedGroupIds.includes(group.id - 1) && !isCompleted
-                const isBlockedByDailyLimit = atDailyLimit && !isCompleted
+                const isBlockedByDailyLimit = atDailyLimit && !isBlockOpenedToday(group.id) && !isCompleted
                 const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
                 return <GroupCard key={group.id} group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
               })}
@@ -387,7 +397,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
               {missionGroups.slice(3).map((group) => {
                 const isCompleted = completedGroupIds.includes(group.id)
                 const isLocked = group.id > 0 && !completedGroupIds.includes(group.id - 1) && !isCompleted
-                const isBlockedByDailyLimit = atDailyLimit && !isCompleted
+                const isBlockedByDailyLimit = atDailyLimit && !isBlockOpenedToday(group.id) && !isCompleted
                 const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
                 return (
                   <div key={group.id} className="w-[calc(33.333%-12px)]" style={{ minWidth: '200px' }}>
