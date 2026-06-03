@@ -115,6 +115,26 @@ export default function PremiumPage() {
       cta: 'Em Breve',
       ctaDisabled: true,
       comingSoon: true
+    },
+    {
+      name: 'IMERSÃO ANUAL',
+      subtitle: 'Aulas em Grupo com Acesso Completo por 1 ano',
+      price: '196,19',
+      originalPrice: '2.987,00',
+      period: '12x mensais',
+      annualPrice: '1.897,00',
+      bonus: '4 Cursos Especializados',
+      features: [
+        'Incluído: Curso Prático de Conversação para Iniciantes + Curso Prático de Conversação Avançada (até a fluência)',
+        'Acesso: Aulas online gravadas e Ao Vivo',
+        'Benefícios Adicionais: Imersão, 1 ano de Mentoria + Conversação em grupo',
+        'Salas Incluídas: Mentorias + Sala de Conversação Ao Vivo'
+      ],
+      gradient: 'linear-gradient(135deg, #7c2d12, #c2410c)',
+      border: '#f97316',
+      cta: 'Em Breve',
+      ctaDisabled: true,
+      comingSoon: true
     }
   ]
 
@@ -147,7 +167,7 @@ export default function PremiumPage() {
         </header>
 
         {/* Main content */}
-        <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-12 space-y-12">
+        <div className="flex-1 max-w-screen-2xl mx-auto w-full px-6 py-12 space-y-12">
           {/* Hero */}
           <div className="text-center space-y-4">
             <h2 className="text-4xl font-black text-white" style={{ textShadow: '0 0 20px rgba(0,212,255,0.4)' }}>
@@ -185,14 +205,14 @@ export default function PremiumPage() {
           )}
 
           {/* Pricing Cards */}
-          <div className="grid md:grid-cols-3 gap-6 relative">
+          <div className="grid md:grid-cols-2 2xl:grid-cols-4 gap-8 relative">
             {plans.map((plan, idx) => (
               <div
                 key={idx}
                 className="relative rounded-2xl overflow-hidden backdrop-blur-md transition-all hover:scale-105 flex flex-col"
                 style={{
                   background: plan.popular ? 'rgba(168,85,247,0.08)' : 'rgba(5,14,26,0.65)',
-                  border: `2px solid ${plan.popular ? plan.border : 'rgba(' + (plan.border === '#00D4FF' ? '0,212,255' : plan.border === '#FF9A00' ? '255,154,0' : '168,85,247') + ',0.25)'}`,
+                  border: `2px solid ${plan.popular ? plan.border : plan.border + '40'}`,
                   boxShadow: plan.popular ? `0 0 30px ${plan.border}40` : 'none',
                   opacity: (plan as { comingSoon?: boolean }).comingSoon ? 0.65 : 1,
                 }}
@@ -200,7 +220,7 @@ export default function PremiumPage() {
                 {(plan as { comingSoon?: boolean }).comingSoon && (
                   <div
                     className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-black tracking-widest"
-                    style={{ background: 'linear-gradient(135deg, #1a0533, #3b0764)', border: '1px solid #A855F7', color: '#A855F7' }}
+                    style={{ background: `${plan.border}18`, border: `1px solid ${plan.border}`, color: plan.border }}
                   >
                     EM BREVE
                   </div>
@@ -222,11 +242,39 @@ export default function PremiumPage() {
                     >
                       {plan.name}
                     </h3>
+                    {(plan as any).subtitle && (
+                      <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                        {(plan as any).subtitle}
+                      </p>
+                    )}
+                    {(plan as any).originalPrice && (
+                      <p className="text-xs line-through" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                        de R$ {(plan as any).originalPrice}
+                      </p>
+                    )}
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-black text-white">R$ {plan.price}</span>
                       <span className="text-blue-200/60 text-sm">{plan.period}</span>
                     </div>
+                    {(plan as any).annualPrice && (
+                      <p className="text-sm font-bold" style={{ color: plan.border }}>
+                        ou R$ {(plan as any).annualPrice} Anual
+                      </p>
+                    )}
                   </div>
+
+                  {(plan as any).bonus && (
+                    <div
+                      className="px-3 py-1.5 rounded-lg text-xs font-black tracking-wide"
+                      style={{
+                        background: `${plan.border}22`,
+                        border: `1px solid ${plan.border}55`,
+                        color: plan.border,
+                      }}
+                    >
+                      🎁 Bônus: {(plan as any).bonus}
+                    </div>
+                  )}
 
                   {/* Features */}
                   <div className="space-y-3">

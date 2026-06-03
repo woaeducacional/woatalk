@@ -181,6 +181,9 @@ export function ListenRepeatQuestion({
   const [ttsVoice, setTtsVoice] = useState<'oliver' | 'alice'>(() => (getCookie('tts_voice') as 'oliver' | 'alice') || 'oliver')
   const [ttsRate, setTtsRate] = useState<'normal' | 'slow' | 'superslow'>(() => (getCookie('tts_rate') as 'normal' | 'slow' | 'superslow') || 'normal')
   const [showTtsModal, setShowTtsModal] = useState(false)
+  const [wordDiff, setWordDiff] = useState<{ expected: string; spoken: string | null; isCorrect: boolean }[]>([])
+  const [showOwlFeedback, setShowOwlFeedback] = useState(false)
+  const [playingWord, setPlayingWord] = useState<string | null>(null)
   const recognitionRef = useRef<LiveRecognitionHandle | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -248,6 +251,21 @@ export function ListenRepeatQuestion({
   const LISTEN_REQUIRED = isWord ? 1 : 3
   const speakUnlocked = listenCount >= LISTEN_REQUIRED
 
+  // Compara palavra a palavra entre o falado e o esperado
+  const computeWordDiff = (
+    spoken: string,
+    expected: string,
+  ): { expected: string; spoken: string | null; isCorrect: boolean }[] => {
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '')
+    const spokenWords = spoken.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/).filter(Boolean)
+    const expectedWords = expected.split(/\s+/).filter(Boolean)
+    return expectedWords.map((exp, i) => ({
+      expected: exp,
+      spoken: spokenWords[i] ?? null,
+      isCorrect: norm(spokenWords[i] ?? '') === norm(exp),
+    }))
+  }
+
   // Função para calcular match entre frase esperada e frase dita
   const calculateScore = (spoken: string, expected: string): number => {
     const normalize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/)
@@ -285,9 +303,13 @@ export function ListenRepeatQuestion({
     console.log(`Tentativa ${attemptCount + 1}: "${text}" - Score: ${score}%`)
     if (score >= 60) {
       setPassed(true)
+      setShowOwlFeedback(false)
     } else {
       new Audio('/audio/falou-errado.mp3').play().catch(() => {})
       setAttemptCount((c) => c + 1)
+      const diff = computeWordDiff(text, sentences[repeatIndex])
+      setWordDiff(diff)
+      setShowOwlFeedback(true)
     }
   }
 
@@ -445,6 +467,9 @@ export function ListenRepeatQuestion({
     setLastScore(0)
     setPassed(false)
     setListenCount(0)
+    setShowOwlFeedback(false)
+    setWordDiff([])
+    setPlayingWord(null)
     if (repeatIndex < sentences.length - 1) {
       setRepeatIndex((p) => p + 1)
     } else {
@@ -608,6 +633,117 @@ export function ListenRepeatQuestion({
               Tentativa {attemptCount} de 3
             </p>
           )}
+        </div>
+      )}
+
+      {/* ── OWL PRONUNCIATION FEEDBACK ── */}
+      {showOwlFeedback && !passed && wordDiff.length > 0 && (
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, rgba(30,0,60,0.97) 0%, rgba(10,5,40,0.97) 100%)',
+            border: '1px solid rgba(168,85,247,0.4)',
+            boxShadow: '0 0 30px rgba(168,85,247,0.18)',
+            animation: 'owlSlideIn 0.4s ease-out',
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(168,85,247,0.15)' }}>
+            <div
+              className="relative w-12 h-12 flex-shrink-0"
+              style={{ animation: 'owlBob 2.5s ease-in-out infinite', filter: 'drop-shadow(0 0 10px rgba(168,85,247,0.7))' }}
+            >
+              <img src="/images/coruja-corretora.png" alt="Coruja de Pronúncia" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <p className="font-black text-xs tracking-[0.25em] uppercase" style={{ color: '#c084fc' }}>
+                Vamos corrigir a pronúncia
+              </p>
+              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                Veja quais palavras precisam de atenção:
+              </p>
+            </div>
+          </div>
+
+          {/* Word chips */}
+          <div className="px-5 py-4 flex flex-wrap gap-2">
+            {wordDiff.map((w, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-all"
+                style={{
+                  background: w.isCorrect ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                  border: `1px solid ${w.isCorrect ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.4)'}`,
+                }}
+              >
+                <span
+                  className="text-sm font-bold"
+                  style={{ color: w.isCorrect ? '#4ade80' : '#f87171' }}
+                >
+                  {w.isCorrect ? '✓' : '✗'} {w.expected}
+                </span>
+                {!w.isCorrect && (
+                  <>
+                    {w.spoken && (
+                      <span className="text-[10px] italic" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                        (você: "{w.spoken}")
+                      </span>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (playingWord) return
+                        setPlayingWord(w.expected)
+                        playTTS(w.expected, 'alice', 'slow', () => setPlayingWord(null))
+                      }}
+                      title={`Ouvir como pronunciar "${w.expected}"`}
+                      className="flex items-center justify-center w-6 h-6 rounded-full transition-all duration-150 hover:scale-110 active:scale-95"
+                      style={{
+                        background: playingWord === w.expected ? 'rgba(168,85,247,0.5)' : 'rgba(168,85,247,0.22)',
+                        border: '1px solid rgba(168,85,247,0.55)',
+                        boxShadow: playingWord === w.expected ? '0 0 8px rgba(168,85,247,0.6)' : 'none',
+                        fontSize: '11px',
+                      }}
+                    >
+                      {playingWord === w.expected ? '⏸' : '🔊'}
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Action buttons */}
+          <div className="px-5 pb-5 space-y-2">
+            <button
+              onClick={() => {
+                if (playingWord) return
+                setPlayingWord('__full__')
+                playTTS(sentences[repeatIndex], 'alice', 'superslow', () => setPlayingWord(null))
+              }}
+              disabled={!!playingWord}
+              className="w-full py-3 rounded-xl font-bold text-sm tracking-widest transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
+              style={{
+                background: playingWord === '__full__'
+                  ? 'rgba(168,85,247,0.3)'
+                  : 'linear-gradient(135deg, rgba(88,28,135,0.55), rgba(168,85,247,0.22))',
+                border: '1px solid rgba(168,85,247,0.45)',
+                color: '#e9d5ff',
+              }}
+            >
+              {playingWord === '__full__' ? '⏸ Ouvindo...' : '🔊 Ouvir frase palavra por palavra (Alice)'}
+            </button>
+            <button
+              onClick={() => setShowOwlFeedback(false)}
+              className="w-full py-2.5 rounded-xl font-bold text-xs tracking-[0.2em] uppercase transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.45)',
+              }}
+            >
+              Entendi — Tentar novamente
+            </button>
+          </div>
         </div>
       )}
 
@@ -792,8 +928,17 @@ export function ListenRepeatQuestion({
           0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
           50%       { opacity: 1;   transform: scaleY(1.2); }
         }
+        @keyframes pulseGreen {
           0%, 100% { box-shadow: 0 0 20px rgba(34,197,94,0.3); }
           50%       { box-shadow: 0 0 35px rgba(34,197,94,0.6); }
+        }
+        @keyframes owlBob {
+          0%, 100% { transform: translateY(0px) rotate(-4deg); }
+          50%       { transform: translateY(-7px) rotate(4deg); }
+        }
+        @keyframes owlSlideIn {
+          from { opacity: 0; transform: translateY(14px) scale(0.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </div>
