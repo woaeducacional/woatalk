@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 import type { Block4Content } from '@/lib/journeyContent'
@@ -22,6 +23,7 @@ type Stage =
   | 'final' | 'complete'
 
 export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block4PracticeSpeakProps) {
+  const { data: session } = useSession()
   const cookieKey = `woa_p${phaseId}_b4_stage`
   const selKey = `woa_p${phaseId}_b4_sel`
   const csKey = `woa_p${phaseId}_b4_cs`
@@ -128,6 +130,7 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
     return (
       <ListenRepeatQuestion
         sentences={selected.map((i) => content.expressions.find(e => e.id === i)?.example ?? '')}
+        userId={session?.user?.id}
         stepLabel="Passo 2 — Ouça e Repita"
         title="Suas Expressões"
         icon="🎧"
@@ -178,6 +181,7 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
     return (
       <ListenRepeatQuestion
         sentences={completeSentences}
+        userId={session?.user?.id}
         stepLabel="Passo 3a — Fale com Texto"
         title="Suas Frases"
         icon="🎤"
@@ -249,6 +253,7 @@ export function Block4PracticeSpeak({ content, phaseId, onComplete, onActivityCh
     return (
       <ListenRepeatQuestion
         sentences={upgradeSelected.map((i) => content.expressions.find(e => e.id === i)?.example ?? '')}
+        userId={session?.user?.id}
         stepLabel="Upgrade — Ouça e Repita"
         title="Novas Expressões"
         icon="⬆️"

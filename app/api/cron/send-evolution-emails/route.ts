@@ -19,12 +19,13 @@ const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession
  * Requer autenticação via Bearer token (CRON_SECRET)
  */
 
-export async function POST(req: NextRequest) {
+// ── Lógica compartilhada (Vercel Cron usa GET; chamadas manuais podem usar POST) ──
+async function runEmailCron(req: NextRequest): Promise<NextResponse> {
   try {
     // Validar autenticação
     const authHeader = req.headers.get('authorization')
     const secret = process.env.CRON_SECRET
-    
+
     if (!secret || authHeader !== `Bearer ${secret}`) {
       console.warn('🚫 [CRON] Tentativa de acesso sem autenticação')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       .select('id, email, name, xp_total, coins_balance, streak_count, current_phase')
       .eq('email_verified', true)
       .or(`last_evolution_email_sent_at.is.null,last_evolution_email_sent_at.lt.${threeDaysAgo}`)
-      .limit(100) // Limitar para não sobrecarregar o serviço de email
+      .limit(100)
 
     if (fetchError) {
       console.error('❌ [CRON] Erro ao buscar usuários:', fetchError)
@@ -58,9 +59,8 @@ export async function POST(req: NextRequest) {
 
     let successCount = 0
     let errorCount = 0
-    const errors = []
+    const errors: { email: string; error: string }[] = []
 
-    // Enviar email para cada usuário
     for (const user of users) {
       try {
         const result = await sendEvolutionEmail(user.email, user.name, {
@@ -71,7 +71,6 @@ export async function POST(req: NextRequest) {
         })
 
         if (result.success) {
-          // Atualizar timestamp de último email enviado
           await supabase
             .from('users')
             .update({ last_evolution_email_sent_at: new Date().toISOString() })
@@ -81,7 +80,7 @@ export async function POST(req: NextRequest) {
           console.log(`✅ Email enviado para: ${user.email}`)
         } else {
           errorCount++
-          errors.push({ email: user.email, error: result.error })
+          errors.push({ email: user.email, error: result.error ?? 'unknown' })
           console.error(`❌ Falha ao enviar email para ${user.email}:`, result.error)
         }
       } catch (err) {
@@ -113,19 +112,15 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET para testes e health check
+ * GET — chamado pelo Vercel Cron (schedule no vercel.json)
  */
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  const secret = process.env.CRON_SECRET
+  return runEmailCron(req)
+}
 
-  if (!secret || authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  return NextResponse.json({
-    status: 'ready',
-    message: 'Cron endpoint is configured and ready',
-    lastRun: new Date().toISOString(),
-  })
+/**
+ * POST — para disparos manuais via curl / painel admin
+ */
+export async function POST(req: NextRequest) {
+  return runEmailCron(req)
 }

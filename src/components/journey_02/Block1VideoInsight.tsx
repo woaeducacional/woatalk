@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { VideoWatchQuestion, MultipleChoiceQuestion, ListenRepeatQuestion } from '../questions_structs'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 import type { Block1Content } from '@/lib/journeyContent'
@@ -18,6 +19,7 @@ interface Block1VideoInsightProps {
 type Stage = 'video' | 'choose' | 'listenRepeat' | 'complete'
 
 export function Block1VideoInsight({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block1VideoInsightProps) {
+  const { data: session } = useSession()
   const cookieKey = `woa_p${phaseId}_b1_stage`
   const [stage, setStage] = useState<Stage>(() => {
     const s = getCookie(cookieKey) as Stage | null
@@ -71,6 +73,7 @@ export function Block1VideoInsight({ content, phaseId, onComplete, onActivityCha
       {stage === 'listenRepeat' && (
         <ListenRepeatQuestion
           sentences={content.listenRepeatSentences}
+          userId={session?.user?.id}
           stepLabel="Passo 2"
           title="Ouça e Repita"
           xpReward={25}

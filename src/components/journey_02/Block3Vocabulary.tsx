@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { getSpeechRecognition } from '@/src/lib/speechRecognition'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion, VocabularyMatchQuestion } from '../questions_structs'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
@@ -19,6 +20,7 @@ interface Block3VocabularyProps {
 type Stage = 'matchIntro' | 'matchWord' | 'fillBlank' | 'fillRepeat' | 'memory' | 'complete'
 
 export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block3VocabularyProps) {
+  const { data: session } = useSession()
   const cookieKey = `woa_p${phaseId}_b3_stage`
   const fillIdxKey = `woa_p${phaseId}_b3_fill`
   const [stage, setStage] = useState<Stage>(() => {
@@ -128,6 +130,7 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
     return (
       <ListenRepeatQuestion
         sentences={content.vocabulary.map((v) => v.word)}
+        userId={session?.user?.id}
         stepLabel="Passo 1 — Combinação"
         title="Ouça e Repita"
         icon="🧩"
@@ -186,6 +189,7 @@ export function Block3Vocabulary({ content, phaseId, onComplete, onActivityChang
     return (
       <ListenRepeatQuestion
         sentences={[content.fillSentences[fillIdx].full]}
+        userId={session?.user?.id}
         stepLabel={`Passo 2 — ${fillIdx + 1}/${content.fillSentences.length}`}
         title="Ouça e Repita"
         icon="📝"

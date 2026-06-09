@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 import { playTTS } from '@/src/lib/ttsService'
+import { OwlFeedbackPanel } from '@/src/components/tutor/OwlFeedbackPanel'
+import { usePronunciationFeedback } from '@/src/hooks/usePronunciationFeedback'
 import { blobToWavBase64 } from '@/src/lib/audioUtils'
 import {
   transcribeBlob,
@@ -158,7 +160,8 @@ export function ListenRepeatQuestion({
   translations,
   isPremium = false,
   onPremiumRequired = () => {},
-}: ListenRepeatQuestionProps) {
+  userId,
+}: ListenRepeatQuestionProps & { userId?: string }) {
   const [repeatIndex, setRepeatIndex] = useState(() => {
     if (persistKey) {
       const saved = getCookie(persistKey)
@@ -181,6 +184,12 @@ export function ListenRepeatQuestion({
   const [ttsVoice, setTtsVoice] = useState<'oliver' | 'alice'>(() => (getCookie('tts_voice') as 'oliver' | 'alice') || 'oliver')
   const [ttsRate, setTtsRate] = useState<'normal' | 'slow' | 'superslow'>(() => (getCookie('tts_rate') as 'normal' | 'slow' | 'superslow') || 'normal')
   const [showTtsModal, setShowTtsModal] = useState(false)
+  const [wordDiff, setWordDiff] = useState<{ expected: string; spoken: string | null; isCorrect: boolean }[]>([])
+  const [showOwlFeedback, setShowOwlFeedback] = useState(false)
+  const [playingWord, setPlayingWord] = useState<string | null>(null)
+
+  // Hook de feedback IA — salva erros no Supabase e busca dica do GPT-4 mini
+  const { aiTip, isLoadingTip, triggerFeedback, clearFeedback } = usePronunciationFeedback(userId)
   const recognitionRef = useRef<LiveRecognitionHandle | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -248,6 +257,21 @@ export function ListenRepeatQuestion({
   const LISTEN_REQUIRED = isWord ? 1 : 3
   const speakUnlocked = listenCount >= LISTEN_REQUIRED
 
+  // Compara palavra a palavra entre o falado e o esperado
+  const computeWordDiff = (
+    spoken: string,
+    expected: string,
+  ): { expected: string; spoken: string | null; isCorrect: boolean }[] => {
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '')
+    const spokenWords = spoken.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/).filter(Boolean)
+    const expectedWords = expected.split(/\s+/).filter(Boolean)
+    return expectedWords.map((exp, i) => ({
+      expected: exp,
+      spoken: spokenWords[i] ?? null,
+      isCorrect: norm(spokenWords[i] ?? '') === norm(exp),
+    }))
+  }
+
   // Função para calcular match entre frase esperada e frase dita
   const calculateScore = (spoken: string, expected: string): number => {
     const normalize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').trim().split(/\s+/)
@@ -285,9 +309,15 @@ export function ListenRepeatQuestion({
     console.log(`Tentativa ${attemptCount + 1}: "${text}" - Score: ${score}%`)
     if (score >= 60) {
       setPassed(true)
+      setShowOwlFeedback(false)
     } else {
       new Audio('/audio/falou-errado.mp3').play().catch(() => {})
       setAttemptCount((c) => c + 1)
+      const diff = computeWordDiff(text, sentences[repeatIndex])
+      setWordDiff(diff)
+      setShowOwlFeedback(true)
+      // Dispara salvamento de erros no banco + geração de dica pela IA
+      triggerFeedback(diff, sentences[repeatIndex])
     }
   }
 
@@ -445,6 +475,10 @@ export function ListenRepeatQuestion({
     setLastScore(0)
     setPassed(false)
     setListenCount(0)
+    setShowOwlFeedback(false)
+    setWordDiff([])
+    setPlayingWord(null)
+    clearFeedback()
     if (repeatIndex < sentences.length - 1) {
       setRepeatIndex((p) => p + 1)
     } else {
@@ -609,6 +643,15 @@ export function ListenRepeatQuestion({
             </p>
           )}
         </div>
+      )}
+
+      {/* ── OWL PRONUNCIATION FEEDBACK ── */}
+      {showOwlFeedback && !passed && wordDiff.length > 0 && (
+        <OwlFeedbackPanel
+          wordDiff={wordDiff}
+          aiTip={aiTip}
+          isLoadingTip={isLoadingTip}
+        />
       )}
 
       {/* ── BUTTONS ── */}
@@ -792,8 +835,17 @@ export function ListenRepeatQuestion({
           0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
           50%       { opacity: 1;   transform: scaleY(1.2); }
         }
+        @keyframes pulseGreen {
           0%, 100% { box-shadow: 0 0 20px rgba(34,197,94,0.3); }
           50%       { box-shadow: 0 0 35px rgba(34,197,94,0.6); }
+        }
+        @keyframes owlBob {
+          0%, 100% { transform: translateY(0px) rotate(-4deg); }
+          50%       { transform: translateY(-7px) rotate(4deg); }
+        }
+        @keyframes owlSlideIn {
+          from { opacity: 0; transform: translateY(14px) scale(0.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </div>
