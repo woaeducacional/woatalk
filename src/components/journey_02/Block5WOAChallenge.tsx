@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { deleteCookie } from '@/lib/utils'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
 import type { Block5Content } from '@/lib/journeyContent'
@@ -64,6 +65,7 @@ function clearProgress(phaseId: number) {
 }
 
 export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block5WOAChallengeProps) {
+  const { data: session } = useSession()
   const [stage, setStage] = useState<Stage>(() => {
     const saved = loadProgress(phaseId)
     const s = saved?.stage as Stage | null
@@ -241,6 +243,7 @@ export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityCha
     return (
       <ListenRepeatQuestion
         sentences={sentences}
+        userId={session?.user?.id}
         onComplete={() => { setXpEarned((p) => p + 30); setStage('understand') }}
         xpReward={30}
         icon="🎤"

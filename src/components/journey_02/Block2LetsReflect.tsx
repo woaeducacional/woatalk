@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { ListenRepeatQuestion, SpeakFromMemoryQuestion } from '../questions_structs'
 import { getCookie, setCookie, deleteCookie } from '@/lib/utils'
 import type { Block2Content } from '@/lib/journeyContent'
@@ -55,6 +56,7 @@ async function speak(text: string): Promise<void> {
 }
 
 export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChange, alreadyCompleted = false, isPremium = false, onPremiumRequired = () => {} }: Block2LetsReflectProps) {
+  const { data: session } = useSession()
   const cookieKey = `woa_p${phaseId}_b2_stage`
   const builtCookieKey = `woa_p${phaseId}_b2_built`
   const [stage, setStage] = useState<Stage>(() => {
@@ -113,6 +115,7 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
     return (
       <ListenRepeatQuestion
         sentences={[chosenSentence]}
+        userId={session?.user?.id}
         stepLabel="Ouça e Repita"
         title="Sua Motivação"
         icon="🎧"
@@ -241,6 +244,7 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
     return (
       <ListenRepeatQuestion
         sentences={[builtSentence]}
+        userId={session?.user?.id}
         stepLabel="Ouça e Repita"
         title="Sua Frase"
         icon="🎧"
@@ -275,6 +279,7 @@ export function Block2LetsReflect({ content, phaseId, onComplete, onActivityChan
     return (
       <ListenRepeatQuestion
         sentences={[content.boostSentence]}
+        userId={session?.user?.id}
         stepLabel="⚡ Extra Rápido"
         title="Frase Extra"
         icon="⚡"

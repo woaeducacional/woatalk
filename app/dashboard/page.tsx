@@ -1120,6 +1120,26 @@ export default function DashboardPage() {
             <span style={{ color: 'rgba(192,132,252,0.7)', fontSize: '16px' }} className="sm:text-lg">›</span>
           </Link>
 
+          {/* Tutor de Pronúncia */}
+          <Link
+            href="/tutor"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center justify-between w-full rounded-xl px-3 sm:px-4 py-2.5 sm:py-3.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: 'rgba(168,85,247,0.1)',
+              border: '1px solid rgba(168,85,247,0.25)',
+            }}
+          >
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-lg sm:text-xl">🦉</span>
+              <div>
+                <p className="text-xs sm:text-sm font-black tracking-wider text-white">TUTOR DE PRONÚNCIA</p>
+                <p className="text-[8px] sm:text-[10px]" style={{ color: 'rgba(168,85,247,0.7)' }}>Suas palavras mais desafiadoras</p>
+              </div>
+            </div>
+            <span style={{ color: 'rgba(168,85,247,0.7)', fontSize: '16px' }} className="sm:text-lg">›</span>
+          </Link>
+
           {/* Profile button */}
           <Link
             href="/profile"
