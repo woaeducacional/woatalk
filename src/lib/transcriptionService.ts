@@ -9,6 +9,14 @@
 
 import { blobToWavBase64 } from './audioUtils'
 
+// ── iOS detection ────────────────────────────────────────────────────────────
+/** Detecta iPhone / iPad / iPod (inclui iPads novos com userAgent "MacIntel") */
+export function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 // ── Premium status cache (evita chamar API a cada gravação) ──
 let cachedIsPremium: boolean | null = null
 let cacheTimestamp = 0
@@ -54,9 +62,13 @@ export async function transcribeBlob(blob: Blob, language = 'en-US'): Promise<st
   return data.transcript || ''
 }
 
-// ── FREE: verifica se o browser suporta Web Speech API nativa ──
+// ── FREE: verifica se o browser suporta Web Speech API nativa de forma confiável ──
 export function isNativeWebSpeechSupported(): boolean {
   if (typeof window === 'undefined') return false
+  // iOS tem webkitSpeechRecognition mas é não-confiável fora do app nativo
+  // (requer HTTPS obrigatório, falha silenciosamente, depende dos servidores Apple)
+  // Forçamos o fallback MediaRecorder + Azure STT, que funciona de forma consistente.
+  if (isIOS()) return false
   return !!(
     (window as any).SpeechRecognition ||
     (window as any).webkitSpeechRecognition
@@ -94,9 +106,15 @@ async function getWhisperPipeline() {
 
 /**
  * Transcreve blob de áudio usando Whisper.js local (FREE users em Firefox/Safari).
+ * No iOS, Whisper.js é muito pesado — usa Azure STT via /api/transcribe.
  * Reamostrado para 16kHz mono antes de enviar ao modelo.
  */
 export async function transcribeFreeBlob(blob: Blob, language = 'en-US'): Promise<string> {
+  // iOS: Whisper.js (~30MB) é lento demais para mobile — delega para Azure STT
+  if (isIOS()) {
+    return transcribeBlob(blob, language)
+  }
+
   const arrayBuffer = await blob.arrayBuffer()
 
   // Decodifica e reamostra para 16kHz mono (exigido pelo Whisper)
