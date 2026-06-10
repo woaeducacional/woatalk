@@ -55,10 +55,11 @@ function checkPronunciation(spoken: string, target: string): boolean {
 export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
   const wrongWords = wordDiff.filter(w => !w.isCorrect).map(w => w.expected)
 
-  const [phase,       setPhase]       = useState<PracticePhase>('intro')
-  const [wordIndex,   setWordIndex]   = useState(0)
-  const [attemptCount,setAttemptCount]= useState(0) // 0 = primeira, 1 = retry
-  const [lastResult,  setLastResult]  = useState<'correct' | 'wrong' | null>(null)
+  const [phase,              setPhase]             = useState<PracticePhase>('intro')
+  const [wordIndex,          setWordIndex]         = useState(0)
+  const [attemptCount,       setAttemptCount]      = useState(0) // 0 = primeira, 1 = retry
+  const [lastResult,         setLastResult]        = useState<'correct' | 'wrong' | null>(null)
+  const [mediaRecordingActive, setMediaRecordingActive] = useState(false)
 
   const sessionStartedRef  = useRef(false)
   const liveRecognitionRef = useRef<LiveRecognitionHandle | null>(null)
@@ -133,7 +134,18 @@ export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
 
   // ── Gravação ─────────────────────────────────────────────────────────────
 
+  function stopWhisperRecording() {
+    const mr = mediaRecorderRef.current
+    if (mr && mr.state === 'recording') mr.stop()
+  }
+
   function startRecording() {
+    // Press-to-stop: MediaRecorder ativo
+    if (mediaRecordingActive) {
+      stopWhisperRecording()
+      return
+    }
+
     if (phase !== 'user-turn') return
     setPhase('recording')
 
@@ -167,6 +179,7 @@ export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mr.onstop = async () => {
         streamRef.current?.getTracks().forEach(t => t.stop())
+        setMediaRecordingActive(false)
         try {
           const blob = new Blob(chunksRef.current, { type: mr.mimeType })
           const transcript = await transcribeFreeBlob(blob, 'en-US')
@@ -175,9 +188,7 @@ export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
       }
       mr.start()
       mediaRecorderRef.current = mr
-      setTimeout(() => {
-        if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
-      }, 6000)
+      setMediaRecordingActive(true)
     } catch {
       setPhase('user-turn')
     }
@@ -289,18 +300,26 @@ export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
             {(phase === 'user-turn' || phase === 'recording') && (
               <button
                 onClick={startRecording}
-                disabled={phase === 'recording'}
+                disabled={phase === 'recording' && !mediaRecordingActive}
                 className="w-full py-4 rounded-xl font-black text-sm tracking-widest transition-all duration-200 disabled:cursor-not-allowed"
                 style={{
-                  background: phase === 'recording'
-                    ? 'rgba(239,68,68,0.18)'
-                    : 'linear-gradient(135deg, rgba(88,28,135,0.9), rgba(168,85,247,0.6))',
-                  border: `1px solid ${phase === 'recording' ? 'rgba(239,68,68,0.45)' : 'rgba(168,85,247,0.4)'}`,
+                  background: mediaRecordingActive
+                    ? 'rgba(239,68,68,0.22)'
+                    : phase === 'recording'
+                      ? 'rgba(239,68,68,0.18)'
+                      : 'linear-gradient(135deg, rgba(88,28,135,0.9), rgba(168,85,247,0.6))',
+                  border: `1px solid ${
+                    (phase === 'recording' || mediaRecordingActive) ? 'rgba(239,68,68,0.45)' : 'rgba(168,85,247,0.4)'
+                  }`,
                   color: '#e9d5ff',
                   animation: phase === 'recording' ? 'pulseMic 1s ease-in-out infinite' : 'none',
                 }}
               >
-                {phase === 'recording' ? '🔴 Ouvindo...' : '🎤 FALAR'}
+                {mediaRecordingActive
+                  ? '🛑 PRESSIONE PARA PARAR'
+                  : phase === 'recording'
+                    ? '🔴 Ouvindo...'
+                    : '🎤 FALAR'}
               </button>
             )}
           </>

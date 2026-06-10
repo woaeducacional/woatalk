@@ -115,36 +115,47 @@ export async function transcribeFreeBlob(blob: Blob, language = 'en-US'): Promis
     return transcribeBlob(blob, language)
   }
 
-  const arrayBuffer = await blob.arrayBuffer()
-
-  // Decodifica e reamostra para 16kHz mono (exigido pelo Whisper)
-  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-  const tmpCtx = new AudioCtx()
-  let float32Array: Float32Array
   try {
-    const audioBuffer = await tmpCtx.decodeAudioData(arrayBuffer)
-    if (audioBuffer.sampleRate !== 16000 || audioBuffer.numberOfChannels > 1) {
-      const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * 16000), 16000)
-      const source = offlineCtx.createBufferSource()
-      source.buffer = audioBuffer
-      source.connect(offlineCtx.destination)
-      source.start(0)
-      const resampled = await offlineCtx.startRendering()
-      float32Array = resampled.getChannelData(0)
-    } else {
-      float32Array = audioBuffer.getChannelData(0)
+    const arrayBuffer = await blob.arrayBuffer()
+
+    // Decodifica e reamostra para 16kHz mono (exigido pelo Whisper)
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    const tmpCtx = new AudioCtx()
+    let float32Array: Float32Array
+    try {
+      const audioBuffer = await tmpCtx.decodeAudioData(arrayBuffer)
+      if (audioBuffer.sampleRate !== 16000 || audioBuffer.numberOfChannels > 1) {
+        const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * 16000), 16000)
+        const source = offlineCtx.createBufferSource()
+        source.buffer = audioBuffer
+        source.connect(offlineCtx.destination)
+        source.start(0)
+        const resampled = await offlineCtx.startRendering()
+        float32Array = resampled.getChannelData(0)
+      } else {
+        float32Array = audioBuffer.getChannelData(0)
+      }
+    } finally {
+      await tmpCtx.close()
     }
-  } finally {
-    await tmpCtx.close()
+
+    const pipe = await getWhisperPipeline()
+    const result = await pipe(float32Array, {
+      language: language.split('-')[0].toLowerCase(),
+      task: 'transcribe',
+    })
+
+    return result.text?.trim() || ''
+  } catch (whisperErr) {
+    // Whisper.js falhou (WASM indisponível, memória, modelo não carregou, etc.)
+    // Fallback: Azure STT via servidor
+    console.warn('[Whisper.js] Falhou, usando Azure STT como fallback:', whisperErr)
+    try {
+      return await transcribeBlob(blob, language)
+    } catch {
+      return ''
+    }
   }
-
-  const pipe = await getWhisperPipeline()
-  const result = await pipe(float32Array, {
-    language: language.split('-')[0].toLowerCase(),
-    task: 'transcribe',
-  })
-
-  return result.text?.trim() || ''
 }
 
 export interface LiveRecognitionCallbacks {

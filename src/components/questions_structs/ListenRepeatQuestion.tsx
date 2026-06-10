@@ -426,11 +426,9 @@ export function ListenRepeatQuestion({
         try {
           setIsTranscribing(true)
           const transcript = await transcribeFreeBlob(blob, 'en-US')
-          if (!transcript) throw new Error('vazia')
-          processTranscript(transcript)
+          processTranscript(transcript || '')
         } catch {
-          new Audio('/audio/falou-errado.mp3').play().catch(() => {})
-          setAttemptCount((c) => c + 1)
+          processTranscript('')
         } finally {
           setIsTranscribing(false)
         }

@@ -79,7 +79,8 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
 
   const [phase, setPhase] = useState<Phase>('intro')
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [isListening, setIsListening] = useState(false)
+  const [isListening,         setIsListening]         = useState(false)
+  const [mediaRecordingActive, setMediaRecordingActive] = useState(false)
   const [round, setRound] = useState(0)
   const [displayScore, setDisplayScore] = useState(0)
 
@@ -135,8 +136,20 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /** Inicia gravação — Web Speech API (Chrome/Edge) ou MediaRecorder + Whisper.js (Firefox/Safari) */
+  /** Para a gravação MediaRecorder (iOS/Firefox) */
+  function stopWhisperRecording() {
+    const mr = mediaRecorderRef.current
+    if (mr && mr.state === 'recording') mr.stop()
+  }
+
+  /** Inicia gravação — Web Speech API (Chrome/Edge) ou MediaRecorder (iOS/Firefox) */
   const handleMicPress = () => {
+    // Press-to-stop: se MediaRecorder estiver ativo, para a gravação
+    if (mediaRecordingActive) {
+      stopWhisperRecording()
+      return
+    }
+
     if (phase !== 'user-turn') return
 
     setIsListening(true)
@@ -175,6 +188,7 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
       mr.onstop = async () => {
         streamRef.current?.getTracks().forEach(t => t.stop())
         setIsListening(false)
+        setMediaRecordingActive(false)
         try {
           const blob = new Blob(chunksRef.current, { type: mr.mimeType })
           const transcript = await transcribeFreeBlob(blob, 'en-US')
@@ -185,11 +199,7 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
       }
       mr.start()
       mediaRecorderRef.current = mr
-
-      // Para automaticamente após 8s se usuário não parar
-      setTimeout(() => {
-        if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
-      }, 8000)
+      setMediaRecordingActive(true)
     } catch {
       setIsListening(false)
       setPhase('user-turn')
@@ -387,26 +397,30 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
           /* Botão de microfone */
           <button
             onClick={handleMicPress}
-            disabled={phase !== 'user-turn'}
+            disabled={phase !== 'user-turn' && !mediaRecordingActive}
             className="w-full py-4 rounded-xl font-black text-sm tracking-widest transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: isListening
+              background: mediaRecordingActive
                 ? 'rgba(239,68,68,0.2)'
-                : phase === 'user-turn'
-                  ? 'linear-gradient(135deg, rgba(88,28,135,0.9), rgba(168,85,247,0.6))'
-                  : 'rgba(168,85,247,0.08)',
-              border: `1px solid ${isListening ? 'rgba(239,68,68,0.5)' : 'rgba(168,85,247,0.4)'}`,
-              color: phase === 'user-turn' ? '#e9d5ff' : 'rgba(168,85,247,0.4)',
+                : isListening
+                  ? 'rgba(239,68,68,0.15)'
+                  : phase === 'user-turn'
+                    ? 'linear-gradient(135deg, rgba(88,28,135,0.9), rgba(168,85,247,0.6))'
+                    : 'rgba(168,85,247,0.08)',
+              border: `1px solid ${(isListening || mediaRecordingActive) ? 'rgba(239,68,68,0.5)' : 'rgba(168,85,247,0.4)'}`,
+              color: phase === 'user-turn' || mediaRecordingActive ? '#e9d5ff' : 'rgba(168,85,247,0.4)',
               boxShadow: phase === 'user-turn' ? '0 0 20px rgba(168,85,247,0.25)' : 'none',
             }}
           >
-            {isListening
-              ? '🔴 Ouvindo... fale agora!'
-              : phase === 'user-turn'
-                ? '🎤 PRESSIONE E FALE'
-                : phase === 'ai-speaking' || phase === 'feedback'
-                  ? '🦉 Ouça a coruja...'
-                  : '⏳ Processando...'}
+            {mediaRecordingActive
+              ? '🛑 PRESSIONE PARA PARAR'
+              : isListening
+                ? '🔴 Ouvindo... fale agora!'
+                : phase === 'user-turn'
+                  ? '🎤 PRESSIONE E FALE'
+                  : phase === 'ai-speaking' || phase === 'feedback'
+                    ? '🦉 Ouça a coruja...'
+                    : '⏳ Processando...'}
           </button>
         )}
       </div>
