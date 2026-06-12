@@ -103,7 +103,7 @@ export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityCha
     const response = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, targetLang: 'en' }),
     })
     if (!response.ok) throw new Error('Translation failed')
     const data = await response.json()
@@ -229,7 +229,11 @@ export function Block5WOAChallenge({ content, phaseId, onComplete, onActivityCha
           <button onClick={async () => { setIsPlaying(true); await tts(sent); setIsPlaying(false) }} disabled={isPlaying} className="px-8 py-3 rounded-xl font-bold text-white hover:scale-105 transition-all" style={{ background: isPlaying ? '#666' : 'linear-gradient(135deg, #00D4FF, #0066FF)' }}>
             {isPlaying ? '🔊 Tocando...' : '🎧 Ouvir'}
           </button>
-          <button onClick={() => { if (repeatIdx < sentences.length - 1) setRepeatIdx(repeatIdx + 1); else { setRepeatIdx(0); setStage('repeat') } }} className="block mx-auto mt-4 px-6 py-2 text-sm text-cyan-300 underline">
+          <button
+            onClick={() => { if (repeatIdx < sentences.length - 1) setRepeatIdx(repeatIdx + 1); else { setRepeatIdx(0); setStage('repeat') } }}
+            className="mt-4 w-full py-3 rounded-xl font-bold text-white hover:scale-105 transition-all"
+            style={{ background: 'linear-gradient(135deg, #00D4FF, #0066FF)' }}
+          >
             Próxima →
           </button>
         </div>
