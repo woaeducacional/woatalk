@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import openai from '@/src/lib/openaiClient'
 
 // Remove pontuação/espaços para comparação
 function stripForCompare(s: string) {
@@ -57,22 +58,47 @@ function protectProperNouns(text: string): { protected: string; restore: (s: str
 }
 
 export async function POST(request: NextRequest) {
-  const { text } = await request.json()
+  const body = await request.json()
+  const { text, targetLang = 'pt' } = body
+  const sourceLang = targetLang === 'en' ? 'pt' : 'en'
 
   if (!text?.trim()) {
     return NextResponse.json({ error: 'No text provided' }, { status: 400 })
   }
 
+  // Primary: GPT-4o-mini — usa o texto original direto (sem proteção de nomes próprios)
+  try {
+    const targetLabel = targetLang === 'en' ? 'English' : 'Brazilian Portuguese'
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional translator. Translate the user's text to ${targetLabel}. Return ONLY the translated text, no explanations, no quotes.`,
+        },
+        { role: 'user', content: text },
+      ],
+      temperature: 0.2,
+      max_tokens: 500,
+    })
+    const translated = completion.choices[0]?.message?.content?.trim() ?? ''
+    if (translated && isValidTranslation(translated, text)) {
+      return NextResponse.json({ translation: translated })
+    }
+  } catch (e) {
+    console.error('GPT-mini translate error:', e)
+  }
+
+  // Fallbacks usam proteção de nomes próprios (para evitar que o Google/MyMemory os altere)
   const { protected: safeText, restore } = protectProperNouns(text)
 
-  // Primary: Google Translate (unofficial endpoint, sem token — mais confiável que MyMemory)
+  // Fallback 1: Google Translate
   try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=${encodeURIComponent(safeText)}`
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(safeText)}`
     const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
 
     if (response.ok) {
       const data = await response.json()
-      // Resposta: [ [ ["translated","original",...], ... ], ... ]
       const translated: string = Array.isArray(data?.[0])
         ? data[0].map((part: any[]) => part?.[0] ?? '').join('')
         : ''
@@ -85,9 +111,9 @@ export async function POST(request: NextRequest) {
     console.error('Google Translate error:', e)
   }
 
-  // Fallback 1: MyMemory
+  // Fallback 2: MyMemory
   try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(safeText)}&langpair=en|pt`
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(safeText)}&langpair=${sourceLang}|${targetLang}`
     const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
 
     if (response.ok) {
@@ -100,35 +126,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (e) {
     console.error('MyMemory error:', e)
-  }
-
-  // Fallback 2: HuggingFace Helsinki model
-  const hfToken = process.env.HF_TOKEN
-  if (hfToken) {
-    try {
-      const response = await fetch(
-        'https://api-inference.huggingface.co/models/Helsinki-NLP/opus-mt-en-pt',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${hfToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ inputs: safeText }),
-          signal: AbortSignal.timeout(30000),
-        }
-      )
-
-      if (response.ok) {
-        const data = await response.json()
-        const translated = Array.isArray(data) ? data[0]?.translation_text : data?.translation_text
-        if (translated && isValidTranslation(translated, safeText)) {
-          return NextResponse.json({ translation: restore(translated) })
-        }
-      }
-    } catch (e) {
-      console.error('HuggingFace error:', e)
-    }
   }
 
   return NextResponse.json({ error: 'Translation failed' }, { status: 500 })
