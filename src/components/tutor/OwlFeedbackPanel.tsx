@@ -68,9 +68,11 @@ export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
   const streamRef          = useRef<MediaStream | null>(null)
   const wordIndexRef       = useRef(0)
   const attemptCountRef    = useRef(0)
+  const phaseRef           = useRef<PracticePhase>('intro')
 
-  useEffect(() => { wordIndexRef.current   = wordIndex   }, [wordIndex])
+  useEffect(() => { wordIndexRef.current    = wordIndex    }, [wordIndex])
   useEffect(() => { attemptCountRef.current = attemptCount }, [attemptCount])
+  useEffect(() => { phaseRef.current        = phase        }, [phase])
 
   const currentWord = wrongWords[wordIndex] ?? ''
 
@@ -84,6 +86,12 @@ export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
     playTTS("Let's do it together!", 'oliver', 'normal', () => {
       speakWord(wrongWords[0])
     })
+
+    // iOS safety: if TTS callback never fires, force-advance after 5s
+    const introFallback = setTimeout(() => {
+      if (phaseRef.current === 'intro') speakWord(wrongWords[0])
+    }, 5000)
+    return () => clearTimeout(introFallback)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -94,6 +102,10 @@ export function OwlFeedbackPanel({ wordDiff, aiTip }: OwlFeedbackPanelProps) {
     playTTS(word, 'oliver', 'slow', () => {
       setPhase('user-turn')
     })
+    // iOS safety: if TTS callback never fires, force-advance to user-turn after 6s
+    setTimeout(() => {
+      if (phaseRef.current === 'word-speaking') setPhase('user-turn')
+    }, 6000)
   }
 
   function advanceWord(fromIndex: number) {

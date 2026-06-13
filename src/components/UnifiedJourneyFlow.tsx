@@ -15,6 +15,44 @@ import type { JourneyContent, MissionGroupDef } from '@/lib/journeyContent'
 
 const DAILY_MODULE_LIMIT = 2
 
+function RedoPremiumModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter()
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
+      <div className="relative w-full max-w-sm rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(160deg, rgba(30,20,0,0.98), rgba(15,10,0,0.98))', border: '1px solid rgba(255,215,0,0.35)', boxShadow: '0 0 60px rgba(255,180,0,0.18)' }} onClick={e => e.stopPropagation()}>
+        <div className="absolute inset-x-0 top-0 h-1 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #FFD700, #CC8800, #FFD700)' }} />
+        <div className="p-8 space-y-5 text-center">
+          <button onClick={onClose} className="absolute top-4 right-4 text-white/30 hover:text-white/70 transition-colors text-lg leading-none">✕</button>
+          <div className="text-5xl">🔁</div>
+          <div>
+            <p className="text-[10px] font-black tracking-[0.25em] mb-1" style={{ color: 'rgba(255,215,0,0.6)' }}>REFAZER BLOCO</p>
+            <h3 className="text-xl font-black text-white">Recurso Premium</h3>
+          </div>
+          <p className="text-white/60 text-sm leading-relaxed">
+            Refazer blocos já concluídos é exclusivo para assinantes Premium. Pratique quantas vezes quiser!
+          </p>
+          <div className="space-y-3 pt-1">
+            <button
+              onClick={() => router.push('/premium')}
+              className="w-full py-3.5 rounded-xl font-black text-sm tracking-widest text-black transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #FFD700, #CC8800)', boxShadow: '0 0 24px rgba(255,215,0,0.35)' }}
+            >
+              🚀 VER PLANOS PREMIUM
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all hover:opacity-70"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)' }}
+            >
+              FECHAR
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DailyLimitModal({ onClose }: { onClose: () => void }) {
   const router = useRouter()
   return (
@@ -93,10 +131,11 @@ type GroupCardProps = {
   isCompleted: boolean
   isLocked: boolean
   canStart: boolean
+  isPremium: boolean
   onClick: () => void
 }
 
-function GroupCard({ group, isCompleted, isLocked, canStart, onClick }: GroupCardProps) {
+function GroupCard({ group, isCompleted, isLocked, canStart, isPremium, onClick }: GroupCardProps) {
   return (
     <button
       onClick={onClick}
@@ -118,9 +157,11 @@ function GroupCard({ group, isCompleted, isLocked, canStart, onClick }: GroupCar
         </div>
         <div className="pt-2">
           {isCompleted && (
-            <div className="text-center py-2 rounded-lg" style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgb(34,197,94)' }}>
+            <div className="text-center py-2 rounded-lg" style={{ background: isPremium ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.12)', border: isPremium ? '1px solid rgb(34,197,94)' : '1px solid rgba(34,197,94,0.4)' }}>
               <p className="text-sm font-bold text-green-300">{'\u2705'} COMPLETO</p>
-              <p className="text-xs text-green-400/60 mt-0.5">Toque para refazer</p>
+              <p className="text-xs mt-0.5" style={{ color: isPremium ? 'rgba(74,222,128,0.6)' : 'rgba(255,215,0,0.7)' }}>
+                {isPremium ? 'Toque para refazer' : '\ud83d\udc51 Premium para refazer'}
+              </p>
             </div>
           )}
           {isLocked && (
@@ -166,6 +207,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   const [isPremium, setIsPremium] = useState(false)
   const [dailyAccessedBlocks, setDailyAccessedBlocks] = useState<{ phaseId: number; missionGroupId: number }[]>([])
   const [showDailyLimitModal, setShowDailyLimitModal] = useState(false)
+  const [showRedoPremiumModal, setShowRedoPremiumModal] = useState(false)
   const router = useRouter()
 
   const currentGroupRef = useRef(0)
@@ -282,6 +324,10 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
   }
 
   const handleStartMissionGroup = (groupIndex: number, isRedo = false) => {
+    if (isRedo && !isPremium) {
+      setShowRedoPremiumModal(true)
+      return
+    }
     if (!isRedo && !isPremium) {
       const alreadyOpenedToday = dailyAccessedBlocks.some(
         b => b.phaseId === phaseId && b.missionGroupId === groupIndex
@@ -390,7 +436,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
                 const isLocked = group.id > 0 && !completedGroupIds.includes(group.id - 1) && !isCompleted
                 const isBlockedByDailyLimit = atDailyLimit && !isBlockOpenedToday(group.id) && !isCompleted
                 const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
-                return <GroupCard key={group.id} group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
+                return <GroupCard key={group.id} group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} isPremium={isPremium} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
               })}
             </div>
             <div className="flex gap-6 justify-center">
@@ -401,7 +447,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
                 const canStart = !isLocked && !isCompleted && !isBlockedByDailyLimit
                 return (
                   <div key={group.id} className="w-[calc(33.333%-12px)]" style={{ minWidth: '200px' }}>
-                    <GroupCard group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
+                    <GroupCard group={group} isCompleted={isCompleted} isLocked={isLocked || isBlockedByDailyLimit} canStart={canStart} isPremium={isPremium} onClick={() => { if (!isLocked && !isBlockedByDailyLimit) handleStartMissionGroup(group.id, isCompleted) }} />
                   </div>
                 )
               })}
@@ -411,6 +457,7 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
         {streakUpdate && <StreakModal status={streakUpdate.status} streak={streakUpdate.streak} recoveryCost={streakUpdate.recoveryCost} onClose={() => setStreakUpdate(null)} />}
         {badgeUnlocked && <BadgeUnlockedModal title={badgeUnlocked.title} challenge={badgeUnlocked.challenge} icon={badgeUnlocked.icon} onClose={() => setBadgeUnlocked(null)} />}
         {showDailyLimitModal && <DailyLimitModal onClose={() => setShowDailyLimitModal(false)} />}
+        {showRedoPremiumModal && <RedoPremiumModal onClose={() => setShowRedoPremiumModal(false)} />}
       </>
     )
   }
