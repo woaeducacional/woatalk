@@ -24,9 +24,9 @@ type JourneyItem = { phase_id: number; title: string; description: string; block
 
 const OCEAN_ICONS_DEFAULT = '/images/jornada-secreta.png'
 
-function CircleCard({ journey, isCenter, isDailyLocked = false }: { journey: JourneyItem; isCenter: boolean; isDailyLocked?: boolean }) {
+function CircleCard({ journey, isCenter, isDailyLocked = false, isSeqLocked = false }: { journey: JourneyItem; isCenter: boolean; isDailyLocked?: boolean; isSeqLocked?: boolean }) {
   const iconSrc = journey.icon_url || OCEAN_ICONS_DEFAULT
-  const locked = journey.blocked || isDailyLocked
+  const locked = journey.blocked || isDailyLocked || isSeqLocked
   const size = isCenter ? 176 : 136
   const isMemoryGame = journey.phase_id === -1
   
@@ -96,7 +96,7 @@ function CircleCard({ journey, isCenter, isDailyLocked = false }: { journey: Jou
           className={`object-contain relative z-10 ${locked ? 'grayscale opacity-35' : ''}`}
         />
       )}
-      {(journey.blocked || isDailyLocked) && !isMemoryGame && (
+      {(journey.blocked || isDailyLocked || isSeqLocked) && !isMemoryGame && (
         <div className="absolute inset-0 flex items-center justify-center">
           <span style={{ fontSize: isCenter ? 32 : 20, opacity: 0.6 }}>{isDailyLocked ? '⏳' : '🔒'}</span>
         </div>
@@ -142,6 +142,7 @@ function JourneyGlobeCarousel({
   isAdmin,
   isPremium,
   dailyAccessedPhaseIds,
+  completedPhaseIds,
   onToggleBlocked,
 }: {
   journeys: JourneyItem[]
@@ -149,6 +150,7 @@ function JourneyGlobeCarousel({
   isAdmin: boolean
   isPremium: boolean
   dailyAccessedPhaseIds: number[]
+  completedPhaseIds: number[]
   onToggleBlocked: (phaseId: number) => void
 }) {
   const [current, setCurrent] = useState(0)
@@ -166,6 +168,16 @@ function JourneyGlobeCarousel({
   const atDailyJourneyLimit = !isPremium && dailyAccessedPhaseIds.length >= 2
   const isDailyLocked = (j: JourneyItem) =>
     atDailyJourneyLimit && j.phase_id !== -1 && !dailyAccessedPhaseIds.includes(j.phase_id)
+
+  // Sequential locking: journey N is locked until journey N-1 is completed
+  const sortedReal = journeys.filter(x => x.phase_id > 0).sort((a, b) => a.phase_id - b.phase_id)
+  const isSeqLocked = (j: JourneyItem): boolean => {
+    if (isAdmin || j.phase_id <= 0) return false
+    const idx = sortedReal.findIndex(x => x.phase_id === j.phase_id)
+    if (idx <= 0) return false
+    const prev = sortedReal[idx - 1]
+    return !completedPhaseIds.includes(prev.phase_id)
+  }
 
   return (
     <div className="select-none">
@@ -199,7 +211,7 @@ function JourneyGlobeCarousel({
             transformOrigin: 'left center',
           }}
         >
-          {leftJ && <CircleCard journey={leftJ} isCenter={false} isDailyLocked={isDailyLocked(leftJ)} />}
+          {leftJ && <CircleCard journey={leftJ} isCenter={false} isDailyLocked={isDailyLocked(leftJ)} isSeqLocked={isSeqLocked(leftJ)} />}
         </div>
 
         {/* Center card — absolute, truly centered */}
@@ -213,7 +225,7 @@ function JourneyGlobeCarousel({
             transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <CircleCard journey={centerJ} isCenter={true} isDailyLocked={isDailyLocked(centerJ)} />
+          <CircleCard journey={centerJ} isCenter={true} isDailyLocked={isDailyLocked(centerJ)} isSeqLocked={isSeqLocked(centerJ)} />
         </div>
 
         {/* Right card — absolute, anchored to right */}
@@ -230,7 +242,7 @@ function JourneyGlobeCarousel({
             transformOrigin: 'right center',
           }}
         >
-          {rightJ && <CircleCard journey={rightJ} isCenter={false} isDailyLocked={isDailyLocked(rightJ)} />}
+          {rightJ && <CircleCard journey={rightJ} isCenter={false} isDailyLocked={isDailyLocked(rightJ)} isSeqLocked={isSeqLocked(rightJ)} />}
         </div>
 
         {/* Right arrow */}
@@ -264,6 +276,13 @@ function JourneyGlobeCarousel({
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
             🔒 EM BREVE
+          </div>
+        ) : isSeqLocked(centerJ) ? (
+          <div
+            className="inline-block px-6 py-2.5 text-xs font-black tracking-widest text-white/50 rounded-full cursor-not-allowed"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.15)' }}
+          >
+            🔒 CONCLUA A JORNADA ANTERIOR
           </div>
         ) : isDailyLocked(centerJ) ? (
           <button
@@ -368,9 +387,11 @@ export default function DashboardPage() {
   const [verifyLoading, setVerifyLoading] = useState(false)
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [isPremium, setIsPremium] = useState(false)
-  const [dailyAccessedPhaseIds, setDailyAccessedPhaseIds] = useState<number[]>([])
+  const [dailyAccessedPhaseIds,  setDailyAccessedPhaseIds]  = useState<number[]>([])
+  const [completedPhaseIds,      setCompletedPhaseIds]      = useState<number[]>([])
   const [lastWOAPlayCourse, setLastWOAPlayCourse] = useState<{ id: string; title: string; cover_url: string | null; module_count: number; watched_count: number } | null>(null)
   const [banner, setBanner] = useState<{ image_url: string; link_url: string | null } | null>(null)
+  const [showWoaPlayPremiumModal, setShowWoaPlayPremiumModal] = useState(false)
 
   useEffect(() => {
     fetch('/api/admin/banner')
@@ -438,6 +459,10 @@ export default function DashboardPage() {
     fetch('/api/journey/daily-access')
       .then(r => r.ok ? r.json() : { accessedPhaseIds: [] })
       .then(d => setDailyAccessedPhaseIds(d.accessedPhaseIds ?? []))
+      .catch(() => {})
+    fetch('/api/journey/completed')
+      .then(r => r.ok ? r.json() : { completedPhaseIds: [] })
+      .then(d => setCompletedPhaseIds(d.completedPhaseIds ?? []))
       .catch(() => {})
     fetch('/api/user/subscription')
       .then(r => r.ok ? r.json() : { isPremium: false })
@@ -813,19 +838,20 @@ export default function DashboardPage() {
               isAdmin={isAdmin}
               isPremium={isPremium}
               dailyAccessedPhaseIds={dailyAccessedPhaseIds}
+              completedPhaseIds={completedPhaseIds}
               onToggleBlocked={handleToggleBlocked}
             />
           </section>
 
-          {/* ── WOAPLAY (PREMIUM) ── */}
-          {isPremium && (
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 rounded" style={{ background: 'linear-gradient(180deg, #FFD700, #CC8800)' }} />
-                  <h3 className="text-xs font-black tracking-[0.2em]" style={{ color: '#FFD700' }}>— WOA PLAY —</h3>
-                  <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>PREMIUM</span>
-                </div>
+          {/* ── WOAPLAY ── */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-4 rounded" style={{ background: 'linear-gradient(180deg, #FFD700, #CC8800)' }} />
+                <h3 className="text-xs font-black tracking-[0.2em]" style={{ color: '#FFD700' }}>— WOA PLAY —</h3>
+                <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>PREMIUM</span>
+              </div>
+              {isPremium ? (
                 <Link
                   href="/woaplay"
                   onClick={() => playClick()}
@@ -834,70 +860,69 @@ export default function DashboardPage() {
                 >
                   VER TODOS →
                 </Link>
-              </div>
-
-              {lastWOAPlayCourse ? (
-                <Link
-                  href={`/woaplay/${lastWOAPlayCourse.id}`}
-                  onClick={() => playClick()}
-                  className="group flex items-center gap-4 p-4 rounded-2xl transition-all hover:scale-[1.01]"
-                  style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.7), rgba(20,14,0,0.7))', border: '1px solid rgba(255,215,0,0.25)', boxShadow: '0 0 24px rgba(255,180,0,0.08)' }}
-                >
-                  {/* Thumbnail */}
-                  <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0"
-                    style={{ background: 'rgba(80,60,0,0.3)', border: '1px solid rgba(255,215,0,0.2)' }}>
-                    {lastWOAPlayCourse.cover_url ? (
-                      <Image src={lastWOAPlayCourse.cover_url} alt={lastWOAPlayCourse.title} fill className="object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-2xl">🎬</div>
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.45)' }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,215,0,0.85)' }}>
-                        <span className="text-black text-xs ml-0.5 font-black">▶</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: 'rgba(255,215,0,0.5)' }}>
-                      {lastWOAPlayCourse.watched_count > 0 ? '▶ CONTINUAR ASSISTINDO' : '▶ COMEÇAR AGORA'}
-                    </p>
-                    <p className="text-white font-black text-sm truncate group-hover:text-yellow-300 transition-colors">{lastWOAPlayCourse.title}</p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,215,0,0.1)' }}>
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: lastWOAPlayCourse.module_count > 0 ? `${Math.round((lastWOAPlayCourse.watched_count / lastWOAPlayCourse.module_count) * 100)}%` : '0%',
-                            background: 'linear-gradient(90deg, #FFD700, #CC8800)'
-                          }}
-                        />
-                      </div>
-                      <span className="text-[9px] font-black flex-shrink-0" style={{ color: 'rgba(255,215,0,0.5)' }}>
-                        {lastWOAPlayCourse.watched_count}/{lastWOAPlayCourse.module_count} aulas
-                      </span>
-                    </div>
-                  </div>
-
-                  <span className="text-yellow-400/40 group-hover:text-yellow-400 transition-colors text-lg flex-shrink-0">›</span>
-                </Link>
               ) : (
-                <Link
-                  href="/woaplay"
-                  onClick={() => playClick()}
-                  className="flex items-center justify-center gap-4 p-6 rounded-2xl transition-all hover:scale-[1.01] text-center"
-                  style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.5), rgba(20,14,0,0.5))', border: '1px dashed rgba(255,215,0,0.25)' }}
+                <button
+                  onClick={() => setShowWoaPlayPremiumModal(true)}
+                  className="text-[10px] font-black tracking-widest px-4 py-2 rounded-lg transition-all hover:scale-105"
+                  style={{ border: '1px solid rgba(255,215,0,0.35)', color: '#FFD700', background: 'rgba(255,215,0,0.08)' }}
                 >
-                  <div>
-                    <p className="text-3xl mb-2">🎬</p>
-                    <p className="font-black text-sm" style={{ color: '#FFD700' }}>Explore os cursos WOA Play</p>
-                    <p className="text-white/30 text-xs mt-1">Conteúdo exclusivo para assinantes premium</p>
-                  </div>
-                </Link>
+                  VER TODOS →
+                </button>
               )}
-            </section>
-          )}
+            </div>
+
+            {isPremium && lastWOAPlayCourse ? (
+              <Link
+                href={`/woaplay/${lastWOAPlayCourse.id}`}
+                onClick={() => playClick()}
+                className="group flex items-center gap-4 p-4 rounded-2xl transition-all hover:scale-[1.01]"
+                style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.7), rgba(20,14,0,0.7))', border: '1px solid rgba(255,215,0,0.25)', boxShadow: '0 0 24px rgba(255,180,0,0.08)' }}
+              >
+                <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0"
+                  style={{ background: 'rgba(80,60,0,0.3)', border: '1px solid rgba(255,215,0,0.2)' }}>
+                  {lastWOAPlayCourse.cover_url ? (
+                    <Image src={lastWOAPlayCourse.cover_url} alt={lastWOAPlayCourse.title} fill className="object-cover" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-2xl">�</div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.45)' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,215,0,0.85)' }}>
+                      <span className="text-black text-xs ml-0.5 font-black">▶</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: 'rgba(255,215,0,0.5)' }}>
+                    {lastWOAPlayCourse.watched_count > 0 ? '▶ CONTINUAR ASSISTINDO' : '▶ COMEÇAR AGORA'}
+                  </p>
+                  <p className="text-white font-black text-sm truncate group-hover:text-yellow-300 transition-colors">{lastWOAPlayCourse.title}</p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,215,0,0.1)' }}>
+                      <div className="h-full rounded-full" style={{ width: lastWOAPlayCourse.module_count > 0 ? `${Math.round((lastWOAPlayCourse.watched_count / lastWOAPlayCourse.module_count) * 100)}%` : '0%', background: 'linear-gradient(90deg, #FFD700, #CC8800)' }} />
+                    </div>
+                    <span className="text-[9px] font-black flex-shrink-0" style={{ color: 'rgba(255,215,0,0.5)' }}>
+                      {lastWOAPlayCourse.watched_count}/{lastWOAPlayCourse.module_count} aulas
+                    </span>
+                  </div>
+                </div>
+                <span className="text-yellow-400/40 group-hover:text-yellow-400 transition-colors text-lg flex-shrink-0">›</span>
+              </Link>
+            ) : (
+              <button
+                onClick={() => isPremium ? router.push('/woaplay') : setShowWoaPlayPremiumModal(true)}
+                className="w-full flex items-center justify-center gap-4 p-6 rounded-2xl transition-all hover:scale-[1.01] text-center"
+                style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.5), rgba(20,14,0,0.5))', border: `1px ${isPremium ? 'dashed' : 'solid'} rgba(255,215,0,0.25)` }}
+              >
+                <div>
+                  <p className="text-3xl mb-2">{isPremium ? '�' : '🔒'}</p>
+                  <p className="font-black text-sm" style={{ color: '#FFD700' }}>
+                    {isPremium ? 'Explore os cursos WOA Play' : 'Desbloqueie o WOA Play'}
+                  </p>
+                  <p className="text-white/30 text-xs mt-1">Conteúdo exclusivo para assinantes premium</p>
+                </div>
+              </button>
+            )}
+          </section>
 
           {/* ── METHOD WOA ── */}
           <section>
@@ -946,6 +971,55 @@ export default function DashboardPage() {
       </div>
       {/* ── BADGES MODAL ── */}
       {badgesOpen && <BadgesModal onClose={() => setBadgesOpen(false)} />}
+
+      {/* ── WOAPLAY PREMIUM MODAL ── */}
+      {showWoaPlayPremiumModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setShowWoaPlayPremiumModal(false)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-3xl p-8 flex flex-col items-center gap-5 text-center"
+            style={{ background: 'linear-gradient(160deg, rgba(30,20,0,0.98), rgba(15,10,0,0.98))', border: '1px solid rgba(255,215,0,0.35)', boxShadow: '0 0 60px rgba(255,180,0,0.18)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowWoaPlayPremiumModal(false)}
+              className="absolute top-4 right-4 text-white/30 hover:text-white/70 transition-colors text-lg leading-none"
+            >✕</button>
+
+            <div className="text-5xl">🎬</div>
+
+            <div>
+              <p className="text-[10px] font-black tracking-[0.25em] mb-1" style={{ color: 'rgba(255,215,0,0.6)' }}>WOA PLAY</p>
+              <h3 className="text-xl font-black text-white">Recurso Premium</h3>
+            </div>
+
+            <p className="text-white/60 text-sm leading-relaxed">
+              O WOA Play é exclusivo para assinantes Premium. Acesse cursos em vídeo, aulas especiais e muito mais conteúdo para acelerar seu inglês.
+            </p>
+
+            <div className="w-full space-y-3 pt-1">
+              <Link
+                href="/premium"
+                onClick={() => setShowWoaPlayPremiumModal(false)}
+                className="block w-full py-3.5 rounded-xl font-black text-sm tracking-widest text-center text-black transition-all hover:scale-105"
+                style={{ background: 'linear-gradient(135deg, #FFD700, #CC8800)', boxShadow: '0 0 24px rgba(255,215,0,0.35)' }}
+              >
+                🚀 VER PLANOS PREMIUM
+              </Link>
+              <button
+                onClick={() => setShowWoaPlayPremiumModal(false)}
+                className="w-full py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all hover:opacity-70"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)' }}
+              >
+                FECHAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── LEVEL MODAL ── */}
       {levelOpen && (

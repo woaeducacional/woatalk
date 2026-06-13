@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { supabaseServer } from '@/lib/supabaseServer'
 import { ClientProfileContent } from './client-profile'
 
 interface UserProfile {
@@ -19,24 +20,18 @@ interface UserProfile {
 
 async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
   try {
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000'
-    
-    const url = `${baseUrl}/api/user/profile/public?id=${encodeURIComponent(userId)}`
-    console.log('Fetching profile from:', url)
-    
-    const response = await fetch(url, { cache: 'no-store' })
+    const { data, error } = await supabaseServer
+      .from('users')
+      .select('id, name, nickname, bio, country, language, gender, avatar_url, xp_total, streak_count, badges, created_at')
+      .eq('id', userId)
+      .maybeSingle()
 
-    if (!response.ok) {
-      const text = await response.text()
-      console.error(`Profile fetch failed: ${response.status}`, text)
+    if (error) {
+      console.error('Profile fetch error:', error.message)
       return null
     }
 
-    const data = await response.json()
-    console.log('Profile fetched successfully:', data.profile?.id)
-    return data.profile || null
+    return data ?? null
   } catch (error) {
     console.error('Failed to fetch profile:', error)
     return null

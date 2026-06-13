@@ -34,12 +34,24 @@ export async function playTTS(
     }
     const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }))
     const audio = new Audio(url)
-    audio.onended = () => { onEnd(); URL.revokeObjectURL(url) }
-    audio.onerror = () => { onEnd(); URL.revokeObjectURL(url) }
+    let ended = false
+    const finish = () => {
+      if (ended) return
+      ended = true
+      clearTimeout(safetyTimer)
+      URL.revokeObjectURL(url)
+      onEnd()
+    }
+    // Safety timeout: if onended never fires (iOS bug), advance after 8s
+    const safetyTimer = setTimeout(finish, 8000)
+    audio.onended = finish
+    audio.onerror = finish
     onStart?.()
     await audio.play()
   } catch {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // Cancel any stale/stuck iOS speech queue before starting
+      window.speechSynthesis.cancel()
       if (rate === 'superslow') {
         // Fala palavra por palavra com pausa de 600ms
         const words = text.trim().split(/\s+/)
@@ -49,8 +61,12 @@ export async function playTTS(
           const u = new SpeechSynthesisUtterance(words[i++])
           u.lang = 'en-US'
           u.rate = 0.85
-          u.onend = () => { setTimeout(speakNext, 600) }
-          u.onerror = () => { setTimeout(speakNext, 600) }
+          let wordEnded = false
+          const wordFinish = () => { if (!wordEnded) { wordEnded = true; setTimeout(speakNext, 600) } }
+          u.onend = wordFinish
+          u.onerror = wordFinish
+          // iOS safety: if onend never fires, advance after 2.5s per word
+          setTimeout(wordFinish, 2500)
           if (i === 1) onStart?.()
           window.speechSynthesis.speak(u)
         }
@@ -59,8 +75,13 @@ export async function playTTS(
         const u = new SpeechSynthesisUtterance(text)
         u.lang = 'en-US'
         u.rate = rate === 'slow' ? 0.6 : 0.8
-        u.onend = () => onEnd()
-        u.onerror = () => onEnd()
+        let utEnded = false
+        const utFinish = () => { if (!utEnded) { utEnded = true; onEnd() } }
+        u.onend = utFinish
+        u.onerror = utFinish
+        // iOS safety timeout: speechSynthesis.onend often never fires on iOS 16/17
+        const iosSafetyMs = rate === 'slow' ? 7000 : 5000
+        setTimeout(utFinish, iosSafetyMs)
         onStart?.()
         window.speechSynthesis.speak(u)
       }

@@ -35,8 +35,9 @@ export default function ChallengePage() {
   const router = useRouter()
   const { status } = useSession()
   const phaseId = parseInt(params.phaseId as string)
-  const [accessChecked, setAccessChecked] = useState(false)
-  const [accessBlocked, setAccessBlocked] = useState(false)
+  const [accessChecked,  setAccessChecked]  = useState(false)
+  const [accessBlocked,  setAccessBlocked]  = useState(false)
+  const [seqBlocked,     setSeqBlocked]     = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
@@ -44,24 +45,77 @@ export default function ChallengePage() {
 
   useEffect(() => {
     if (status !== 'authenticated') return
-    fetch('/api/journey/daily-access', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phaseId }),
-    })
-      .then(r => r.ok ? r.json() : { blocked: false })
-      .then(d => {
-        if (d.blocked) {
-          setAccessBlocked(true)
-          setTimeout(() => router.push('/dashboard'), 3500)
-        } else {
-          setAccessChecked(true)
-        }
+
+    // Sequential lock: check if previous journey is completed (skip for phase 1)
+    if (phaseId > 1) {
+      fetch('/api/journey/completed')
+        .then(r => r.ok ? r.json() : { completedPhaseIds: [] })
+        .then(d => {
+          const completed: number[] = d.completedPhaseIds ?? []
+          if (!completed.includes(phaseId - 1)) {
+            setSeqBlocked(true)
+            setTimeout(() => router.push('/dashboard'), 3000)
+            return
+          }
+          // Passes sequential check — proceed with daily-access check
+          return fetch('/api/journey/daily-access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phaseId }),
+          })
+            .then(r => r.ok ? r.json() : { blocked: false })
+            .then(d2 => {
+              if (d2.blocked) {
+                setAccessBlocked(true)
+                setTimeout(() => router.push('/dashboard'), 3500)
+              } else {
+                setAccessChecked(true)
+              }
+            })
+        })
+        .catch(() => setAccessChecked(true))
+    } else {
+      fetch('/api/journey/daily-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phaseId }),
       })
-      .catch(() => setAccessChecked(true))
+        .then(r => r.ok ? r.json() : { blocked: false })
+        .then(d => {
+          if (d.blocked) {
+            setAccessBlocked(true)
+            setTimeout(() => router.push('/dashboard'), 3500)
+          } else {
+            setAccessChecked(true)
+          }
+        })
+        .catch(() => setAccessChecked(true))
+    }
   }, [status, phaseId, router])
 
   const phase = OCEAN_PHASES.find(p => p.id === phaseId)
+
+  if (seqBlocked) {
+    return (
+      <main className="min-h-screen flex items-center justify-center" style={{ background: '#050E1A' }}>
+        <div className="text-center space-y-5 p-8 max-w-sm mx-auto">
+          <div className="text-6xl">🔒</div>
+          <h2 className="text-2xl font-black text-white tracking-wider">JORNADA BLOQUEADA</h2>
+          <p className="text-blue-200/70 text-sm leading-relaxed">
+            Complete a <span className="text-cyan-400 font-bold">Jornada {phaseId - 1}</span> para desbloquear esta.
+          </p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="w-full py-3 rounded-xl font-bold text-sm tracking-widest transition-all hover:scale-105"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}
+          >
+            ← VOLTAR AO DASHBOARD
+          </button>
+          <p className="text-xs text-blue-300/30">Redirecionando automaticamente...</p>
+        </div>
+      </main>
+    )
+  }
 
   if (accessBlocked) {
     return (
