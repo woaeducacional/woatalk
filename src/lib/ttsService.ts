@@ -12,19 +12,51 @@
 // Cache client-side: evita nova requisição para o mesmo áudio já baixado
 const ttsCache = new Map<string, ArrayBuffer>()
 
-/**
- * Unlocks iOS audio by resuming an AudioContext in response to a user gesture.
- * Call this once inside any button onClick handler before the first TTS call.
- */
-export function unlockAudio(): void {
-  if (typeof window === 'undefined') return
+// Shared AudioContext — stays unlocked after unlockAudio() is called once
+let sharedAudioCtx: AudioContext | null = null
+
+function getAudioCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  if (sharedAudioCtx) return sharedAudioCtx
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    if (AudioCtx) {
-      const ctx = new AudioCtx()
-      ctx.resume().catch(() => {})
-    }
+    if (AudioCtx) sharedAudioCtx = new AudioCtx()
   } catch { /* ignore */ }
+  return sharedAudioCtx
+}
+
+/**
+ * Unlocks iOS audio. Call once inside any button onClick before the first TTS.
+ * Creates (or resumes) a shared AudioContext so subsequent playTTS calls work
+ * without needing a new user gesture.
+ */
+export function unlockAudio(): void {
+  const ctx = getAudioCtx()
+  if (!ctx) return
+  ctx.resume().catch(() => {})
+}
+
+/**
+ * Pre-fetches TTS audio into the in-memory cache without playing.
+ * Call from a gesture handler so subsequent playTTS is instant (no fetch delay).
+ */
+export async function prefetchTTS(
+  text: string,
+  voice: 'oliver' | 'alice',
+  rate: 'normal' | 'slow' | 'superslow',
+): Promise<void> {
+  const cacheKey = `${voice}|${rate}|${text}`
+  if (ttsCache.has(cacheKey)) return
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice, rate }),
+    })
+    if (!res.ok) return
+    const buffer = await res.arrayBuffer()
+    ttsCache.set(cacheKey, buffer)
+  } catch { /* silent */ }
 }
 
 export async function playTTS(
@@ -36,10 +68,10 @@ export async function playTTS(
 ): Promise<void> {
   const cacheKey = `${voice}|${rate}|${text}`
 
-  // ── 1. Try HTML Audio element (primary) ──────────────────────────────────
-  let playedViaAudio = false
+  // ── 1. Fetch / cache buffer ───────────────────────────────────────────────
+  let buffer: ArrayBuffer | undefined
   try {
-    let buffer = ttsCache.get(cacheKey)
+    buffer = ttsCache.get(cacheKey)
     if (!buffer) {
       const res = await fetch('/api/tts', {
         method: 'POST',
@@ -50,7 +82,30 @@ export async function playTTS(
       buffer = await res.arrayBuffer()
       ttsCache.set(cacheKey, buffer)
     }
+  } catch { /* fall through to speechSynthesis */ }
 
+  if (buffer) {
+    // ── 2a. Web Audio API (preferred on iOS — works after unlockAudio()) ─────
+    const ctx = getAudioCtx()
+    if (ctx && ctx.state === 'running') {
+      try {
+        const decoded = await ctx.decodeAudioData(buffer.slice(0))
+        const source = ctx.createBufferSource()
+        source.buffer = decoded
+        source.connect(ctx.destination)
+        let finished = false
+        const safetyTimer = setTimeout(() => { if (!finished) { finished = true; onEnd() } }, 8000)
+        source.onended = () => {
+          if (!finished) { finished = true; clearTimeout(safetyTimer); onEnd() }
+        }
+        onStart?.()
+        source.start(0)
+        return
+      } catch { /* fall through to HTMLAudio */ }
+    }
+
+    // ── 2b. HTMLAudioElement (fallback — needs fresh gesture on iOS) ──────────
+    let playedViaAudio = false
     const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }))
     const audio = new Audio(url)
     let finished = false
@@ -64,28 +119,24 @@ export async function playTTS(
       onEnd()
     }
 
-    // Nested try so safetyTimer is in scope for the catch
     try {
       safetyTimer = setTimeout(finish, 8000)
       audio.onended = finish
       audio.onerror = finish
       onStart?.()
       await audio.play()
-      playedViaAudio = true  // play() resolved — onended will fire
+      playedViaAudio = true
     } catch {
-      // audio.play() rejected (iOS autoplay block)
-      if (safetyTimer !== undefined) clearTimeout(safetyTimer)  // ← prevent double-onEnd
-      finished = true             // ← guard against stale onerror
+      if (safetyTimer !== undefined) clearTimeout(safetyTimer)
+      finished = true
       URL.revokeObjectURL(url)
-      // Fall through to speechSynthesis below
     }
-  } catch {
-    // Fetch failed or other pre-play error — fall through to speechSynthesis
+
+    if (playedViaAudio) return
   }
 
-  if (playedViaAudio) return  // Waiting for onended/safetyTimer; don't call onEnd here
-
-  // ── 2. Fallback: Web Speech API ───────────────────────────────────────────
+  // ── 3. Fallback: Web Speech API ───────────────────────────────────────────
+  // (reached only if buffer fetch failed or all audio paths failed)
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     onEnd()
     return

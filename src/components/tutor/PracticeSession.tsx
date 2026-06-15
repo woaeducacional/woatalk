@@ -11,7 +11,7 @@
  * 5. Próxima rodada ou fim da sessão
  */
 import { useState, useEffect, useRef } from 'react'
-import { playTTS, unlockAudio } from '@/src/lib/ttsService'
+import { playTTS, unlockAudio, prefetchTTS } from '@/src/lib/ttsService'
 import type { PronunciationError } from '@/src/services/pronunciation.service'
 import {
   startLiveRecognition,
@@ -125,6 +125,8 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
   /** Inicia a sessão após o usuário tocar em "Iniciar" (garante gesto no iOS) */
   const handleStart = () => {
     unlockAudio()  // desbloqueia AudioContext no iOS via gesto do usuário
+    // Pre-fetch all word audio so playTTS runs instantly (no fetch delay on iOS)
+    words.forEach(w => { prefetchTTS(w.word, 'alice', 'slow').catch(() => {}) })
     setReadyToStart(true)
   }
 
