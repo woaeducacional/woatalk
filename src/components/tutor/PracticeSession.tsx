@@ -11,7 +11,7 @@
  * 5. Próxima rodada ou fim da sessão
  */
 import { useState, useEffect, useRef } from 'react'
-import { playTTS } from '@/src/lib/ttsService'
+import { playTTS, unlockAudio } from '@/src/lib/ttsService'
 import type { PronunciationError } from '@/src/services/pronunciation.service'
 import {
   startLiveRecognition,
@@ -83,6 +83,7 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
   const [mediaRecordingActive, setMediaRecordingActive] = useState(false)
   const [round, setRound] = useState(0)
   const [displayScore, setDisplayScore] = useState(0)
+  const [readyToStart, setReadyToStart] = useState(false)
 
   /** Refs para acessar valores atuais dentro de callbacks assíncronos */
   const roundRef  = useRef(0)
@@ -121,8 +122,15 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
     })
   }
 
+  /** Inicia a sessão após o usuário tocar em "Iniciar" (garante gesto no iOS) */
+  const handleStart = () => {
+    unlockAudio()  // desbloqueia AudioContext no iOS via gesto do usuário
+    setReadyToStart(true)
+  }
+
   /** Mensagem de boas-vindas + inicia primeira rodada — guard evita double-invoke do Strict Mode */
   useEffect(() => {
+    if (!readyToStart) return
     if (sessionStartedRef.current) return
     sessionStartedRef.current = true
 
@@ -134,7 +142,7 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
       setTimeout(() => startRound(0), 1000)
     }, 400)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [readyToStart])
 
   /** Para a gravação MediaRecorder (iOS/Firefox) */
   function stopWhisperRecording() {
@@ -268,6 +276,44 @@ export function PracticeSession({ errors, onEnd }: PracticeSessionProps) {
   }
 
   const progressPct = Math.round((round / TOTAL_ROUNDS) * 100)
+
+  // ── Tap-to-start overlay (iOS audio unlock) ─────────────────────────────
+  if (!readyToStart) {
+    return (
+      <div
+        className="rounded-2xl flex flex-col items-center justify-center gap-6 text-center p-8"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30,0,60,0.98), rgba(10,5,40,0.98))',
+          border: '1px solid rgba(168,85,247,0.35)',
+          boxShadow: '0 0 40px rgba(168,85,247,0.15)',
+          height: '580px',
+        }}
+      >
+        <img
+          src="/images/aguia-corretora.png"
+          alt="Tutor"
+          className="w-20 h-20 object-contain"
+          style={{ filter: 'drop-shadow(0 0 16px rgba(168,85,247,0.6))', animation: 'owlBob 3s ease-in-out infinite' }}
+        />
+        <div className="space-y-2">
+          <p className="text-xl font-black text-white">Sessão de Prática</p>
+          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            {words.map(w => w.word).join(' · ')}
+          </p>
+        </div>
+        <button
+          onClick={handleStart}
+          className="px-8 py-4 rounded-2xl font-black text-sm tracking-widest text-white transition-all hover:scale-105 active:scale-95"
+          style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', boxShadow: '0 0 24px rgba(168,85,247,0.4)' }}
+        >
+          🎤 INICIAR SESSÃO
+        </button>
+        <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          {TOTAL_ROUNDS} rodadas · ouça e repita
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div
