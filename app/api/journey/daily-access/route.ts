@@ -6,9 +6,13 @@ import { supabase } from '@/src/lib/supabaseClient'
 const DAILY_JOURNEY_LIMIT = 2
 
 function getTodayStart() {
-  const d = new Date()
-  d.setUTCHours(0, 0, 0, 0)
-  return d.toISOString()
+  const now = new Date()
+  // Shift to BRT (UTC-3) to get the correct local calendar day
+  const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000)
+  // Floor to midnight in BRT
+  brt.setUTCHours(0, 0, 0, 0)
+  // Shift back to UTC — this gives 03:00 UTC as the daily boundary
+  return new Date(brt.getTime() + 3 * 60 * 60 * 1000).toISOString()
 }
 
 /**
