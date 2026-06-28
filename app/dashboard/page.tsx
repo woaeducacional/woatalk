@@ -566,10 +566,10 @@ export default function DashboardPage() {
       {/* ── Background ── */}
       <div className="fixed inset-0 z-0">
         <Image
-          src={isPremium ? '/images/plano-de-fundo-atlantida.png' : '/images/fundo_do_mar.png'}
-          alt={isPremium ? 'Atlântida' : 'Fundo do Mar'}
+          src="/images/plano-de-fundo-mar.png"
+          alt="Oceano"
           fill
-          className="object-cover object-bottom"
+          className="object-cover object-center"
           priority
         />
         <div className="absolute inset-0" style={{
@@ -583,49 +583,41 @@ export default function DashboardPage() {
       <div className="relative z-10 flex flex-col min-h-screen">
 
         {/* ── NAV ── */}
-        <header className="sticky top-0 z-40 flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-cyan-400/20 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.72)' }}>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="relative w-8 sm:w-10 h-8 sm:h-10">
+        <header className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-cyan-400/15 backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.80)' }}>
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div className="relative w-8 h-8 shrink-0">
               <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/40" />
               <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border-2 border-cyan-400/60 object-cover" />
             </div>
-            <div>
-              <span className="text-sm sm:text-base font-black tracking-[0.12em] sm:tracking-[0.18em] text-white" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>
-                WOA TALK
-              </span>
-              <p className="text-[8px] sm:text-[10px] text-cyan-400/50 tracking-widest">SUA JORNADA ÉPICA</p>
-            </div>
+            <span className="text-sm font-black tracking-[0.15em] text-white hidden sm:block" style={{ textShadow: '0 0 12px rgba(0,212,255,0.5)' }}>WOA TALK</span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Right controls */}
+          <div className="flex items-center gap-3">
             <NotificationBell />
-            <Link
-              href="/premium"
-              onClick={() => playClick()}
-              className="text-[11px] sm:text-xs font-black tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded transition-all hover:scale-105"
-              style={{ border: '1px solid rgba(255,215,0,0.5)', color: '#FFD700', background: 'rgba(255,215,0,0.12)' }}
-            >
-              PREMIUM
-            </Link>
+            {/* Coins */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)' }}>
+              <span className="text-sm">🪙</span>
+              <span className="text-xs font-black" style={{ color: '#FFD700' }}>{coinsBalance.toLocaleString('pt-BR')}</span>
+            </div>
+            {/* Avatar / sidebar trigger */}
             <button
               onClick={() => { playClick(); setSidebarOpen(true) }}
-              className="text-[11px] sm:text-xs font-black tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded transition-all hover:scale-105"
-              style={{ border: '1px solid rgba(0,212,255,0.35)', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+              style={{ background: 'linear-gradient(135deg, rgba(0,67,187,0.6), rgba(0,212,255,0.3))', border: '2px solid rgba(0,212,255,0.45)' }}
             >
-              EXPLORADOR
-            </button>
-            <button
-              onClick={() => { playClick(); (signOut({ redirect: true }) as any) }}
-              className="text-[11px] sm:text-xs font-bold tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded border border-red-500/30 text-red-400/70 hover:border-red-400/60 hover:text-red-300 transition-all"
-            >
-              SAIR
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" fill="rgba(0,212,255,0.8)" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(0,212,255,0.8)" strokeWidth="2" strokeLinecap="round" />
+              </svg>
             </button>
           </div>
         </header>
 
         {/* ── BANNER ── */}
         {banner && (
-          <div className="relative z-10 max-w-5xl mx-auto w-full px-4 pt-6">
+          <div className="relative z-10 max-w-3xl mx-auto w-full px-4 pt-4">
             {banner.link_url ? (
               <a href={banner.link_url} target="_blank" rel="noopener noreferrer" className="block w-full">
                 <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: '4/1', maxHeight: 180 }}>
@@ -640,198 +632,58 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-10 space-y-10">
+        <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6 pb-24 md:pb-10">
 
-          {/* ── WELCOME ── */}
-          <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 mb-3 border border-cyan-400/25" style={{ background: 'rgba(0,212,255,0.07)' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                <span className="text-cyan-300/70 text-[10px] font-bold tracking-[0.18em]">BEM-VINDO DE VOLTA</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-white" style={{ textShadow: '0 0 30px rgba(0,212,255,0.25)' }}>
-                {session?.user?.name?.split(' ')[0] ?? 'Herói'}, <span style={{ color: '#00D4FF' }}>pronto</span> para mergulhar?
-              </h2>
-              <p className="text-blue-200/55 text-sm mt-2">Continue sua jornada e desbloqueie novos oceanos.</p>
+          {/* ── SUA JORNADA — env tabs ── */}
+          <section className="rounded-2xl overflow-hidden" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(0,212,255,0.15)' }}>
+            <p className="text-center text-xs font-black tracking-[0.25em] text-white pt-4 pb-3">SUA JORNADA</p>
+            <div className="grid grid-cols-3 gap-0 border-t border-white/5">
+              {/* OCEANOS — active */}
+              <button className="flex flex-col items-center gap-1 py-3 px-2 transition-all" style={{ background: 'rgba(0,212,255,0.12)', borderBottom: '2px solid #00D4FF' }}>
+                <span className="text-lg">🌊</span>
+                <span className="text-[10px] font-black tracking-widest" style={{ color: '#00D4FF' }}>OCEANOS</span>
+                <span className="text-[9px] font-bold" style={{ color: 'rgba(0,212,255,0.6)' }}>Ativo</span>
+              </button>
+              {/* TERRA — locked */}
+              <button className="flex flex-col items-center gap-1 py-3 px-2 border-x border-white/5 opacity-50 cursor-not-allowed">
+                <span className="text-lg">🌿</span>
+                <span className="text-[10px] font-black tracking-widest text-white/60">TERRA</span>
+                <span className="text-[9px] font-bold text-white/35">Bloqueado</span>
+              </button>
+              {/* GALÁXIAS — locked */}
+              <button className="flex flex-col items-center gap-1 py-3 px-2 opacity-50 cursor-not-allowed">
+                <span className="text-lg">✨</span>
+                <span className="text-[10px] font-black tracking-widest text-white/60">GALÁXIAS</span>
+                <span className="text-[9px] font-bold text-white/35">Bloqueado</span>
+              </button>
             </div>
-            <div className="flex flex-col gap-2 shrink-0">
-              <Link
-                href="/community"
-                onClick={() => playClick()}
-                className="px-7 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105 text-center"
-                style={{ background: 'linear-gradient(135deg,#B05000,#FF6B00)', border: '2px solid #FF9A00', boxShadow: '0 0 24px rgba(255,107,0,0.4)' }}
-              >
-                COMUNIDADE
-              </Link>
-              {isAdmin && (
-                <Link
-                  href="/admin/journey-content/new"
-                  onClick={() => playClick()}
-                  className="px-7 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105 text-center"
-                  style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.4)' }}
-                >
-                  CRIAR JORNADA
-                </Link>
-              )}
+            {/* Progress bar */}
+            <div className="px-5 pt-2 pb-4">
+              <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: 'rgba(0,212,255,0.12)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${journeys.length > 0 ? Math.round((completedPhaseIds.length / Math.max(journeys.filter(j => j.phase_id > 0).length, 1)) * 100) : 0}%`,
+                    background: 'linear-gradient(90deg, #0043BB, #00D4FF)'
+                  }}
+                />
+              </div>
+              <p className="text-center text-sm font-black tracking-widest">
+                <span style={{ color: '#00D4FF', textShadow: '0 0 10px rgba(0,212,255,0.7)' }}>
+                  {journeys.length > 0 ? Math.round((completedPhaseIds.length / Math.max(journeys.filter(j => j.phase_id > 0).length, 1)) * 100) : 0}%
+                </span>
+                <span className="text-white/40 font-bold"> CONCLUÍDO</span>
+              </p>
             </div>
           </section>
 
-          {/* ── STATS HUD ── */}
-          <section>
-            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4">— SEU PROGRESSO —</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* XP / Level */}
-              <button
-                onClick={() => { playClick(); setLevelOpen(true) }}
-                className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform text-left w-full"
-                style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #00D4FF35', boxShadow: '0 4px 24px rgba(0,212,255,0.08)' }}
-              >
-                <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#00D4FF' }}>⚡ NÍVEL</p>
-                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #00D4FF' }}>LVL {level}</p>
-                <p className="text-[10px] text-blue-100/80 mt-2">Falta {xpToNext.toLocaleString('pt-BR')} XP</p>
-                <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'rgba(0,212,255,0.12)' }}>
-                  <div className="h-full rounded-full" style={{ width: `${xpProgress}%`, background: '#00D4FF' }} />
-                </div>
-              </button>
-
-              {/* Streaks */}
-              <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #FF6B3535', boxShadow: '0 4px 24px rgba(255,107,53,0.06)' }}>
-                <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#FF6B35' }}>🔥 STREAK</p>
-                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #FF6B35' }}>{streakCount}</p>
-                <p className="text-[10px] text-blue-100/80 mt-2">Dias consecutivos</p>
+          {/* ── GLOBE CAROUSEL ── */}
+          <section className="rounded-2xl py-4" style={{ background: 'rgba(5,14,26,0.60)', border: '1px solid rgba(0,212,255,0.12)' }}>
+            {isAdmin && (
+              <div className="flex justify-end px-4 mb-2">
+                <Link href="/admin/journey-content/new" onClick={() => playClick()} className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,102,255,0.15)', border: '1px solid rgba(0,212,255,0.3)', color: '#00D4FF' }}>+ CRIAR JORNADA</Link>
               </div>
-
-              {/* Badges */}
-              <button
-                onClick={() => { playClick(); setBadgesOpen(true) }}
-                className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform text-left w-full"
-                style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #A855F735', boxShadow: '0 4px 24px rgba(168,85,247,0.06)' }}
-              >
-                <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#A855F7' }}>🏅 BADGES</p>
-                <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #A855F7' }}>{badgeCount}</p>
-                <p className="text-[10px] text-blue-100/80 mt-2">Conquistas desbloqueadas</p>
-              </button>
-
-              {/* WOA Coins */}
-              <div className="p-5 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform flex items-center gap-3" style={{ background: 'rgba(5,14,26,0.65)', border: '1px solid #FFD70035', boxShadow: '0 4px 24px rgba(255,215,0,0.06)' }}>
-                <div className="flex-1">
-                  <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: '#FFD700' }}>💰 WOA COINS</p>
-                  <p className="text-3xl font-black text-white" style={{ textShadow: '0 0 14px #FFD700' }}>{coinsBalance}</p>
-                  <p className="text-[10px] text-blue-100/80 mt-2">Moedas acumuladas</p>
-                </div>
-                <Image src="/images/woa_coin.png" alt="WOA Coin" width={52} height={52} className="object-contain drop-shadow-lg" />
-              </div>
-            </div>
-          </section>
-
-          {/* ── COMMUNITY TICKER ── */}
-          <section>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 rounded" style={{ background: 'linear-gradient(180deg, #FF6B35, #FFA940)' }} />
-                  <h3 className="text-xs font-black tracking-[0.2em]" style={{ color: '#FF6B35' }}>— COMUNIDADE ATIVA —</h3>
-                </div>
-                <Link
-                  href="/community"
-                  onClick={() => playClick()}
-                  className="text-[10px] font-black tracking-widest px-4 py-2 rounded-lg transition-all hover:scale-105"
-                  style={{ border: '1px solid rgba(255,107,53,0.35)', color: '#FF6B35', background: 'rgba(255,107,53,0.08)' }}
-                >
-                  VER TUDO →
-                </Link>
-              </div>
-              <div
-                className="rounded-2xl p-2 backdrop-blur-md space-y-1.5"
-                style={{ 
-                  background: 'linear-gradient(135deg, rgba(255,107,53,0.1), rgba(255,107,53,0.04))',
-                  border: '1px solid rgba(255,107,53,0.25)',
-                  boxShadow: '0 0 20px rgba(255,107,53,0.08)'
-                }}
-              >
-                {recentPosts.map((p) => {
-                  const TYPE_ICONS: Record<string, {icon: string, color: string, label: string}> = { 
-                    badge_earned: { icon: '⬢', color: '#A855F7', label: 'Badge' },
-                    streak_milestone: { icon: '▲', color: '#FF6B35', label: 'Streak' },
-                    journey_completed: { icon: '◆', color: '#00D4FF', label: 'Jornada' },
-                    block_completed: { icon: '■', color: '#22c55e', label: 'Bloco' },
-                    xp_milestone: { icon: '★', color: '#FFD700', label: 'XP' }
-                  }
-                  const type = TYPE_ICONS[p.post_type] ?? { icon: '●', color: '#FF6B35', label: 'Evento' }
-                  const name = p.users?.name ?? 'Jogador'
-                  const userId = p.users?.id
-                  let detail = ''
-                  switch (p.post_type) {
-                    case 'badge_earned': detail = `conquistou o badge "${p.payload.badge}"`; break
-                    case 'streak_milestone': detail = `atingiu ${p.payload.streak} dias de sequência`; break
-                    case 'journey_completed': detail = `completou uma nova Jornada`; break
-                    case 'block_completed': {
-                      const phaseId = p.payload.phaseId as number
-                      const missionGroupId = p.payload.missionGroupId as number
-                      const journey = journeys.find(j => j.phase_id === phaseId)
-                      const journeyName = journey?.title ?? `Jornada ${phaseId}`
-                      const blockNum = (missionGroupId + 1)
-                      detail = `finalizou o bloco ${blockNum} da ${journeyName}`
-                      break
-                    }
-                    case 'xp_milestone': detail = `alcançou ${Number(p.payload.xp).toLocaleString('pt-BR')} XP de experiência`; break
-                  }
-                  const timeStr = (() => { const m = Math.floor((Date.now() - new Date(p.created_at).getTime()) / 60000); return m < 1 ? 'agora' : m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m/60)}h` : `${Math.floor(m/1440)}d` })()
-                  
-                  return (
-                    <div 
-                      key={p.id} 
-                      className="flex items-center gap-3 p-2 rounded-lg transition-all hover:scale-[1.02]"
-                      style={{
-                        background: `${type.color}12`,
-                        border: `1px solid ${type.color}25`
-                      }}
-                    >
-                      {p.users?.avatar_url ? (
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-gray-400/50">
-                          <Image src={p.users.avatar_url} alt={name} width={32} height={32} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div 
-                          className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white"
-                          style={{
-                            background: `${type.color}22`,
-                            color: type.color,
-                            border: `1.5px solid ${type.color}40`
-                          }}
-                        >
-                          ◆
-                        </div>
-                      )}
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Link href={`/profile/${userId}`} onClick={() => playClick()} className="text-xs font-black text-white hover:text-orange-300 transition-colors cursor-pointer">
-                            {name}
-                          </Link>
-                          <p className="text-xs text-white">{detail}</p>
-                        </div>
-                      </div>
-                      
-                      <span className="text-xs font-bold shrink-0" style={{ color: `${type.color}80` }}>
-                        {timeStr}
-                      </span>
-                    </div>
-                  )
-                })}
-                {recentPosts.length === 0 && (
-                  <div className="flex items-center gap-3 py-2 px-2">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-base" style={{ background: 'rgba(255,107,53,0.2)', color: 'rgba(255,107,53,0.5)' }}>
-                      ◆
-                    </div>
-                    <p className="text-xs text-blue-100/40">Nenhuma conquista ainda. Complete missões para aparecer aqui!</p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-          {/* ── OCEAN PHASES ── */}
-          <section>
-            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-6">— FASES OCEÂNICAS —</h3>
+            )}
             <JourneyGlobeCarousel
               journeys={journeys}
               lastPhaseId={lastPhaseId}
@@ -843,124 +695,184 @@ export default function DashboardPage() {
             />
           </section>
 
-          {/* ── WOAPLAY ── */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
+          {/* ── STATS — 3 cards ── */}
+          <section className="grid grid-cols-3 gap-3">
+            {/* Level */}
+            <button
+              onClick={() => { playClick(); setLevelOpen(true) }}
+              className="p-4 rounded-2xl backdrop-blur-md hover:scale-105 transition-transform text-left w-full"
+              style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(0,212,255,0.2)' }}
+            >
+              <p className="text-[9px] font-black tracking-widest mb-1.5" style={{ color: '#00D4FF' }}>NÍVEL ATUAL</p>
+              <p className="text-2xl font-black text-white leading-none">LVL {level}</p>
+              <div className="h-1 rounded-full mt-2 mb-1 overflow-hidden" style={{ background: 'rgba(0,212,255,0.15)' }}>
+                <div className="h-full rounded-full" style={{ width: `${xpProgress}%`, background: '#00D4FF' }} />
+              </div>
+              <p className="text-[9px]" style={{ color: 'rgba(0,212,255,0.55)' }}>{xpProgress}%</p>
+            </button>
+
+            {/* Streak */}
+            <div className="p-4 rounded-2xl backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,107,0,0.2)' }}>
+              <p className="text-[9px] font-black tracking-widest mb-1.5" style={{ color: '#FF6B00' }}>🔥 STREAK</p>
+              <p className="text-2xl font-black text-white leading-none">{streakCount} <span className="text-sm font-bold text-white/50">DIA{streakCount !== 1 ? 'S' : ''}</span></p>
+              <p className="text-[9px] mt-2" style={{ color: 'rgba(255,107,0,0.55)' }}>Use amanhã para não perder</p>
+            </div>
+
+            {/* Coins */}
+            <div className="p-4 rounded-2xl backdrop-blur-md" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
+              <p className="text-[9px] font-black tracking-widest mb-1.5" style={{ color: '#FFD700' }}>💰 WOA COINS</p>
+              <p className="text-2xl font-black text-white leading-none">{coinsBalance.toLocaleString('pt-BR')}</p>
+              <p className="text-[9px] mt-2" style={{ color: 'rgba(255,215,0,0.55)' }}>Use na loja e recompensas</p>
+            </div>
+          </section>
+
+          {/* ── MISSÃO DO DIA + PRÓXIMA CONQUISTA ── */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* MISSÃO DO DIA */}
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(0,212,255,0.15)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">🎯</span>
+                <p className="text-[10px] font-black tracking-widest" style={{ color: '#00D4FF' }}>MISSÃO DO DIA</p>
+              </div>
+              <p className="text-white font-black text-sm mb-1">Pratique 10 minutos</p>
+              <div className="flex gap-3 mb-4">
+                <span className="text-[11px] text-yellow-300/80">⭐ +50 XP</span>
+                <span className="text-[11px] text-yellow-300/80">🪙 +5 WOA Coins</span>
+              </div>
+              <Link
+                href={journeys.length > 0 ? `/challenge/${journeys.find(j => j.phase_id > 0)?.phase_id ?? 1}` : '/dashboard'}
+                onClick={() => playClick()}
+                className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, #FF6B00, #FF9A00)', boxShadow: '0 4px 16px rgba(255,107,0,0.35)' }}
+              >
+                COMEÇAR MISSÃO
+              </Link>
+            </div>
+
+            {/* PRÓXIMA CONQUISTA */}
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.15)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">🏆</span>
+                <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>PRÓXIMA CONQUISTA</p>
+              </div>
+              <p className="text-white font-black text-sm mb-1">Complete Pacific Ocean</p>
+              <p className="text-[11px] text-white/50 mb-2">Recompensa:</p>
+              <div className="flex flex-col gap-1 mb-3">
+                <span className="text-[11px] text-yellow-300/80">⭐ +500 XP</span>
+                <span className="text-[11px] text-yellow-300/80">🪙 +100 WOA Coins</span>
+                <span className="text-[11px] text-yellow-300/80">🏅 Badge Explorer</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                <span>{completedPhaseIds.length}/{journeys.filter(j => j.phase_id > 0).length} Oceanos</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,215,0,0.12)' }}>
+                <div className="h-full rounded-full" style={{ width: `${journeys.filter(j => j.phase_id > 0).length > 0 ? Math.round((completedPhaseIds.length / journeys.filter(j => j.phase_id > 0).length) * 100) : 0}%`, background: '#FFD700' }} />
+              </div>
+            </div>
+          </section>
+
+          {/* ── COMUNIDADE + WOA PLAY — 2 cols ── */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* COMUNIDADE */}
+            <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,107,53,0.2)' }}>
               <div className="flex items-center gap-2">
-                <div className="w-1 h-4 rounded" style={{ background: 'linear-gradient(180deg, #FFD700, #CC8800)' }} />
-                <h3 className="text-xs font-black tracking-[0.2em]" style={{ color: '#FFD700' }}>— WOA PLAY —</h3>
-                <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>PREMIUM</span>
+                <span className="text-base">👥</span>
+                <p className="text-[10px] font-black tracking-widest" style={{ color: '#FF6B35' }}>COMUNIDADE</p>
+              </div>
+              <div className="flex-1 space-y-2">
+                {recentPosts.slice(0, 2).map((p) => {
+                  const TYPE_COLORS: Record<string, string> = { badge_earned: '#A855F7', streak_milestone: '#FF6B35', journey_completed: '#00D4FF', block_completed: '#22c55e', xp_milestone: '#FFD700' }
+                  const color = TYPE_COLORS[p.post_type] ?? '#FF6B35'
+                  const name = p.users?.name ?? 'Jogador'
+                  const userId = p.users?.id
+                  let detail = ''
+                  switch (p.post_type) {
+                    case 'badge_earned': detail = `conquistou o badge "${p.payload.badge}"`; break
+                    case 'streak_milestone': detail = `atingiu ${p.payload.streak} dias`; break
+                    case 'journey_completed': detail = 'completou uma Jornada'; break
+                    case 'block_completed': { const j = journeys.find(j => j.phase_id === (p.payload.phaseId as number)); detail = `finalizou bloco da ${j?.title ?? 'Jornada'}`; break }
+                    case 'xp_milestone': detail = `alcançou ${Number(p.payload.xp).toLocaleString('pt-BR')} XP`; break
+                  }
+                  const timeStr = (() => { const m = Math.floor((Date.now() - new Date(p.created_at).getTime()) / 60000); return m < 1 ? 'agora' : m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m/60)}h` : `${Math.floor(m/1440)}d` })()
+                  return (
+                    <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs" style={{ background: `${color}20`, border: `1px solid ${color}40` }}>◆</div>
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/profile/${userId}`} onClick={() => playClick()} className="text-[11px] font-black text-white hover:text-orange-300 transition-colors">{name}</Link>
+                        <p className="text-[10px] text-white/50 truncate">{detail}</p>
+                      </div>
+                      <span className="text-[10px] shrink-0" style={{ color: `${color}70` }}>{timeStr}</span>
+                    </div>
+                  )
+                })}
+                {recentPosts.length === 0 && <p className="text-xs text-white/30 py-2">Nenhuma conquista ainda. Complete missões para aparecer aqui!</p>}
+              </div>
+              <Link href="/community" onClick={() => playClick()} className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]" style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)' }}>VER FEED →</Link>
+            </div>
+
+            {/* WOA PLAY */}
+            <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎬</span>
+                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>WOA PLAY</p>
+                </div>
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>PREMIUM</span>
+              </div>
+              <p className="text-xs text-white/60">Desbloqueie conteúdos exclusivos</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[{ icon: '📹', label: 'Aulas Gravadas' }, { icon: '📚', label: 'E-books' }, { icon: '🎧', label: 'Podcasts' }, { icon: '👨‍🏫', label: 'Mentorias' }].map((item, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1 p-2 rounded-xl" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.12)' }}>
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="text-[8px] text-white/50 text-center leading-tight">{item.label}</span>
+                  </div>
+                ))}
               </div>
               {isPremium ? (
-                <Link
-                  href="/woaplay"
-                  onClick={() => playClick()}
-                  className="text-[10px] font-black tracking-widest px-4 py-2 rounded-lg transition-all hover:scale-105"
-                  style={{ border: '1px solid rgba(255,215,0,0.35)', color: '#FFD700', background: 'rgba(255,215,0,0.08)' }}
-                >
-                  VER TODOS →
-                </Link>
+                <Link href="/woaplay" onClick={() => playClick()} className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-black transition-all hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #FFD700, #CC8800)' }}>EXPLORAR →</Link>
               ) : (
-                <button
-                  onClick={() => setShowWoaPlayPremiumModal(true)}
-                  className="text-[10px] font-black tracking-widest px-4 py-2 rounded-lg transition-all hover:scale-105"
-                  style={{ border: '1px solid rgba(255,215,0,0.35)', color: '#FFD700', background: 'rgba(255,215,0,0.08)' }}
-                >
-                  VER TODOS →
-                </button>
+                <button onClick={() => setShowWoaPlayPremiumModal(true)} className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>🔒 DESBLOQUEAR</button>
               )}
             </div>
 
-            {isPremium && lastWOAPlayCourse ? (
-              <Link
-                href={`/woaplay/${lastWOAPlayCourse.id}`}
-                onClick={() => playClick()}
-                className="group flex items-center gap-4 p-4 rounded-2xl transition-all hover:scale-[1.01]"
-                style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.7), rgba(20,14,0,0.7))', border: '1px solid rgba(255,215,0,0.25)', boxShadow: '0 0 24px rgba(255,180,0,0.08)' }}
-              >
-                <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0"
-                  style={{ background: 'rgba(80,60,0,0.3)', border: '1px solid rgba(255,215,0,0.2)' }}>
-                  {lastWOAPlayCourse.cover_url ? (
-                    <Image src={lastWOAPlayCourse.cover_url} alt={lastWOAPlayCourse.title} fill className="object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-2xl">�</div>
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.45)' }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,215,0,0.85)' }}>
-                      <span className="text-black text-xs ml-0.5 font-black">▶</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: 'rgba(255,215,0,0.5)' }}>
-                    {lastWOAPlayCourse.watched_count > 0 ? '▶ CONTINUAR ASSISTINDO' : '▶ COMEÇAR AGORA'}
-                  </p>
-                  <p className="text-white font-black text-sm truncate group-hover:text-yellow-300 transition-colors">{lastWOAPlayCourse.title}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,215,0,0.1)' }}>
-                      <div className="h-full rounded-full" style={{ width: lastWOAPlayCourse.module_count > 0 ? `${Math.round((lastWOAPlayCourse.watched_count / lastWOAPlayCourse.module_count) * 100)}%` : '0%', background: 'linear-gradient(90deg, #FFD700, #CC8800)' }} />
-                    </div>
-                    <span className="text-[9px] font-black flex-shrink-0" style={{ color: 'rgba(255,215,0,0.5)' }}>
-                      {lastWOAPlayCourse.watched_count}/{lastWOAPlayCourse.module_count} aulas
-                    </span>
-                  </div>
-                </div>
-                <span className="text-yellow-400/40 group-hover:text-yellow-400 transition-colors text-lg flex-shrink-0">›</span>
-              </Link>
-            ) : (
-              <button
-                onClick={() => isPremium ? router.push('/woaplay') : setShowWoaPlayPremiumModal(true)}
-                className="w-full flex items-center justify-center gap-4 p-6 rounded-2xl transition-all hover:scale-[1.01] text-center"
-                style={{ background: 'linear-gradient(135deg, rgba(40,28,0,0.5), rgba(20,14,0,0.5))', border: `1px ${isPremium ? 'dashed' : 'solid'} rgba(255,215,0,0.25)` }}
-              >
-                <div>
-                  <p className="text-3xl mb-2">{isPremium ? '�' : '🔒'}</p>
-                  <p className="font-black text-sm" style={{ color: '#FFD700' }}>
-                    {isPremium ? 'Explore os cursos WOA Play' : 'Desbloqueie o WOA Play'}
-                  </p>
-                  <p className="text-white/30 text-xs mt-1">Conteúdo exclusivo para assinantes premium</p>
-                </div>
-              </button>
-            )}
           </section>
 
-          {/* ── METHOD WOA ── */}
-          <section>
-            <h3 className="text-xs font-black tracking-[0.2em] text-cyan-400/60 mb-4">— MÉTODO WOA —</h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              {[
-                { icon: '📚', title: 'DISCOVER', desc: 'Explore conceitos e ouça exemplos reais para criar curiosidade e compreensão inicial.', color: '#00D4FF' },
-                { icon: '⚡', title: 'PRACTICE', desc: 'Pratique através de exercícios: arrastar, completar, escutar e falar.', color: '#00F0C8' },
-                { icon: '👑', title: 'COMMAND', desc: 'Domine com desafios avançados e aplique em contextos reais.', color: '#FFD700' },
-              ].map((m, i) => (
-                <div key={i} className="p-5 rounded-2xl backdrop-blur-md hover:scale-[1.02] transition-transform relative" style={{ background: 'rgba(5,14,26,0.65)', border: `1px solid ${m.color}30` }}>
-                  {m.icon && <div className="text-3xl mb-3">{m.icon}</div>}
-                  <h4 className="font-black text-sm tracking-widest mb-2" style={{ color: m.color }}>{m.title}</h4>
-                  <p className="text-blue-100/80 text-xs leading-relaxed">{m.desc}</p>
-                  <div className="absolute bottom-0 left-6 right-6 h-px" style={{ background: `linear-gradient(90deg,transparent,${m.color}70,transparent)` }} />
-                </div>
-              ))}
-            </div>
-          </section>
 
-          {/* ── CTA ── */}
-          <section className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(135deg,rgba(0,58,176,0.6),rgba(0,102,255,0.4))', border: '1px solid #00D4FF35', boxShadow: '0 0 40px rgba(0,102,255,0.15)' }}>
-            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00D4FF 2px, #00D4FF 3px)' }} />
-            <div className="relative px-8 py-10 text-center">
-              <h3 className="text-2xl font-black text-white mb-3" style={{ textShadow: '0 0 20px rgba(0,212,255,0.4)' }}>
-                AVENTURA TE ESPERA
-              </h3>
-              <p className="text-blue-100/80 text-sm mb-6">Desbloqueie novos oceanos e conquiste novos desafios épicos</p>
-              <Link
-                href="/challenge/1"
-                onClick={() => playClick()}
-                className="inline-block px-8 py-3 font-black text-sm tracking-widest rounded-lg text-white transition-all hover:scale-105"
-                style={{ background: 'linear-gradient(135deg,#003AB0,#0066FF)', border: '2px solid #00D4FF', boxShadow: '0 0 24px rgba(0,102,255,0.45)' }}
-              >
-                IR AO MAPA DA JORNADA →
-              </Link>
-            </div>
-          </section>
+
+          {/* ── EVOLUA MAIS RÁPIDO — Premium banner ── */}
+          {!isPremium && (
+            <section className="rounded-2xl p-6 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.7), rgba(59,7,100,0.8))', border: '1px solid rgba(168,85,247,0.3)' }}>
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #A855F7 2px, #A855F7 3px)' }} />
+              <div className="relative">
+                <p className="text-[10px] font-black tracking-[0.25em] mb-1" style={{ color: 'rgba(216,180,254,0.7)' }}>🚀 EVOLUA MAIS RÁPIDO</p>
+                <p className="text-white text-sm mb-4 leading-relaxed">Com o Premium você desbloqueia tudo que acelera sua fluência.</p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-5">
+                  {[
+                    { icon: '🤖', label: 'Oliver\nAI Tutor' },
+                    { icon: '💬', label: 'Conversação\nIA' },
+                    { icon: '📡', label: 'Aulas\nao vivo' },
+                    { icon: '📜', label: 'Certificados' },
+                    { icon: '🎬', label: 'WOA Play' },
+                    { icon: '⚔️', label: 'Missões\nAvançadas' },
+                  ].map((f, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1 p-2 rounded-xl" style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)' }}>
+                      <span className="text-xl">{f.icon}</span>
+                      <span className="text-[8px] text-center leading-tight" style={{ color: 'rgba(216,180,254,0.7)', whiteSpace: 'pre-line' }}>{f.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  href="/premium"
+                  onClick={() => playClick()}
+                  className="block w-full py-3.5 text-center font-black text-sm tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                  style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.4)' }}
+                >
+                  ATIVAR PREMIUM
+                </Link>
+              </div>
+            </section>
+          )}
 
         </div>
 
@@ -1254,8 +1166,20 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Bottom padding */}
-        <div className="h-8" />
+        {/* Logout */}
+        <div className="px-4 sm:px-6 pb-6 pt-2">
+          <button
+            onClick={() => { playClick(); signOut({ redirect: true }) }}
+            className="flex items-center gap-2 sm:gap-3 w-full rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}
+          >
+            <span className="text-lg sm:text-xl">🚪</span>
+            <div className="text-left">
+              <p className="text-xs sm:text-sm font-black tracking-wider">SAIR DA CONTA</p>
+              <p className="text-[8px] sm:text-[10px]" style={{ color: 'rgba(239,68,68,0.5)' }}>Encerrar sessão</p>
+            </div>
+          </button>
+        </div>
       </div>
       {/* ── VERIFY EMAIL MODAL ── */}
       {showVerifyModal && (
