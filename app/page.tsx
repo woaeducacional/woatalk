@@ -178,20 +178,20 @@ export default function Home() {
                 <div className="absolute bottom-0 left-0 right-0 h-48" style={{ background: 'linear-gradient(to top, #050E1A, transparent)' }} />
               </div>
 
-              <div className="relative z-10 px-16 sm:px-20 md:px-36 py-24 max-w-2xl">
-                <span className="inline-block text-xl font-black tracking-[0.2em] px-4 py-1.5 rounded mb-5"
+              <div className="relative z-10 px-5 sm:px-16 md:px-36 py-14 sm:py-20 md:py-24 max-w-2xl">
+                <span className="inline-block text-sm sm:text-base md:text-xl font-black tracking-[0.2em] px-3 py-1 sm:px-4 sm:py-1.5 rounded mb-4"
                   style={{ background: phase.nameColor, color: '#050E1A' }}>
                   {phase.number}
                 </span>
-                <h2 className="text-7xl sm:text-8xl md:text-9xl font-black mb-3"
+                <h2 className="text-5xl sm:text-7xl md:text-9xl font-black mb-3"
                   style={{ color: phase.nameColor, textShadow: `0 0 60px ${phase.nameColor}80` }}>
                   {phase.name}
                 </h2>
-                <p className="text-2xl font-bold tracking-wide mb-6"
+                <p className="text-base sm:text-xl md:text-2xl font-bold tracking-wide mb-4"
                   style={{ color: phase.levelColor }}>
                   {phase.level}
                 </p>
-                <p className="text-blue-100/85 text-xl sm:text-2xl leading-relaxed">
+                <p className="text-blue-100/85 text-sm sm:text-lg md:text-2xl leading-relaxed">
                   {phase.description}
                 </p>
               </div>
