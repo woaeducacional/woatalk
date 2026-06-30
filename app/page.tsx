@@ -1,13 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { playBubble } from '@/lib/sounds'
 
 const badges = [
-  { icon: '👥', value: '5.000+', label: 'Estudantes' },
+  { icon: '👥', value: '10.000+', label: 'Estudantes' },
   { icon: '', imgSrc: '/images/foto-oliver.png', value: 'Mr. Oliver', label: 'Criado por' },
-  { icon: '🏆', value: '10+ Anos', label: 'de Experiência' },
+  { icon: '🏆', value: '18+ Anos', label: 'de Experiência' },
   { icon: '🌍', value: '6 Idiomas', label: 'Fluente' },
 ]
 
@@ -15,7 +16,7 @@ const phases = [
   {
     number: 'FASE 1',
     name: 'OCEANOS',
-    level: 'Iniciante (A0 → A2)',
+    level: 'Iniciante (A1 → A2)',
     levelColor: '#00D4FF',
     nameColor: '#00D4FF',
     bg: '/images/plano-de-fundo-mar.png',
@@ -42,6 +43,8 @@ const phases = [
 ]
 
 export default function Home() {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
     <main className="overflow-x-hidden" style={{ background: '#050E1A' }}>
 
@@ -83,8 +86,41 @@ export default function Home() {
         <div className="flex md:hidden items-center gap-2">
           <Link href="/auth/signin" onClick={() => playBubble()} className="text-cyan-300 text-xs font-semibold px-3 py-1.5 rounded border border-cyan-500/30 hover:bg-cyan-500/10 transition-all">ENTRAR</Link>
           <Link href="/auth/signup" onClick={() => playBubble()} className="text-xs font-black px-3 py-1.5 rounded text-white" style={{ background: 'linear-gradient(135deg, #FF6B00, #FF9A00)' }}>COMEÇAR</Link>
+          {/* Hamburger */}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            className="flex flex-col justify-center items-center w-8 h-8 gap-1.5 rounded transition-all"
+            aria-label="Menu"
+          >
+            <span className={`block w-5 h-0.5 bg-white/80 transition-all duration-200 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+            <span className={`block w-5 h-0.5 bg-white/80 transition-all duration-200 ${menuOpen ? 'opacity-0' : ''}`} />
+            <span className={`block w-5 h-0.5 bg-white/80 transition-all duration-200 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+          </button>
         </div>
       </header>
+
+      {/* Mobile dropdown menu */}
+      {menuOpen && (
+        <div
+          className="fixed top-[52px] left-0 right-0 z-40 md:hidden flex flex-col py-3 border-b border-white/10 backdrop-blur-md"
+          style={{ background: 'rgba(5,14,26,0.97)' }}
+        >
+          {[
+            { label: 'RECURSOS', href: '/dashboard' },
+            { label: 'COMUNIDADE', href: '/community' },
+            { label: 'PLANOS', href: '/premium' },
+          ].map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => { playBubble(); setMenuOpen(false) }}
+              className="px-6 py-3.5 text-xs font-black tracking-widest text-blue-200/70 hover:text-white hover:bg-white/5 transition-all border-b border-white/5 last:border-0"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* ── HERO ── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-4 pt-20 pb-20">
@@ -165,7 +201,7 @@ export default function Home() {
       {/* ── FASES ── */}
       <div id="fases">
         {phases.map((phase, i) => (
-          <section key={i} className="relative min-h-[65vh] flex items-center">
+          <section key={i} className="relative min-h-[52vh] sm:min-h-[65vh] flex items-center">
               <div className="absolute inset-0 z-0">
                 <Image src={phase.bg} alt={phase.name} fill className="object-cover object-center" />
                 {/* right-side dim for text legibility */}
