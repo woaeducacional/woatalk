@@ -268,100 +268,75 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── PLANS ── */}
-      <section style={{ background: 'linear-gradient(180deg, #050E1A 0%, #080F1E 100%)' }} className="px-4 py-20 border-t border-white/5">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-center text-[11px] font-black tracking-[0.3em] mb-2" style={{ color: 'rgba(255,215,0,0.5)' }}>— ESCOLHA SEU PLANO —</p>
-          <h2 className="text-center text-3xl sm:text-4xl font-black text-white mb-3" style={{ textShadow: '0 0 30px rgba(255,215,0,0.15)' }}>
-            Comece <span style={{ color: '#FFD700' }}>grátis</span>, evolua quando quiser
-          </h2>
-          <p className="text-center text-blue-200/55 text-sm mb-12">Sem cartão de crédito para começar. Cancele quando quiser.</p>
+      {/* ── FOOTER ── */}
+      <footer className="border-t border-white/10" style={{ background: 'rgba(5,14,26,0.98)' }}>
+        <div className="max-w-6xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-            {/* FREE */}
-            <div className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'rgba(5,14,26,0.80)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div>
-                <p className="text-[10px] font-black tracking-widest text-white/40 mb-1">EXPLORADOR</p>
-                <p className="text-3xl font-black text-white">Grátis</p>
-                <p className="text-xs text-white/40 mt-1">para sempre</p>
+          {/* Col 1 — Brand */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <div className="relative w-8 h-8 shrink-0">
+                <div className="absolute inset-0 rounded-full blur-lg bg-cyan-400/40" />
+                <Image src="/images/logo.png" alt="WOA Talk" fill className="relative rounded-full border border-cyan-400/50 object-cover" />
               </div>
-              <ul className="flex flex-col gap-2 flex-1">
-                {['Acesso às fases oceânicas', 'Jogo de memória básico', 'Comunidade WOA Talk', '2 jornadas por dia', 'XP e conquistas'].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-xs text-blue-100/70">
-                    <span className="text-green-400 text-sm">✓</span>{f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/auth/signup" onClick={() => playBubble()} className="block w-full py-3 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                COMEÇAR GRÁTIS
-              </Link>
+              <span className="text-sm font-black tracking-[0.2em] text-white" style={{ textShadow: '0 0 10px rgba(0,212,255,0.5)' }}>WOA TALK</span>
             </div>
-
-            {/* PREMIUM — destaque */}
-            <div className="rounded-2xl p-6 flex flex-col gap-4 relative overflow-hidden" style={{ background: 'linear-gradient(160deg, rgba(88,28,135,0.6), rgba(59,7,100,0.7))', border: '2px solid rgba(168,85,247,0.5)', boxShadow: '0 0 40px rgba(168,85,247,0.2)' }}>
-              <div className="absolute top-3 right-3 text-[9px] font-black tracking-widest px-2.5 py-1 rounded-full" style={{ background: 'rgba(168,85,247,0.3)', border: '1px solid rgba(168,85,247,0.5)', color: '#c084fc' }}>MAIS POPULAR</div>
-              <div>
-                <p className="text-[10px] font-black tracking-widest mb-1" style={{ color: '#c084fc' }}>PREMIUM</p>
-                <div className="flex items-baseline gap-1">
-                  <p className="text-3xl font-black text-white">R$ 47</p>
-                  <span className="text-white/40 text-sm">/mês</span>
-                </div>
-                <p className="text-xs text-white/40 mt-1">ou R$ 397/ano (economize 30%)</p>
-              </div>
-              <ul className="flex flex-col gap-2 flex-1">
-                {['Tudo do plano grátis', 'Oliver AI Tutor ilimitado', 'Conversação com IA', 'Aulas ao vivo semanais', 'WOA Play (cursos em vídeo)', 'Missões avançadas', 'Certificados de conclusão'].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-xs text-purple-100/80">
-                    <span className="text-purple-400 text-sm">✓</span>{f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/premium" onClick={() => playBubble()} className="block w-full py-3 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.4)' }}>
-                ASSINAR PREMIUM
-              </Link>
-            </div>
-
-            {/* ANUAL */}
-            <div className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'linear-gradient(160deg, rgba(20,14,0,0.8), rgba(40,28,0,0.6))', border: '1px solid rgba(255,215,0,0.25)' }}>
-              <div>
-                <p className="text-[10px] font-black tracking-widest mb-1" style={{ color: '#FFD700' }}>ELITE ANUAL</p>
-                <div className="flex items-baseline gap-1">
-                  <p className="text-3xl font-black text-white">R$ 33</p>
-                  <span className="text-white/40 text-sm">/mês</span>
-                </div>
-                <p className="text-xs text-white/40 mt-1">cobrado anualmente — R$ 397/ano</p>
-              </div>
-              <ul className="flex flex-col gap-2 flex-1">
-                {['Tudo do Premium', 'Mentoria em grupo mensal', 'Acesso antecipado a novidades', 'Suporte prioritário', 'Badge Elite exclusivo'].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-xs text-yellow-100/80">
-                    <span className="text-yellow-400 text-sm">✓</span>{f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/premium" onClick={() => playBubble()} className="block w-full py-3 text-center text-xs font-black tracking-widest rounded-xl text-black transition-all hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #FFD700, #CC8800)' }}>
-                ASSINAR ELITE
-              </Link>
+            <div className="text-xs text-blue-200/45 leading-relaxed">
+              <p>SQN 409, Bloco J, Sala 305</p>
+              <p>Asa Norte, Brasília – DF</p>
+              <p>70857-100</p>
+              <p className="mt-2">CNPJ 54.717.782/0001-03</p>
             </div>
           </div>
 
-          {/* Single CTA button */}
-          <div className="text-center">
-            <Link
-              href="/premium"
-              onClick={() => playBubble()}
-              className="inline-block px-10 py-4 font-black text-sm tracking-widest rounded-xl text-white transition-all hover:scale-105"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }}
-            >
-              VER TODOS OS PLANOS E DETALHES →
-            </Link>
+          {/* Col 2 — Contact */}
+          <div className="flex flex-col gap-3">
+            <h6 className="text-[11px] font-black tracking-[0.2em] text-blue-200/60 uppercase mb-1">Enviar mensagem</h6>
+            <p className="text-xs text-blue-200/45 mb-1">Entre em contato conosco:</p>
+            <a href="tel:+5561981176884" className="flex items-center gap-2 text-xs text-blue-200/60 hover:text-white transition-colors">
+              <span>📱</span> +55 61 981176884
+            </a>
+            <a href="mailto:contato@woaeducacional.com.br" className="flex items-center gap-2 text-xs text-blue-200/60 hover:text-white transition-colors">
+              <span>✉️</span> contato@woaeducacional.com.br
+            </a>
+          </div>
+
+          {/* Col 3 — Pages */}
+          <div className="flex flex-col gap-3">
+            <h6 className="text-[11px] font-black tracking-[0.2em] text-blue-200/60 uppercase mb-1">Páginas</h6>
+            {[
+              { label: 'Cursos', href: '/premium' },
+              { label: 'Comunidade', href: '/community' },
+              { label: 'Dashboard', href: '/dashboard' },
+              { label: 'FAQ', href: '#faq' },
+            ].map(item => (
+              <Link key={item.href} href={item.href} className="text-xs text-blue-200/60 hover:text-white transition-colors">
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Col 4 — Social */}
+          <div className="flex flex-col gap-3">
+            <h6 className="text-[11px] font-black tracking-[0.2em] text-blue-200/60 uppercase mb-1">Redes Sociais</h6>
+            {[
+              { label: 'Grupo Comunidade WOA', href: 'https://t.me/mroliver_woaeducacional', icon: '✈️' },
+              { label: 'Facebook', href: 'https://www.facebook.com/groups/389768268843855', icon: '👥' },
+              { label: 'Instagram', href: 'https://www.instagram.com/mroliverwoa/', icon: '📷' },
+              { label: 'YouTube', href: 'https://www.youtube.com/@woaeducational', icon: '▶️' },
+            ].map(s => (
+              <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-blue-200/60 hover:text-white transition-colors">
+                <span>{s.icon}</span> {s.label}
+              </a>
+            ))}
           </div>
         </div>
-      </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="py-6 text-center border-t border-white/10" style={{ background: 'rgba(5,14,26,0.98)' }}>
-        <p className="text-[11px] text-blue-200/35 tracking-[0.2em]">
-          WOA TALK © 2026 — SUA JORNADA ÉPICA NO INGLÊS
-        </p>
+        {/* Bottom bar */}
+        <div className="border-t border-white/5 px-6 py-4 flex flex-col items-center gap-1">
+          <p className="text-[11px] text-blue-200/70 tracking-widest">WOA Idiomas | Todos os direitos reservados</p>
+          <p className="text-[11px] text-blue-200/50">Design: H5 Criativo</p>
+        </div>
       </footer>
     </main>
   )
