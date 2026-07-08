@@ -241,14 +241,32 @@ export default function Home() {
           <h2 className="text-center text-3xl sm:text-4xl font-black text-white mb-12" style={{ textShadow: '0 0 30px rgba(0,212,255,0.2)' }}>
             O que dizem os nossos <span style={{ color: '#00D4FF' }}>exploradores</span>
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {[
-              { name: 'Ana Clara S.', role: 'Estudante universitária', avatar: '👩‍🎓', stars: 5, text: 'Em 3 meses de WOA Talk já consigo assistir séries sem legenda e conversar com nativos. O método é completamente diferente do que eu aprendi na escola. Recomendo demais!' },
-              { name: 'Rafael M.', role: 'Desenvolvedor de software', avatar: '👨‍💻', stars: 5, text: 'Precisava do inglês para reuniões com clientes internacionais. O WOA Play e as aulas ao vivo me deram a confiança que faltava. Em 6 meses passei de B1 para C1 no teste de empresa.' },
-              { name: 'Juliana K.', role: 'Profissional de marketing', avatar: '👩‍💼', stars: 5, text: 'O Oliver AI Tutor é incrível! Pratico conversação a qualquer hora, sem vergonha de errar. A gamificação me mantém motivada todos os dias. É viciante da melhor forma possível.' },
-              { name: 'Pedro H.', role: 'Médico residente', avatar: '👨‍⚕️', stars: 5, text: 'Tentei vários cursos antes e desisti de todos. Com o WOA Talk pela primeira vez senti evolução real. A jornada em fases faz tudo parecer um jogo, e quando percebi já estava falando fluente.' },
-              { name: 'Mariana L.', role: 'Estudante do ensino médio', avatar: '👩‍🏫', stars: 5, text: 'Minha filha de 16 anos usa e adora. Em menos de 4 meses ela passou na prova de inglês da faculdade com a maior nota da turma. Agradeço demais ao Método WOA!' },
-              { name: 'Carlos F.', role: 'Empreendedor', avatar: '🧑‍💼', stars: 5, text: 'Fechei um contrato com uma empresa americana depois de 4 meses no programa premium. O investimento no WOA Talk se pagou na primeira reunião. Valeu cada centavo.' },
+              {
+                name: 'Mariana Araújo',
+                photo: '/images/depoimento-mariana.png',
+                stars: 5,
+                text: 'Estou gostando muito da metodologia do curso porque ela é muito prática e eficaz. As aulas e materiais que são disponibilizados são de fácil compreensão, o que torna o estudo mais tranquilo. Além disso, o Prof Oliver é muito prestativo e se disponibiliza para tirar qualquer dúvida que ocorrer.',
+              },
+              {
+                name: 'Michelle Prata',
+                photo: '/images/depoimento-michele.png',
+                stars: 5,
+                text: 'Estou muito feliz de ser aluna do Prof Oliver no método WOA Language Hacking porque eu descobri o meu propósito de aprender inglês. Hoje com a metodologia da WOA Idiomas eu vejo que eu posso aprender inglês me divertindo, de maneira leve e descontraída e conectada ao meu propósito que é me comunicar com as pessoas de uma maneira mais fluida.',
+              },
+              {
+                name: 'Lutigart Lima',
+                photo: '/images/depoimento-lutigart.png',
+                stars: 5,
+                text: 'Sou aluno do Prof Oliver do método WOA Language Hacking e estou gostando bastante da metodologia, porque tenho adquirido muito novo vocabulário, também tenho melhorado e aprendido a forma correta de pronunciar as palavras. E principalmente sentir a melhora constante na pronúncia é o que mais me motiva dentro da metodologia.',
+              },
+              {
+                name: 'Vitor Santos',
+                photo: '/images/depoimento-vitor.png',
+                stars: 5,
+                text: 'Eu escolhi intensificar os estudos em inglês com o método da WOA Idiomas em função de toda a estrutura que este método tem a nos oferecer. Estou muito feliz com as mentorias e com a possibilidade de participação nas salas de conversação. É toda uma estrutura que favorece bastante nosso aprendizado.',
+              },
             ].map((t, i) => (
               <div key={i} className="rounded-2xl p-6 flex flex-col gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div className="flex text-yellow-400 text-sm gap-0.5">
@@ -256,11 +274,10 @@ export default function Home() {
                 </div>
                 <p className="text-blue-100/80 text-sm leading-relaxed flex-1">"{t.text}"</p>
                 <div className="flex items-center gap-3 pt-2 border-t border-white/5">
-                  <span className="text-2xl">{t.avatar}</span>
-                  <div>
-                    <p className="text-white font-black text-sm">{t.name}</p>
-                    <p className="text-blue-200/45 text-xs">{t.role}</p>
+                  <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-cyan-400/30">
+                    <Image src={t.photo} alt={t.name} width={40} height={40} className="object-cover w-full h-full" />
                   </div>
+                  <p className="text-white font-black text-sm">{t.name}</p>
                 </div>
               </div>
             ))}
@@ -320,10 +337,9 @@ export default function Home() {
           <div className="flex flex-col gap-3">
             <h6 className="text-[11px] font-black tracking-[0.2em] text-blue-200/60 uppercase mb-1">Redes Sociais</h6>
             {[
-              { label: 'Grupo Comunidade WOA', href: 'https://t.me/mroliver_woaeducacional', icon: '✈️' },
-              { label: 'Facebook', href: 'https://www.facebook.com/groups/389768268843855', icon: '👥' },
-              { label: 'Instagram', href: 'https://www.instagram.com/mroliverwoa/', icon: '📷' },
-              { label: 'YouTube', href: 'https://www.youtube.com/@woaeducational', icon: '▶️' },
+              { label: 'WOA Education', href: 'https://www.instagram.com/woaeducation', icon: '📷' },
+              { label: 'Facebook', href: 'https://www.facebook.com/share/18pZtCivaM/?mibextid=wwXIfr', icon: '�' },
+              { label: 'YouTube', href: 'https://youtube.com/@woaeducacional?si=a8pxOxo1LKGCpod2', icon: '▶️' },
             ].map(s => (
               <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-blue-200/60 hover:text-white transition-colors">
                 <span>{s.icon}</span> {s.label}
