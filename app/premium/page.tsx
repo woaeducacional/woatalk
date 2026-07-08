@@ -146,6 +146,7 @@ export default function PremiumPage() {
       badge: 'MENSAL',
       price: '29,90',
       period: '/ mês',
+      idealFor: 'Para quem está começando e quer praticar no próprio ritmo.',
       gradient: 'linear-gradient(135deg, #003AB0, #0066FF)',
       border: '#00D4FF',
       features: [
@@ -163,6 +164,7 @@ export default function PremiumPage() {
       price: '287,00',
       period: '/ ano',
       savingsBadge: 'Economize ~20%',
+      idealFor: 'Para quem já decidiu e quer economizar na jornada anual.',
       gradient: 'linear-gradient(135deg, #005090, #0080CC)',
       border: '#40BFFF',
       features: [
@@ -178,6 +180,7 @@ export default function PremiumPage() {
       badge: 'MENSAL',
       price: '89,90',
       period: '/ mês',
+      idealFor: 'Para quem tem base e quer acelerar com recursos exclusivos.',
       gradient: 'linear-gradient(135deg, #B05000, #FF6B00)',
       border: '#FF9A00',
       popular: true,
@@ -197,6 +200,7 @@ export default function PremiumPage() {
       price: '867,00',
       period: '/ ano',
       savingsBadge: 'Economize ~20%',
+      idealFor: 'Para quem quer o máximo com o melhor custo-benefício.',
       gradient: 'linear-gradient(135deg, #7c2d12, #c2410c)',
       border: '#f97316',
       features: [
@@ -343,6 +347,11 @@ export default function PremiumPage() {
                         <span className="text-3xl font-black text-white">R$ {plan.price}</span>
                         <span className="text-blue-200/60 text-sm">{plan.period}</span>
                       </div>
+                      {plan.idealFor && (
+                        <p className="text-[11px] leading-relaxed pt-1" style={{ color: `${plan.border}cc` }}>
+                          🎯 {plan.idealFor}
+                        </p>
+                      )}
                     </div>
 
                     {/* Features */}
@@ -375,6 +384,129 @@ export default function PremiumPage() {
                 </div>
               )
             })}
+          </div>
+
+          {/* ── HUMAN COACHING PLANS ── */}
+          <div className="space-y-6 pt-4">
+            <div className="text-center space-y-2">
+              <p className="text-[11px] font-black tracking-[0.3em] text-yellow-400/60">— ACOMPANHAMENTO HUMANO —</p>
+              <h3 className="text-2xl font-black text-white">Aprenda com suporte de professores</h3>
+              <p className="text-blue-200/55 text-sm">Planos com mentoria e aulas ao vivo. Pagamento via WhatsApp.</p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-6">
+
+              {/* WOA TALK CLUB */}
+              <div
+                className="relative rounded-2xl overflow-hidden backdrop-blur-md flex flex-col"
+                style={{ background: 'rgba(20,30,10,0.70)', border: '2px solid rgba(134,239,172,0.35)', boxShadow: '0 0 30px rgba(134,239,172,0.08)' }}
+              >
+                <div className="p-7 space-y-5 flex-1">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xl font-black tracking-wider" style={{ color: '#86efac' }}>WOA TALK CLUB</h3>
+                      <span className="text-[10px] font-black tracking-widest px-2 py-0.5 rounded" style={{ background: 'rgba(134,239,172,0.12)', color: '#86efac', border: '1px solid rgba(134,239,172,0.3)' }}>MENTORIA MENSAL</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-white">R$ 97,94</span>
+                      <span className="text-blue-200/60 text-sm">/ mês (12x)</span>
+                    </div>
+                    <p className="text-blue-200/50 text-xs">ou R$ 947,00 à vista</p>
+                    <p className="text-[11px] leading-relaxed pt-1" style={{ color: 'rgba(134,239,172,0.8)' }}>
+                      🎯 Ideal para quem deseja orientação humana durante a jornada, com mentorias mensais para manter a constância e evoluir com segurança.
+                    </p>
+                  </div>
+                  <div className="text-xs text-green-300/60 font-bold">🎁 Bônus: 1 ano de acesso ao App WOA Talk (Plano Starter)</div>
+                  <div className="space-y-2.5">
+                    {[
+                      'Mentoria ao vivo mensal para direcionamento e dúvidas',
+                      'Prática diária com o App WOA Talk (Plano Starter)',
+                      'Acesso à WOA Play com mais de 400 aulas e materiais',
+                      'Método WOA: simples, prático e eficiente',
+                      'Comunidade e grupo exclusivo para praticar',
+                      'Situações reais do dia a dia',
+                      '1 ano de acesso ao WOA Talk Club + App',
+                    ].map((f, i) => (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className="text-sm mt-0.5" style={{ color: '#86efac' }}>✓</span>
+                        <p className="text-blue-200/80 text-sm">{f}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="px-7 pb-7">
+                  <a
+                    href="https://wa.me/556181176884"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => playClick()}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black tracking-widest text-sm transition-all hover:scale-105 active:scale-95"
+                    style={{ background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: 'white', boxShadow: '0 0 18px rgba(34,197,94,0.3)' }}
+                  >
+                    <span>💬</span> Falar no WhatsApp
+                  </a>
+                </div>
+              </div>
+
+              {/* WOA EXCLUSIVE */}
+              <div
+                className="relative rounded-2xl overflow-hidden backdrop-blur-md flex flex-col"
+                style={{ background: 'rgba(30,15,5,0.70)', border: '2px solid rgba(251,191,36,0.45)', boxShadow: '0 0 30px rgba(251,191,36,0.10)' }}
+              >
+                <div
+                  className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-[10px] font-black tracking-widest"
+                  style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', color: '#000' }}
+                >
+                  🚀 EXCLUSIVO
+                </div>
+                <div className="p-7 space-y-5 flex-1">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xl font-black tracking-wider" style={{ color: '#fbbf24' }}>WOA EXCLUSIVE</h3>
+                      <span className="text-[10px] font-black tracking-widest px-2 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>AULAS SEMANAIS</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-white">R$ 196,19</span>
+                      <span className="text-blue-200/60 text-sm">/ mês (12x)</span>
+                    </div>
+                    <p className="text-blue-200/50 text-xs">ou R$ 1.897,00 à vista</p>
+                    <p className="text-[11px] leading-relaxed pt-1" style={{ color: 'rgba(251,191,36,0.85)' }}>
+                      🎯 Ideal para quem deseja acompanhamento próximo com professores e prática semanal de conversação para acelerar sua evolução.
+                    </p>
+                  </div>
+                  <div className="text-xs text-yellow-300/60 font-bold">🎁 Bônus: 1 ano de acesso ao App WOA Talk (Plano Starter)</div>
+                  <div className="space-y-2.5">
+                    {[
+                      'Aulas semanais de conversação ao vivo em turmas exclusivas',
+                      'Prática diária com o App WOA Talk (Plano Starter)',
+                      'Acesso à WOA Play com mais de 400 aulas e materiais',
+                      'Método WOA: simples, prático e eficiente',
+                      'Comunidade e grupo exclusivo para praticar',
+                      'Situações reais do dia a dia',
+                      '1 ano de acesso ao WOA Exclusive + App',
+                    ].map((f, i) => (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className="text-sm mt-0.5" style={{ color: '#fbbf24' }}>✓</span>
+                        <p className="text-blue-200/80 text-sm">{f}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="px-7 pb-7">
+                  <a
+                    href="https://wa.me/556181176884"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => playClick()}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black tracking-widest text-sm transition-all hover:scale-105 active:scale-95"
+                    style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', color: '#000', boxShadow: '0 0 18px rgba(251,191,36,0.35)' }}
+                  >
+                    <span>💬</span> Falar no WhatsApp
+                  </a>
+                </div>
+              </div>
+
+            </div>
           </div>
 
           {/* Payment methods note */}
