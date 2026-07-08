@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
@@ -144,6 +144,7 @@ function JourneyGlobeCarousel({
   dailyAccessedPhaseIds,
   completedPhaseIds,
   onToggleBlocked,
+  onDailyLimitClick,
 }: {
   journeys: JourneyItem[]
   lastPhaseId: number | null
@@ -152,6 +153,7 @@ function JourneyGlobeCarousel({
   dailyAccessedPhaseIds: number[]
   completedPhaseIds: number[]
   onToggleBlocked: (phaseId: number) => void
+  onDailyLimitClick: (phaseId: number) => void
 }) {
   const [current, setCurrent] = useState(0)
   const router = useRouter()
@@ -286,7 +288,7 @@ function JourneyGlobeCarousel({
           </div>
         ) : isDailyLocked(centerJ) ? (
           <button
-            onClick={() => router.push('/premium')}
+            onClick={() => onDailyLimitClick(centerJ.phase_id)}
             className="inline-block px-6 py-2.5 text-xs font-black tracking-widest text-white rounded-full transition-all hover:scale-105"
             style={{ background: 'linear-gradient(135deg, #B05000, #FF6B00)', boxShadow: '0 0 18px rgba(255,107,0,0.35)' }}
           >
@@ -388,6 +390,28 @@ export default function DashboardPage() {
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [isPremium, setIsPremium] = useState(false)
   const [dailyAccessedPhaseIds,  setDailyAccessedPhaseIds]  = useState<number[]>([])
+
+  const refreshDailyAccess = useCallback(() => {
+    fetch('/api/journey/daily-access')
+      .then(r => r.ok ? r.json() : { accessedPhaseIds: [] })
+      .then(d => setDailyAccessedPhaseIds(d.accessedPhaseIds ?? []))
+      .catch(() => {})
+  }, [])
+
+  const handleDailyLimitClick = useCallback((phaseId: number) => {
+    fetch('/api/journey/daily-access')
+      .then(r => r.ok ? r.json() : { accessedPhaseIds: [] })
+      .then(d => {
+        const fresh: number[] = d.accessedPhaseIds ?? []
+        setDailyAccessedPhaseIds(fresh)
+        if (fresh.length < 2 || fresh.includes(phaseId)) {
+          router.push(`/challenge/${phaseId}`)
+        } else {
+          router.push('/premium')
+        }
+      })
+      .catch(() => router.push('/premium'))
+  }, [router])
   const [completedPhaseIds,      setCompletedPhaseIds]      = useState<number[]>([])
   const [lastWOAPlayCourse, setLastWOAPlayCourse] = useState<{ id: string; title: string; cover_url: string | null; module_count: number; watched_count: number } | null>(null)
   const [banner, setBanner] = useState<{ image_url: string; link_url: string | null } | null>(null)
@@ -456,10 +480,7 @@ export default function DashboardPage() {
       .then(r => r.ok ? r.json() : { posts: [] })
       .then(d => setRecentPosts(d.posts ?? []))
       .catch(() => {})
-    fetch('/api/journey/daily-access')
-      .then(r => r.ok ? r.json() : { accessedPhaseIds: [] })
-      .then(d => setDailyAccessedPhaseIds(d.accessedPhaseIds ?? []))
-      .catch(() => {})
+    refreshDailyAccess()
     fetch('/api/journey/completed')
       .then(r => r.ok ? r.json() : { completedPhaseIds: [] })
       .then(d => setCompletedPhaseIds(d.completedPhaseIds ?? []))
@@ -484,7 +505,13 @@ export default function DashboardPage() {
         }
       })
       .catch(() => {})
-  }, [])
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refreshDailyAccess()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [refreshDailyAccess])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -692,6 +719,7 @@ export default function DashboardPage() {
               dailyAccessedPhaseIds={dailyAccessedPhaseIds}
               completedPhaseIds={completedPhaseIds}
               onToggleBlocked={handleToggleBlocked}
+              onDailyLimitClick={handleDailyLimitClick}
             />
           </section>
 
