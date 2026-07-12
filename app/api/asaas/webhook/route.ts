@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { ASAAS_PLANS } from '@/lib/asaas'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,6 +29,25 @@ async function findUserBySubscription(subscriptionId: string): Promise<string | 
   return data?.id ?? null
 }
 
+// Fallback: resolve userId a partir do externalReference (= userId salvo na criação)
+async function findUserByExternalReference(externalReference: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', externalReference)
+    .single()
+  return data?.id ?? null
+}
+
+// Infere o planId a partir do valor do pagamento
+function inferPlanFromValue(value?: number): string | null {
+  if (!value) return null
+  for (const [planId, plan] of Object.entries(ASAAS_PLANS)) {
+    if (Math.abs(plan.value - value) < 0.01) return planId
+  }
+  return null
+}
+
 // Calcula subscription_current_period_end com base no ciclo da assinatura
 function computePeriodEnd(dueDate: string, cycle: string): string {
   const d = new Date(dueDate)
@@ -52,7 +72,9 @@ export async function POST(req: NextRequest) {
     payment?: {
       id: string
       subscription?: string
+      externalReference?: string
       status: string
+      value?: number
       dueDate?: string
       billingType?: string
     }
@@ -61,6 +83,7 @@ export async function POST(req: NextRequest) {
       status: string
       cycle?: string
       nextDueDate?: string
+      externalReference?: string
     }
   }
 
@@ -84,26 +107,25 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        const userId = await findUserBySubscription(subId)
+        let userId = await findUserBySubscription(subId)
+        if (!userId && payment?.externalReference) {
+          console.warn('[AsaasWebhook] ⚠ Fallback: buscando por externalReference')
+          userId = await findUserByExternalReference(payment.externalReference)
+        }
         if (!userId) {
           console.error('[AsaasWebhook] ❌ Usuário não encontrado para subscription:', subId)
           break
         }
 
-        // Busca o ciclo salvo na DB para calcular period_end
-        const { data: userData } = await supabase
-          .from('users')
-          .select('subscription_plan')
-          .eq('id', userId)
-          .single()
-
-        const isYearly = userData?.subscription_plan?.includes('yearly')
+        const planId = inferPlanFromValue(payment?.value)
+        const isYearly = planId?.includes('yearly') ?? false
         const cycle = isYearly ? 'YEARLY' : 'MONTHLY'
         const periodEnd = computePeriodEnd(payment?.dueDate ?? new Date().toISOString().split('T')[0], cycle)
 
         const { error } = await supabase
           .from('users')
           .update({
+            subscription_plan: planId,
             subscription_status: 'active',
             subscription_current_period_end: periodEnd,
           })
@@ -127,7 +149,7 @@ export async function POST(req: NextRequest) {
 
         const { error } = await supabase
           .from('users')
-          .update({ subscription_status: 'past_due' })
+          .update({ subscription_plan: null, subscription_status: 'past_due' })
           .eq('id', userId)
 
         if (error) {
@@ -173,19 +195,15 @@ export async function POST(req: NextRequest) {
         const userId = await findUserBySubscription(subId)
         if (!userId) break
 
-        const { data: userData } = await supabase
-          .from('users')
-          .select('subscription_plan')
-          .eq('id', userId)
-          .single()
-
-        const isYearly = userData?.subscription_plan?.includes('yearly')
+        const planId = inferPlanFromValue(payment?.value)
+        const isYearly = planId?.includes('yearly') ?? false
         const cycle = isYearly ? 'YEARLY' : 'MONTHLY'
         const periodEnd = computePeriodEnd(payment?.dueDate ?? new Date().toISOString().split('T')[0], cycle)
 
         await supabase
           .from('users')
           .update({
+            subscription_plan: planId,
             subscription_status: 'active',
             subscription_current_period_end: periodEnd,
           })

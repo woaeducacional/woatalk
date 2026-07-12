@@ -31,7 +31,7 @@ export async function GET() {
 
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, subscription_status')
+      .select('id, subscription_plan')
       .eq('email', session.user.email)
       .single()
 
@@ -39,7 +39,7 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (userData.subscription_status === 'active') {
+    if (userData.subscription_plan !== null) {
       return NextResponse.json({ accessedPhaseIds: [], count: 0, isPremium: true })
     }
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, subscription_status')
+      .select('id, subscription_plan')
       .eq('email', session.user.email)
       .single()
 
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (userData.subscription_status === 'active') {
+    if (userData.subscription_plan !== null) {
       return NextResponse.json({ alreadyAccessed: false, dailyCount: 0, blocked: false, isPremium: true })
     }
 
