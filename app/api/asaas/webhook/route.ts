@@ -117,15 +117,21 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        const planId = inferPlanFromValue(payment?.value)
-        const isYearly = planId?.includes('yearly') ?? false
+        // Busca o plano salvo no checkout para calcular o cycle correto
+        const { data: userData } = await supabase
+          .from('users')
+          .select('subscription_plan')
+          .eq('id', userId)
+          .single()
+
+        const savedPlan = userData?.subscription_plan ?? inferPlanFromValue(payment?.value)
+        const isYearly = savedPlan?.includes('yearly') ?? false
         const cycle = isYearly ? 'YEARLY' : 'MONTHLY'
         const periodEnd = computePeriodEnd(payment?.dueDate ?? new Date().toISOString().split('T')[0], cycle)
 
         const { error } = await supabase
           .from('users')
           .update({
-            subscription_plan: planId,
             subscription_status: 'active',
             subscription_current_period_end: periodEnd,
           })
@@ -134,7 +140,7 @@ export async function POST(req: NextRequest) {
         if (error) {
           console.error('[AsaasWebhook] ❌ Erro ao ativar:', error.message)
         } else {
-          console.log('[AsaasWebhook] ✅ Acesso ativado:', userId, '| até:', periodEnd)
+          console.log('[AsaasWebhook] ✅ Acesso ativado:', userId, '| plano:', savedPlan, '| até:', periodEnd)
         }
         break
       }
@@ -149,7 +155,7 @@ export async function POST(req: NextRequest) {
 
         const { error } = await supabase
           .from('users')
-          .update({ subscription_plan: null, subscription_status: 'past_due' })
+          .update({ subscription_status: 'past_due' })
           .eq('id', userId)
 
         if (error) {
@@ -195,21 +201,26 @@ export async function POST(req: NextRequest) {
         const userId = await findUserBySubscription(subId)
         if (!userId) break
 
-        const planId = inferPlanFromValue(payment?.value)
-        const isYearly = planId?.includes('yearly') ?? false
+        const { data: pixUserData } = await supabase
+          .from('users')
+          .select('subscription_plan')
+          .eq('id', userId)
+          .single()
+
+        const savedPlan = pixUserData?.subscription_plan ?? inferPlanFromValue(payment?.value)
+        const isYearly = savedPlan?.includes('yearly') ?? false
         const cycle = isYearly ? 'YEARLY' : 'MONTHLY'
         const periodEnd = computePeriodEnd(payment?.dueDate ?? new Date().toISOString().split('T')[0], cycle)
 
         await supabase
           .from('users')
           .update({
-            subscription_plan: planId,
             subscription_status: 'active',
             subscription_current_period_end: periodEnd,
           })
           .eq('id', userId)
 
-        console.log('[AsaasWebhook] ✅ Pix Automático autorizado:', userId)
+        console.log('[AsaasWebhook] ✅ Pix Automático autorizado:', userId, '| plano:', savedPlan)
         break
       }
 

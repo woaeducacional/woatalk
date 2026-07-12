@@ -20,10 +20,10 @@ async function requirePremium() {
   if (!session?.user?.id) return null
   const { data: user } = await supabase
     .from('users')
-    .select('subscription_plan')
+    .select('subscription_plan, subscription_status')
     .eq('id', session.user.id)
     .single()
-  if (!user?.subscription_plan) return null
+  if (!user?.subscription_plan || user.subscription_status !== 'active') return null
   return session
 }
 
@@ -50,10 +50,10 @@ export async function GET(
   if (!isAdmin) {
     const { data: user } = await supabase
       .from('users')
-      .select('subscription_plan')
+      .select('subscription_plan, subscription_status')
       .eq('id', session.user.id)
       .single()
-    if (!user?.subscription_plan) {
+    if (!user?.subscription_plan || user.subscription_status !== 'active') {
       return NextResponse.json({ error: 'Acesso premium necessário' }, { status: 403 })
     }
     if (!data.is_published) {

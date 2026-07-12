@@ -145,6 +145,10 @@ export async function getPayment(paymentId: string): Promise<AsaasPayment> {
   return asaasRequest<AsaasPayment>('GET', `/payments/${paymentId}`)
 }
 
+export async function updatePayment(paymentId: string, data: Record<string, unknown>): Promise<void> {
+  await asaasRequest('POST', `/payments/${paymentId}`, data)
+}
+
 /** Para Pix Automático: busca a URL de autorização da solicitação de débito */
 export async function getPixAuthorizationUrl(paymentId: string): Promise<string | null> {
   try {
