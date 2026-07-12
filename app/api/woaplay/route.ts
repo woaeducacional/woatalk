@@ -20,10 +20,10 @@ async function requirePremium() {
   if (!session?.user?.id) return null
   const { data: user } = await supabase
     .from('users')
-    .select('subscription_status')
+    .select('subscription_plan')
     .eq('id', session.user.id)
     .single()
-  if (user?.subscription_status !== 'active') return null
+  if (!user?.subscription_plan) return null
   return session
 }
 

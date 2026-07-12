@@ -20,10 +20,10 @@ async function requirePremium() {
   if (!session?.user?.id) return null
   const { data: user } = await supabase
     .from('users')
-    .select('subscription_status')
+    .select('subscription_plan')
     .eq('id', session.user.id)
     .single()
-  if (user?.subscription_status !== 'active') return null
+  if (!user?.subscription_plan) return null
   return session
 }
 
@@ -47,27 +47,17 @@ export async function GET(
     .single()
 
   if (error || !data) return NextResponse.json({ error: 'Curso não encontrado' }, { status: 404 })
-  if (!data.is_published && !isAdmin) {
-    // For non-admins, check premium
-    const { data: user } = await supabase
-      .from('users')
-      .select('subscription_status')
-      .eq('id', session.user.id)
-      .single()
-    if (user?.subscription_status !== 'active') {
-      return NextResponse.json({ error: 'Acesso premium necessário' }, { status: 403 })
-    }
-    return NextResponse.json({ error: 'Curso não disponível' }, { status: 404 })
-  }
-
   if (!isAdmin) {
     const { data: user } = await supabase
       .from('users')
-      .select('subscription_status')
+      .select('subscription_plan')
       .eq('id', session.user.id)
       .single()
-    if (user?.subscription_status !== 'active') {
+    if (!user?.subscription_plan) {
       return NextResponse.json({ error: 'Acesso premium necessário' }, { status: 403 })
+    }
+    if (!data.is_published) {
+      return NextResponse.json({ error: 'Curso não disponível' }, { status: 404 })
     }
   }
 

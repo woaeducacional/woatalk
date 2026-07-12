@@ -90,6 +90,9 @@ export async function POST(req: NextRequest) {
     await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', userId)
   }
 
+  const baseUrl = (process.env.NEXTAUTH_URL || 'http://localhost:3003').replace(/\/$/, '')
+  const successUrl = `${baseUrl}/premium/success`
+
   // Cria a assinatura no Asaas
   let subscription
   try {
@@ -100,6 +103,8 @@ export async function POST(req: NextRequest) {
       nextDueDate: getNextDueDate(),
       cycle: plan.cycle,
       description: `WOA Talk — ${plan.label}`,
+      redirectUrl: successUrl,
+      externalReference: userId,
     })
     console.log('[AsaasCheckout] ✅ Assinatura criada:', subscription.id)
   } catch (err) {
@@ -108,13 +113,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  // Salva subscription_id e plano no DB (status ficará 'inactive' até webhook confirmar)
+  // Salva apenas o subscription_id — subscription_plan será definido pelo webhook após confirmação do pagamento
   await supabase
     .from('users')
     .update({
       subscription_id: subscription.id,
-      subscription_plan: planId,
-      subscription_status: 'inactive',
+      subscription_plan: null,
     })
     .eq('id', userId)
 
@@ -132,10 +136,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento. Tente novamente.' }, { status: 500 })
   }
 
-  const baseUrl = (process.env.NEXTAUTH_URL || 'http://localhost:3003').replace(/\/$/, '')
   return NextResponse.json({
     redirectUrl,
     subscriptionId: subscription.id,
-    successUrl: `${baseUrl}/premium/success`,
+    successUrl,
   })
 }

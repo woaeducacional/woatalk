@@ -17,14 +17,15 @@ export async function GET() {
 
   const { data: user } = await supabase
     .from('users')
-    .select('subscription_status, subscription_current_period_end, subscription_plan')
+    .select('subscription_plan, subscription_current_period_end')
     .eq('id', session.user.id)
     .single()
 
+  const plan = user?.subscription_plan ?? null
+
   return NextResponse.json({
-    status: user?.subscription_status ?? 'inactive',
-    plan: user?.subscription_plan ?? null,
+    plan,
     currentPeriodEnd: user?.subscription_current_period_end ?? null,
-    isPremium: user?.subscription_status === 'active',
+    isPremium: plan !== null,
   })
 }

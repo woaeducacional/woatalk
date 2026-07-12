@@ -116,6 +116,8 @@ export async function createSubscription(params: {
   nextDueDate: string
   cycle: AsaasSubscriptionCycle
   description: string
+  redirectUrl?: string
+  externalReference?: string
 }): Promise<AsaasSubscription> {
   return asaasRequest<AsaasSubscription>('POST', '/subscriptions', params)
 }
