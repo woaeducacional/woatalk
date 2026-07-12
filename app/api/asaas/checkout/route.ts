@@ -11,6 +11,7 @@ import {
   findCustomerByCpf,
   getFirstPendingPayment,
   getNextDueDate,
+  updatePayment,
 } from '@/lib/asaas'
 
 const supabase = createClient(
@@ -113,18 +114,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  // Salva apenas o subscription_id — subscription_plan será definido pelo webhook após confirmação do pagamento
+  // Salva subscription_id e plano escolhido — subscription_status será ativado pelo webhook após confirmação
   await supabase
     .from('users')
     .update({
       subscription_id: subscription.id,
-      subscription_plan: null,
+      subscription_plan: planId,
+      subscription_status: 'inactive',
     })
     .eq('id', userId)
 
   // Busca a primeira cobrança gerada para obter a URL de pagamento
   const payment = await getFirstPendingPayment(subscription.id)
   console.log('[AsaasCheckout] Primeira cobrança:', payment?.id, '| invoiceUrl:', payment?.invoiceUrl)
+
+  // Seta redirectUrl diretamente na fatura (não herda da assinatura em faturas via invoiceUrl)
+  if (payment?.id) {
+    try {
+      await updatePayment(payment.id, { redirectUrl: successUrl })
+      console.log('[AsaasCheckout] ✅ redirectUrl setado na fatura:', payment.id)
+    } catch (err) {
+      console.warn('[AsaasCheckout] ⚠ Não foi possível setar redirectUrl na fatura:', err)
+    }
+  }
 
   const redirectUrl =
     payment?.invoiceUrl ??
