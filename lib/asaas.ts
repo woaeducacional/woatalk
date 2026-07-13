@@ -167,22 +167,22 @@ export async function getPixAuthorizationUrl(paymentId: string): Promise<string 
 export const ASAAS_PLANS = {
   starter_monthly: {
     label: 'Starter Mensal',
-    value: 5.00,
+    value: 19.90,
     cycle: 'MONTHLY' as AsaasSubscriptionCycle,
   },
   starter_yearly: {
     label: 'Starter Anual',
-    value: 5.00,
+    value: 238.90,
     cycle: 'YEARLY' as AsaasSubscriptionCycle,
   },
   premium_monthly: {
     label: 'Premium Mensal',
-    value: 89.90,
+    value: 59.90,
     cycle: 'MONTHLY' as AsaasSubscriptionCycle,
   },
   premium_yearly: {
     label: 'Premium Anual',
-    value: 867.00,
+    value: 718.00,
     cycle: 'YEARLY' as AsaasSubscriptionCycle,
   },
 } as const
