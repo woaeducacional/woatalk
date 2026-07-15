@@ -144,11 +144,8 @@ export default function PremiumPage() {
       id: 'starter_monthly' as PlanId,
       name: 'STARTER',
       badge: 'MENSAL',
-      price: '19,90',
-      originalPrice: '29,90',
+      price: '29,90',
       period: '/ mês',
-      savingsBadge: '33,44% OFF',
-      savings: 'Economize R$ 10,00 todo mês',
       idealFor: 'Para quem está começando e quer praticar no próprio ritmo.',
       gradient: 'linear-gradient(135deg, #003AB0, #0066FF)',
       border: '#00D4FF',
@@ -164,11 +161,9 @@ export default function PremiumPage() {
       id: 'starter_yearly' as PlanId,
       name: 'STARTER',
       badge: 'ANUAL',
-      price: '238,90',
-      originalPrice: '358,80',
+      price: '287,00',
       period: '/ ano',
-      savingsBadge: '33,44% OFF',
-      savings: 'Economize R$ 119,90 no ano',
+      savingsBadge: 'Economize ~20%',
       idealFor: 'Para quem já decidiu e quer economizar na jornada anual.',
       gradient: 'linear-gradient(135deg, #005090, #0080CC)',
       border: '#40BFFF',
@@ -183,11 +178,8 @@ export default function PremiumPage() {
       id: 'premium_monthly' as PlanId,
       name: 'PREMIUM',
       badge: 'MENSAL',
-      price: '59,90',
-      originalPrice: '89,90',
+      price: '89,90',
       period: '/ mês',
-      savingsBadge: '33,37% OFF',
-      savings: 'Economize R$ 30,00 todo mês',
       idealFor: 'Para quem tem base e quer acelerar com recursos exclusivos.',
       gradient: 'linear-gradient(135deg, #B05000, #FF6B00)',
       border: '#FF9A00',
@@ -205,11 +197,9 @@ export default function PremiumPage() {
       id: 'premium_yearly' as PlanId,
       name: 'PREMIUM',
       badge: 'ANUAL',
-      price: '718,00',
-      originalPrice: '1.078,80',
+      price: '867,00',
       period: '/ ano',
-      savingsBadge: '33,44% OFF',
-      savings: 'Economize R$ 360,80 no ano',
+      savingsBadge: 'Economize ~20%',
       idealFor: 'Para quem quer o máximo com o melhor custo-benefício.',
       gradient: 'linear-gradient(135deg, #7c2d12, #c2410c)',
       border: '#f97316',
@@ -353,25 +343,10 @@ export default function PremiumPage() {
                           {plan.badge}
                         </span>
                       </div>
-                      {'originalPrice' in plan && plan.originalPrice && (
-                        <div className="text-sm line-through" style={{ color: `${plan.border}70` }}>
-                          De R$ {plan.originalPrice}
-                        </div>
-                      )}
-                      {'originalPrice' in plan && plan.originalPrice && (
-                        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: `${plan.border}99` }}>
-                          por apenas
-                        </div>
-                      )}
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-black text-white">R$ {plan.price}</span>
                         <span className="text-blue-200/60 text-sm">{plan.period}</span>
                       </div>
-                      {'savings' in plan && plan.savings && (
-                        <div className="text-xs font-bold" style={{ color: plan.border }}>
-                          💰 {plan.savings}
-                        </div>
-                      )}
                       {plan.idealFor && (
                         <p className="text-[11px] leading-relaxed pt-1" style={{ color: `${plan.border}cc` }}>
                           🎯 {plan.idealFor}
