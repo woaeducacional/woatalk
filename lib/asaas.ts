@@ -167,21 +167,42 @@ export async function getPixAuthorizationUrl(paymentId: string): Promise<string 
 export const ASAAS_PLANS = {
   starter_monthly: {
     label: 'Starter Mensal',
-    value: 19.90,
+    value: 29.90,
     cycle: 'MONTHLY' as AsaasSubscriptionCycle,
   },
   starter_yearly: {
     label: 'Starter Anual',
-    value: 238.90,
+    value: 287.00,
     cycle: 'YEARLY' as AsaasSubscriptionCycle,
   },
   premium_monthly: {
     label: 'Premium Mensal',
-    value: 59.90,
+    value: 89.90,
     cycle: 'MONTHLY' as AsaasSubscriptionCycle,
   },
   premium_yearly: {
     label: 'Premium Anual',
+    value: 867.00,
+    cycle: 'YEARLY' as AsaasSubscriptionCycle,
+  },
+  // Planos promocionais — acesso via /premium-point (vendedores)
+  starter_monthly_promo: {
+    label: 'Starter Mensal — Promo',
+    value: 19.90,
+    cycle: 'MONTHLY' as AsaasSubscriptionCycle,
+  },
+  starter_yearly_promo: {
+    label: 'Starter Anual — Promo',
+    value: 238.90,
+    cycle: 'YEARLY' as AsaasSubscriptionCycle,
+  },
+  premium_monthly_promo: {
+    label: 'Premium Mensal — Promo',
+    value: 59.90,
+    cycle: 'MONTHLY' as AsaasSubscriptionCycle,
+  },
+  premium_yearly_promo: {
+    label: 'Premium Anual — Promo',
     value: 718.00,
     cycle: 'YEARLY' as AsaasSubscriptionCycle,
   },
