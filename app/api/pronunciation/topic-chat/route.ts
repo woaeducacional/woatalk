@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import openai from '@/src/lib/openaiClient'
+import { supabase } from '@/src/lib/supabaseClient'
 
 /**
  * POST /api/pronunciation/topic-chat
@@ -100,6 +101,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 
+  const { data: userData } = supabase
+    ? await supabase.from('users').select('subscription_plan, subscription_status').eq('email', session.user.email ?? '').single()
+    : { data: null }
+  const plan: string | null = userData?.subscription_status === 'active' ? (userData?.subscription_plan ?? null) : null
+  if (!plan) {
+    return NextResponse.json({ error: 'subscription_required' }, { status: 402 })
+  }
+  const model = plan.includes('premium') ? 'gpt-4o' : 'gpt-4o-mini'
+
   const body = await req.json()
   const { topic, history, userSpeech, questionNumber } = body as {
     topic: string
@@ -127,7 +137,7 @@ export async function POST(req: NextRequest) {
   }
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model,
     messages,
     max_tokens: 200,
     temperature: 0.75,

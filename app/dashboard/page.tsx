@@ -394,7 +394,10 @@ export default function DashboardPage() {
   const refreshDailyAccess = useCallback(() => {
     fetch('/api/journey/daily-access')
       .then(r => r.ok ? r.json() : { accessedPhaseIds: [] })
-      .then(d => setDailyAccessedPhaseIds(d.accessedPhaseIds ?? []))
+      .then(d => {
+        setDailyAccessedPhaseIds(d.accessedPhaseIds ?? [])
+        if (d.isPremium === true) setIsPremium(true)
+      })
       .catch(() => {})
   }, [])
 
@@ -706,11 +709,24 @@ export default function DashboardPage() {
 
           {/* ── GLOBE CAROUSEL ── */}
           <section className="rounded-2xl py-4" style={{ background: 'rgba(5,14,26,0.60)', border: '1px solid rgba(0,212,255,0.12)' }}>
-            {isAdmin && (
-              <div className="flex justify-end px-4 mb-2">
+            <div className="flex items-center justify-between px-4 mb-2">
+              {!isPremium && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black tracking-widest" style={{ color: dailyAccessedPhaseIds.length >= 2 ? '#FF6B35' : '#00D4FF' }}>
+                    ⚡ JORNADAS HOJE: {dailyAccessedPhaseIds.length}/2
+                  </span>
+                  {dailyAccessedPhaseIds.length >= 2 && (
+                    <span className="text-[9px] text-orange-400/70">— limite atingido</span>
+                  )}
+                </div>
+              )}
+              {isPremium && (
+                <span className="text-[10px] font-black tracking-widest" style={{ color: '#FF9A00' }}>👑 PREMIUM — JORNADAS ILIMITADAS</span>
+              )}
+              {isAdmin && (
                 <Link href="/admin/journey-content/new" onClick={() => playClick()} className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,102,255,0.15)', border: '1px solid rgba(0,212,255,0.3)', color: '#00D4FF' }}>+ CRIAR JORNADA</Link>
-              </div>
-            )}
+              )}
+            </div>
             <JourneyGlobeCarousel
               journeys={journeys}
               lastPhaseId={lastPhaseId}
