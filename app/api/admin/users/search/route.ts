@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from('users')
     .select('id, name, email, avatar_url, role')
-    .ilike('name', `%${q}%`)
+    .or(`name.ilike.%${q}%,email.ilike.%${q}%`)
     .limit(10)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

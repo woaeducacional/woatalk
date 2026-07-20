@@ -143,6 +143,13 @@ export default function AdminDashboard() {
               🤝 Afiliados
             </button>
             <button
+              onClick={() => router.push('/admin/bonificacao')}
+              className="px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105"
+              style={{ background: 'rgba(255,215,0,0.10)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}
+            >
+              🎁 Bonificação
+            </button>
+            <button
               onClick={() => router.push('/admin/journey-content/new')}
               className="px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
             >
