@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await getServerSession(authOptions)
   if (session?.user?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   if (!supabase) return NextResponse.json({ error: 'DB not configured' }, { status: 503 })
@@ -14,12 +15,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.code !== undefined) {
     const slug = String(body.code).trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
     if (!slug) return NextResponse.json({ error: 'Código inválido' }, { status: 400 })
-    // Uniqueness check (excluding self)
     const { data: existing } = await supabase
       .from('affiliates')
       .select('id')
       .eq('code', slug)
-      .neq('id', params.id)
+      .neq('id', id)
       .maybeSingle()
     if (existing) return NextResponse.json({ error: 'Código já está em uso' }, { status: 409 })
     updates.code = slug
@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { data, error } = await supabase
     .from('affiliates')
     .update(updates)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single()
 
@@ -44,12 +44,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json({ affiliate: data })
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await getServerSession(authOptions)
   if (session?.user?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   if (!supabase) return NextResponse.json({ error: 'DB not configured' }, { status: 503 })
 
-  const { error } = await supabase.from('affiliates').delete().eq('id', params.id)
+  const { error } = await supabase.from('affiliates').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
