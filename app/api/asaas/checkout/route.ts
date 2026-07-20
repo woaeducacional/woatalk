@@ -29,11 +29,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { planId, billingType, cpf, phone } = body as {
+  const { planId, billingType, cpf, phone, ref_code } = body as {
     planId: AsaasPlanId
     billingType: AsaasBillingType
     cpf: string
     phone?: string
+    ref_code?: string
   }
 
   if (!planId || !billingType || !cpf) {
@@ -43,6 +44,23 @@ export async function POST(req: NextRequest) {
   const plan = ASAAS_PLANS[planId]
   if (!plan) {
     return NextResponse.json({ error: `Plano inválido: ${planId}` }, { status: 400 })
+  }
+
+  // Resolve affiliate discount if ref_code provided
+  let planValue = plan.value
+  let resolvedAffiliateCode: string | null = null
+  if (ref_code) {
+    const refClean = String(ref_code).trim().toUpperCase()
+    const { data: aff } = await supabase
+      .from('affiliates')
+      .select('code, discount_percent')
+      .eq('code', refClean)
+      .maybeSingle()
+    if (aff) {
+      planValue = Math.round(plan.value * (1 - aff.discount_percent / 100) * 100) / 100
+      resolvedAffiliateCode = aff.code
+      console.log(`[AsaasCheckout] Afiliado ${aff.code} aplicado — desconto ${aff.discount_percent}% — valor: R$${planValue}`)
+    }
   }
 
   const cpfClean = cpf.replace(/\D/g, '')
@@ -100,7 +118,7 @@ export async function POST(req: NextRequest) {
     subscription = await createSubscription({
       customer: asaasCustomerId,
       billingType,
-      value: plan.value,
+      value: planValue,
       nextDueDate: getNextDueDate(),
       cycle: plan.cycle,
       description: `WOA Talk — ${plan.label}`,
@@ -114,13 +132,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  // Salva subscription_id e plano escolhido — subscription_status será ativado pelo webhook após confirmação
+  // Salva subscription_id, plano e código de afiliado — status ativado pelo webhook
   await supabase
     .from('users')
     .update({
       subscription_id: subscription.id,
       subscription_plan: planId,
       subscription_status: 'inactive',
+      ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
     })
     .eq('id', userId)
 

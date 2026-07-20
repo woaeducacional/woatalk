@@ -625,6 +625,16 @@ export default function DashboardPage() {
 
           {/* Right controls */}
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => playClick()}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all hover:scale-105"
+                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}
+              >
+                ⚙️ ADMIN
+              </Link>
+            )}
             <NotificationBell />
             {/* Coins */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)' }}>
