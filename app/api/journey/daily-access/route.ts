@@ -5,14 +5,16 @@ import { supabase } from '@/src/lib/supabaseClient'
 
 const DAILY_JOURNEY_LIMIT = 2
 
-function getTodayStart() {
+/** Returns today's date as YYYY-MM-DD in BRT (UTC-3). */
+function getTodayBRTDate(): string {
   const now = new Date()
-  // Shift to BRT (UTC-3) to get the correct local calendar day
   const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000)
-  // Floor to midnight in BRT
-  brt.setUTCHours(0, 0, 0, 0)
-  // Shift back to UTC — this gives 03:00 UTC as the daily boundary
-  return new Date(brt.getTime() + 3 * 60 * 60 * 1000).toISOString()
+  return brt.toISOString().slice(0, 10)
+}
+
+/** Reason tag for today's journey accesses — changes every day automatically. */
+function todayJourneyReason(): string {
+  return `journey_access_${getTodayBRTDate()}`
 }
 
 /**
@@ -43,12 +45,12 @@ export async function GET() {
       return NextResponse.json({ accessedPhaseIds: [], count: 0, isPremium: true })
     }
 
+    const todayReason = todayJourneyReason()
     const { data: rows, error: fetchError } = await supabase
       .from('xp_history')
       .select('amount')
       .eq('user_id', userData.id)
-      .eq('reason', 'journey_access')
-      .gte('created_at', getTodayStart())
+      .eq('reason', todayReason)
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
@@ -56,7 +58,7 @@ export async function GET() {
 
     const accessedPhaseIds = [...new Set((rows ?? []).map((r) => r.amount as number))]
 
-    return NextResponse.json({ accessedPhaseIds, count: accessedPhaseIds.length, isPremium: false })
+    return NextResponse.json({ accessedPhaseIds, count: accessedPhaseIds.length, isPremium: false, limit: DAILY_JOURNEY_LIMIT })
   } catch (error) {
     console.error('Error in journey daily-access GET:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -100,12 +102,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ alreadyAccessed: false, dailyCount: 0, blocked: false, isPremium: true })
     }
 
+    const todayReason = todayJourneyReason()
     const { data: rows, error: fetchError } = await supabase
       .from('xp_history')
       .select('amount')
       .eq('user_id', userData.id)
-      .eq('reason', 'journey_access')
-      .gte('created_at', getTodayStart())
+      .eq('reason', todayReason)
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest) {
     await supabase.from('xp_history').insert({
       user_id: userData.id,
       amount: Number(phaseId),
-      reason: 'journey_access',
+      reason: todayReason,
     })
 
     return NextResponse.json({

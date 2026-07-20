@@ -5,10 +5,16 @@ import { supabase } from '@/src/lib/supabaseClient'
 
 const DAILY_BLOCK_LIMIT = 2
 
-function getTodayStart() {
-  const d = new Date()
-  d.setUTCHours(0, 0, 0, 0)
-  return d.toISOString()
+/** Returns today's date as YYYY-MM-DD in BRT (UTC-3). */
+function getTodayBRTDate(): string {
+  const now = new Date()
+  const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000)
+  return brt.toISOString().slice(0, 10)
+}
+
+/** Reason tag for today's block accesses — changes every day automatically. */
+function todayBlockReason(): string {
+  return `block_access_${getTodayBRTDate()}`
 }
 
 function encode(phaseId: number, missionGroupId: number): number {
@@ -48,12 +54,12 @@ export async function GET() {
       return NextResponse.json({ accessedBlocks: [], count: 0, isPremium: true })
     }
 
+    const todayReason = todayBlockReason()
     const { data: rows, error: fetchError } = await supabase
       .from('xp_history')
       .select('amount')
       .eq('user_id', userData.id)
-      .eq('reason', 'block_access')
-      .gte('created_at', getTodayStart())
+      .eq('reason', todayReason)
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
@@ -62,7 +68,7 @@ export async function GET() {
     const uniqueAmounts = [...new Set((rows ?? []).map((r) => r.amount as number))]
     const accessedBlocks = uniqueAmounts.map(decode)
 
-    return NextResponse.json({ accessedBlocks, count: accessedBlocks.length, isPremium: false })
+    return NextResponse.json({ accessedBlocks, count: accessedBlocks.length, isPremium: false, limit: DAILY_BLOCK_LIMIT })
   } catch (error) {
     console.error('Error in mission-groups daily-access GET:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -106,12 +112,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ alreadyAccessed: false, dailyCount: 0, blocked: false, isPremium: true })
     }
 
+    const todayReason = todayBlockReason()
     const { data: rows, error: fetchError } = await supabase
       .from('xp_history')
       .select('amount')
       .eq('user_id', userData.id)
-      .eq('reason', 'block_access')
-      .gte('created_at', getTodayStart())
+      .eq('reason', todayReason)
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
@@ -132,7 +138,7 @@ export async function POST(request: NextRequest) {
     await supabase.from('xp_history').insert({
       user_id: userData.id,
       amount: encoded,
-      reason: 'block_access',
+      reason: todayReason,
     })
 
     return NextResponse.json({

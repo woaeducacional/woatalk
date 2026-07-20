@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import openai from '@/src/lib/openaiClient'
+import { supabase } from '@/src/lib/supabaseClient'
 import { getCachedTip, cacheTip } from '@/src/services/pronunciation.service'
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
@@ -55,10 +56,10 @@ ${wordList}
 Inicie a aula agora.`
 }
 
-/** Chama o GPT-4 mini e retorna a dica gerada */
-async function generateTipFromAI(sentence: string, wrongWords: WrongWord[]): Promise<string> {
+/** Chama o GPT e retorna a dica gerada */
+async function generateTipFromAI(sentence: string, wrongWords: WrongWord[], model: string): Promise<string> {
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user',   content: buildUserContext(sentence, wrongWords) },
@@ -73,11 +74,19 @@ async function generateTipFromAI(sentence: string, wrongWords: WrongWord[]): Pro
 // ── Handler ────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // Valida sessão
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const { data: userData } = supabase
+    ? await supabase.from('users').select('subscription_plan, subscription_status').eq('email', session.user.email ?? '').single()
+    : { data: null }
+  const plan: string | null = userData?.subscription_status === 'active' ? (userData?.subscription_plan ?? null) : null
+  if (!plan) {
+    return NextResponse.json({ error: 'subscription_required' }, { status: 402 })
+  }
+  const model = plan.includes('premium') ? 'gpt-4o' : 'gpt-4o-mini'
 
   const body = await req.json().catch(() => null)
   const { sentence, wrongWords } = body ?? {}
@@ -99,8 +108,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Gera dica nova via IA
-  const tip = await generateTipFromAI(sentence, onlyWrong)
+  const tip = await generateTipFromAI(sentence, onlyWrong, model)
   if (!tip) {
     return NextResponse.json({ error: 'Falha ao gerar dica' }, { status: 500 })
   }
