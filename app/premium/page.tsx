@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -34,7 +35,7 @@ function planLabel(planId: string | null): string {
   return planId ? (map[planId] ?? planId) : ''
 }
 
-export default function PremiumPage() {
+function PremiumPageInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -689,5 +690,13 @@ export default function PremiumPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function PremiumPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #050E1A, #0a1929)' }} />}>
+      <PremiumPageInner />
+    </Suspense>
   )
 }
