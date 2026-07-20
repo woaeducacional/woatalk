@@ -136,6 +136,13 @@ export default function AdminDashboard() {
               ← Dashboard
             </button>
             <button
+              onClick={() => router.push('/admin/afiliados')}
+              className="px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105"
+              style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.3)', color: '#00D4FF' }}
+            >
+              🤝 Afiliados
+            </button>
+            <button
               onClick={() => router.push('/admin/journey-content/new')}
               className="px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
             >

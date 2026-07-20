@@ -142,6 +142,32 @@ export async function POST(req: NextRequest) {
         } else {
           console.log('[AsaasWebhook] ✅ Acesso ativado:', userId, '| plano:', savedPlan, '| até:', periodEnd)
         }
+
+        // Credit affiliate sale if this is a first-time activation (status was inactive)
+        if (!error && userData?.subscription_plan) {
+          const { data: fullUser } = await supabase
+            .from('users')
+            .select('affiliate_code')
+            .eq('id', userId)
+            .single()
+          if (fullUser?.affiliate_code) {
+            const col = savedPlan?.includes('premium') ? 'premium_sales' : 'starter_sales'
+            const { data: affRow } = await supabase
+              .from('affiliates')
+              .select('id, starter_sales, premium_sales')
+              .eq('code', fullUser.affiliate_code)
+              .maybeSingle()
+            if (affRow) {
+              await supabase
+                .from('affiliates')
+                .update({ [col]: (affRow[col as 'starter_sales' | 'premium_sales'] ?? 0) + 1 })
+                .eq('id', affRow.id)
+              // Clear affiliate_code so renewals don't double-count
+              await supabase.from('users').update({ affiliate_code: null }).eq('id', userId)
+              console.log(`[AsaasWebhook] ✅ Venda creditada ao afiliado ${fullUser.affiliate_code} (${col})`)
+            }
+          }
+        }
         break
       }
 

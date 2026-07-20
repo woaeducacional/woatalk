@@ -1,7 +1,8 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { playClick } from '@/lib/sounds'
@@ -34,12 +35,17 @@ function planLabel(planId: string | null): string {
   return planId ? (map[planId] ?? planId) : ''
 }
 
-export default function PremiumPage() {
+function PremiumPageInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null)
   const [loadingCancel, setLoadingCancel] = useState(false)
+
+  // Affiliate ref code
+  const [refCode, setRefCode] = useState<string | null>(null)
+  const [refDiscount, setRefDiscount] = useState<number | null>(null)
 
   // Checkout modal state
   const [modalOpen, setModalOpen] = useState(false)
@@ -53,6 +59,17 @@ export default function PremiumPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status, router])
+
+  useEffect(() => {
+    const code = searchParams.get('ref')?.trim().toUpperCase()
+    if (!code) return
+    fetch(`/api/affiliates/validate?code=${encodeURIComponent(code)}`)
+      .then(r => r.ok ? r.json() : { valid: false })
+      .then(d => {
+        if (d.valid) { setRefCode(d.code); setRefDiscount(d.discount_percent) }
+      })
+      .catch(() => {})
+  }, [searchParams])
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -103,7 +120,7 @@ export default function PremiumPage() {
       const res = await fetch('/api/asaas/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: selectedPlan, billingType, cpf: cpfDigits }),
+        body: JSON.stringify({ planId: selectedPlan, billingType, cpf: cpfDigits, ...(refCode ? { ref_code: refCode } : {}) }),
       })
       const data = await res.json()
 
@@ -250,6 +267,11 @@ export default function PremiumPage() {
             <h2 className="text-4xl font-black text-white" style={{ textShadow: '0 0 20px rgba(0,212,255,0.4)' }}>
               Escolha seu plano
             </h2>
+            {refCode && refDiscount && (
+              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-black tracking-wide" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e' }}>
+                🎁 Código <span className="font-black">{refCode}</span> aplicado — {refDiscount}% de desconto!
+              </div>
+            )}
             <p className="text-blue-200/70 text-lg max-w-2xl mx-auto">
               Desbloqueie todo o potencial do WOA Talk e domine o inglês de forma épica
             </p>
@@ -312,15 +334,22 @@ export default function PremiumPage() {
                       POPULAR
                     </div>
                   )}
-                  {/* Savings badge */}
-                  {plan.savingsBadge && !isCurrentPlan && (
+                  {/* Savings badge or affiliate discount badge */}
+                  {!isCurrentPlan && (refDiscount ? (
+                    <div
+                      className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-[10px] font-black tracking-widest"
+                      style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgba(34,197,94,0.5)', color: '#22c55e' }}
+                    >
+                      -{refDiscount}% cód. afiliado
+                    </div>
+                  ) : plan.savingsBadge ? (
                     <div
                       className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-[10px] font-black tracking-widest"
                       style={{ background: `${plan.border}22`, border: `1px solid ${plan.border}80`, color: plan.border }}
                     >
                       {plan.savingsBadge}
                     </div>
-                  )}
+                  ) : null)}
                   {/* Active indicator */}
                   {isCurrentPlan && (
                     <div
@@ -343,8 +372,16 @@ export default function PremiumPage() {
                           {plan.badge}
                         </span>
                       </div>
+                      {refDiscount && (
+                        <p className="text-white/40 text-sm line-through">R$ {plan.price}</p>
+                      )}
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-white">R$ {plan.price}</span>
+                        <span className="text-3xl font-black text-white">
+                          {refDiscount
+                            ? `R$ ${(parseFloat(plan.price.replace(',', '.')) * (1 - refDiscount / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : `R$ ${plan.price}`
+                          }
+                        </span>
                         <span className="text-blue-200/60 text-sm">{plan.period}</span>
                       </div>
                       {plan.idealFor && (
@@ -653,5 +690,13 @@ export default function PremiumPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function PremiumPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #050E1A, #0a1929)' }} />}>
+      <PremiumPageInner />
+    </Suspense>
   )
 }
