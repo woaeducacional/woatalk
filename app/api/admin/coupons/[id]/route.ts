@@ -17,14 +17,15 @@ async function requireAdmin() {
 }
 
 // PATCH /api/admin/coupons/[id] — ativa ou desativa um cupom
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const id = Number(params.id)
+  const { id: rawId } = await params
+  const id = Number(rawId)
   const body = await req.json()
   const active = Boolean(body.active)
 
@@ -40,14 +41,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/admin/coupons/[id] — remove um cupom
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const id = Number(params.id)
+  const { id: rawId } = await params
+  const id = Number(rawId)
   const { error } = await supabase.from('coupons').delete().eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
