@@ -6,12 +6,10 @@ import {
   ASAAS_PLANS,
   AsaasBillingType,
   AsaasPlanId,
-  AsaasPixAutomaticAuthorizationFrequency,
   createCustomer,
+  createPixPayment,
   createSubscription,
   createCheckoutWithSubscription,
-  createPixAutomaticAuthorization,
-  cancelPixAutomaticAuthorization,
   cancelSubscription,
   findCustomerByCpf,
   getFirstPendingPayment,
@@ -141,84 +139,48 @@ export async function POST(req: NextRequest) {
 
   const hasTrial = billingType === 'CREDIT_CARD'
   const nextDueDate = hasTrial ? getTrialDueDate() : getNextDueDate()
-  const initialPixDueDate = new Date().toISOString().split('T')[0]
+  const pixDueDate = new Date().toISOString().split('T')[0]
 
   if (billingType === 'PIX') {
-    let authorization
-    const authorizationPayload: {
-      customerId: string
-      frequency: AsaasPixAutomaticAuthorizationFrequency
-      contractId: string
-      startDate: string
-      finishDate?: string
-      value: number
-      description: string
-      immediateQrCode: {
-        value: number
-        originalValue: number
-        dueDate: string
-        description: string
-        expirationSeconds: number
-      }
-    } = {
-      customerId: asaasCustomerId,
-      frequency: plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY',
-      contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
-      startDate: initialPixDueDate,
+    let payment
+    const paymentPayload = {
+      customer: asaasCustomerId,
       value: planValue,
+      dueDate: pixDueDate,
       description: `WOA Talk — ${plan.label}`,
-      immediateQrCode: {
-        value: planValue,
-        originalValue: planValue,
-        dueDate: initialPixDueDate,
-        description: 'Cobrança inicial para ativação do Pix Automático',
-        expirationSeconds: 86400,
-      },
+      externalReference: userId,
     }
 
-    console.log('[AsaasCheckout] ▶ Criando autorização Pix Automático', {
+    console.log('[AsaasCheckout] ▶ Criando cobrança Pix única', {
       userId,
       planId,
       planValue,
       cpf: cpfClean,
       billingType,
-      payload: authorizationPayload,
+      payload: paymentPayload,
     })
 
     try {
-      authorization = await createPixAutomaticAuthorization(authorizationPayload)
-      console.log('[AsaasCheckout] ✅ Autorização Pix Automático criada:', authorization.id)
-      console.log('[AsaasCheckout] ▶ Resposta do Asaas Pix Automático:', JSON.stringify(authorization, null, 2))
+      payment = await createPixPayment(paymentPayload)
+      console.log('[AsaasCheckout] ✅ Cobrança PIX criada:', payment.id)
+      console.log('[AsaasCheckout] ▶ Resposta do Asaas PIX:', JSON.stringify(payment, null, 2))
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      console.error('[AsaasCheckout] ❌ Erro ao criar autorização Pix Automático:', message)
+      console.error('[AsaasCheckout] ❌ Erro ao criar cobrança PIX:', message)
       return NextResponse.json({ error: message }, { status: 500 })
     }
 
-    const immediateQr = authorization.immediateQrCode
-    const redirectUrl =
-      immediateQr?.authorizationUrl ??
-      immediateQr?.pixTransaction?.authorizationUrl ??
-      null
+    const redirectUrl = payment.invoiceUrl ?? null
 
     if (!redirectUrl) {
-      console.error('[AsaasCheckout] ❌ URL de pagamento Pix Automático não encontrada', {
-        authorizationId: authorization.id,
-        immediateQr,
-      })
-      try {
-        await cancelPixAutomaticAuthorization(authorization.id)
-        console.log('[AsaasCheckout] ✅ Limpeza: autorização Pix Automático cancelada após falta de URL')
-      } catch (cleanupError) {
-        console.warn('[AsaasCheckout] ⚠ Não foi possível cancelar autorização Pix Automático de limpeza:', cleanupError)
-      }
-      return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento Pix Automático. Tente novamente.' }, { status: 500 })
+      console.error('[AsaasCheckout] ❌ URL de pagamento PIX não encontrada', { paymentId: payment.id })
+      return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento PIX. Tente novamente.' }, { status: 500 })
     }
 
     await supabase
       .from('users')
       .update({
-        subscription_id: authorization.id,
+        subscription_id: payment.id,
         subscription_plan: planId,
         subscription_status: 'pending',
         subscription_current_period_end: null,
@@ -228,8 +190,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       redirectUrl,
-      authorizationId: authorization.id,
-      initialDueDate: initialPixDueDate,
+      paymentId: payment.id,
+      dueDate: pixDueDate,
       successUrl,
     })
   }

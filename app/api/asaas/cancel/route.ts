@@ -22,8 +22,31 @@ export async function POST() {
     .eq('id', session.user.id)
     .single()
 
-  if (userError || !user?.subscription_id) {
-    return NextResponse.json({ error: 'Nenhuma assinatura ativa encontrada' }, { status: 400 })
+  if (userError) {
+    return NextResponse.json({ error: 'Erro ao buscar assinatura' }, { status: 500 })
+  }
+
+  if (!user?.subscription_id) {
+    if (!user?.subscription_status || user.subscription_status === 'inactive') {
+      return NextResponse.json({ error: 'Nenhuma assinatura ativa encontrada' }, { status: 400 })
+    }
+
+    const { error: localDbError } = await supabase
+      .from('users')
+      .update({
+        subscription_status: 'inactive',
+        subscription_plan: null,
+        subscription_current_period_end: null,
+      })
+      .eq('id', session.user.id)
+
+    if (localDbError) {
+      console.error('[AsaasCancel] ❌ Erro ao atualizar DB (cancelamento local):', localDbError.message)
+      return NextResponse.json({ error: 'Falha ao cancelar acesso localmente' }, { status: 500 })
+    }
+
+    console.log('[AsaasCancel] ✅ Cancelamento local aplicado:', session.user.id)
+    return NextResponse.json({ success: true })
   }
 
   let canceledOnAsaas = false

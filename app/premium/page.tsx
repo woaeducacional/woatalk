@@ -89,9 +89,9 @@ function PremiumPageInner() {
   const [pixQrData, setPixQrData] = useState<{
     encodedImage: string | null
     payload: string | null
-    authorizationUrl: string | null
-    authorizationId: string
-    initialDueDate: string
+    invoiceUrl: string | null
+    paymentId: string
+    dueDate: string
   } | null>(null)
   const [pixCopied, setPixCopied] = useState(false)
   const pixPollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -143,28 +143,25 @@ function PremiumPageInner() {
   }, [modalOpen])
 
   useEffect(() => {
-    if (!pixQrData?.authorizationId || subscriptionSuccess) return
+    if (!pixQrData?.paymentId || subscriptionSuccess) return
 
     const checkStatus = async () => {
       try {
-        const res = await fetch(`/api/asaas/pix-status?id=${encodeURIComponent(pixQrData.authorizationId)}`)
+        const res = await fetch(`/api/asaas/pix-status?id=${encodeURIComponent(pixQrData.paymentId)}`)
         if (!res.ok) return
         const data = await res.json()
         const status = String(data.status || '').toUpperCase()
-        // No Pix Automático, ACTIVE indica que a autorização foi efetivada após o pagamento inicial.
-        // PENDING/AUTHORIZED ainda significam que o usuário precisa concluir a autorização.
-        if (status === 'ACTIVE') {
-          setSuccessTrialDate(new Date(pixQrData.initialDueDate).toLocaleDateString('pt-BR'))
+        if (status === 'RECEIVED' || status === 'CONFIRMED') {
           setSubscriptionSuccess(true)
           setSubInfo({
-            status: 'trial',
+            status: 'active',
             plan: selectedPlan,
-            currentPeriodEnd: pixQrData.initialDueDate,
+            currentPeriodEnd: null,
             isPremium: true,
           })
         }
       } catch {
-        // O polling pode falhar momentaneamente sem interromper a autorização.
+        // O polling pode falhar momentaneamente sem interromper o fluxo.
       }
     }
 
@@ -417,25 +414,23 @@ function PremiumPageInner() {
       })
       const data = await res.json()
 
-      if (!res.ok || !data.success || !data.authorizationId) {
+      if (!res.ok || !data.success || !data.paymentId) {
         setCheckoutError(data.error || 'Erro ao iniciar pagamento. Tente novamente.')
         setCheckoutLoading(false)
         return
       }
 
-      // O Pix Automático normalmente retorna QR in-app. Se o Asaas fornecer
-      // somente a URL de autorização, direciona o usuário para o fluxo externo.
-      if (!data.encodedImage && !data.payload && data.authorizationUrl) {
-        window.location.href = data.authorizationUrl
+      if (!data.encodedImage && !data.payload && data.invoiceUrl) {
+        window.location.href = data.invoiceUrl
         return
       }
 
       setPixQrData({
         encodedImage: data.encodedImage ?? null,
         payload: data.payload ?? null,
-        authorizationUrl: data.authorizationUrl ?? null,
-        authorizationId: data.authorizationId,
-        initialDueDate: data.initialDueDate,
+        invoiceUrl: data.invoiceUrl ?? null,
+        paymentId: data.paymentId,
+        dueDate: data.dueDate,
       })
       setCheckoutLoading(false)
     } catch {
@@ -584,11 +579,11 @@ function PremiumPageInner() {
               Desbloqueie todo o potencial do WOA Talk e domine o inglês de forma épica
             </p>
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-black tracking-wide" style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.35)', color: '#00D4FF' }}>
-              🎁 30 dias grátis no cartão — Pix Automático tem cobrança inicial para ativação
+              🎁 30 dias grátis no cartão — no Pix o pagamento é à vista (sem trial)
             </div>
             <div className="flex items-center justify-center gap-6 pt-2 text-sm text-blue-200/50">
               <span>💳 Cartão de Crédito</span>
-              <span>🟢 Pix Automático</span>
+              <span>🟢 Pix</span>
               <span>🧾 Boleto Bancário</span>
             </div>
           </div>
@@ -869,7 +864,7 @@ function PremiumPageInner() {
           {/* Payment methods note */}
           <div className="text-center py-4 space-y-2">
             <p className="text-blue-200/40 text-xs">Pagamentos processados com segurança pela <span className="text-blue-200/60 font-bold">Asaas</span></p>
-            <p className="text-blue-200/30 text-xs">Pix Automático: após a primeira autorização no seu banco, as mensalidades são debitadas automaticamente.</p>
+            <p className="text-blue-200/30 text-xs">No Pix, cada pagamento é único e não possui trial.</p>
           </div>
 
           {/* Benefits */}
@@ -896,9 +891,9 @@ function PremiumPageInner() {
             <div className="space-y-4 max-w-3xl mx-auto">
               {[
                 { q: 'Posso cancelar a qualquer momento?', a: 'Sim! Você pode cancelar sua assinatura quando quiser diretamente nessa página, sem cobranças adicionais.' },
-                { q: 'Como funciona o Pix Automático?', a: 'No primeiro pagamento, você autoriza o débito no app do seu banco. A partir daí, as mensalidades são debitadas automaticamente sem que você precise pagar um novo QR Code.' },
-                { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de Crédito, Pix Automático e Boleto Bancário. Todos os pagamentos são processados com segurança pela Asaas.' },
-                { q: 'Como funciona o trial de 30 dias?', a: 'O trial de 30 dias está disponível para assinaturas via Cartão de Crédito. No Pix Automático, o QR Code inicial precisa ser pago para ativar a autorização; depois disso, as cobranças seguem o ciclo do plano.' },
+                { q: 'Como funciona o Pix?', a: 'No Pix, você paga um QR Code para concluir a compra. É um pagamento único, sem trial automático.' },
+                { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de Crédito, Pix e Boleto Bancário. Todos os pagamentos são processados com segurança pela Asaas.' },
+                { q: 'Como funciona o trial de 30 dias?', a: 'O trial de 30 dias está disponível para assinaturas via Cartão de Crédito. No Pix, não há trial: o pagamento é à vista.' },
                 { q: 'Qual a diferença entre Starter e Premium?', a: 'O Premium inclui XP turbinado, módulos especiais avançados, moedas mensais extras e comunidade elite.' },
               ].map((faq, i) => (
                 <div key={i} className="p-6 rounded-xl backdrop-blur-md border border-cyan-400/20" style={{ background: 'rgba(5,14,26,0.65)' }}>
@@ -946,14 +941,16 @@ function PremiumPageInner() {
                   style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }}
                 >
                   <p className="text-cyan-300/90 text-sm font-bold">
-                    {billingType === 'CREDIT_CARD' ? '🎁 30 dias grátis ativados' : '✅ Pix Automático autorizado'}
+                    {billingType === 'CREDIT_CARD' ? '🎁 30 dias grátis ativados' : '✅ Pagamento Pix confirmado'}
                   </p>
                   <p className="text-blue-200/60 text-xs">
                     {billingType === 'CREDIT_CARD'
                       ? <>Nenhum valor foi cobrado agora. A primeira cobrança ocorrerá em <span className="text-white font-bold">{successTrialDate}</span>.</>
-                      : <>O pagamento inicial foi confirmado e as próximas cobranças seguirão o ciclo do plano.</>}
+                      : <>Seu pagamento foi aprovado e seu acesso foi liberado.</>}
                   </p>
-                  <p className="text-blue-200/50 text-xs mt-1">Você pode cancelar a qualquer momento antes disso sem custo.</p>
+                  {billingType === 'CREDIT_CARD' && (
+                    <p className="text-blue-200/50 text-xs mt-1">Você pode cancelar a qualquer momento antes disso sem custo.</p>
+                  )}
                 </div>
 
                 <button
@@ -1002,9 +999,9 @@ function PremiumPageInner() {
             {pixQrData ? (
               <div className="flex flex-col items-center text-center space-y-5 py-3">
                 <div className="space-y-2">
-                  <h4 className="text-xl font-black text-white">Autorize o Pix Automático</h4>
+                  <h4 className="text-xl font-black text-white">Pague com Pix</h4>
                   <p className="text-blue-200/65 text-sm leading-relaxed">
-                    Escaneie o QR Code no aplicativo do seu banco. Esta tela será atualizada automaticamente após a autorização.
+                    Escaneie o QR Code no aplicativo do seu banco. Esta tela será atualizada automaticamente após a confirmação do pagamento.
                   </p>
                 </div>
 
@@ -1012,14 +1009,14 @@ function PremiumPageInner() {
                   <div className="p-3 rounded-2xl bg-white shadow-lg shadow-cyan-400/20">
                     <img
                       src={pixQrData.encodedImage.startsWith('data:') ? pixQrData.encodedImage : `data:image/png;base64,${pixQrData.encodedImage}`}
-                      alt="QR Code para autorizar Pix Automático"
+                      alt="QR Code para pagamento Pix"
                       className="w-56 h-56 object-contain"
                     />
                   </div>
                 ) : (
                   <div className="w-full px-4 py-5 rounded-2xl" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }}>
                     <p className="text-cyan-300 text-sm font-bold">QR visual indisponível</p>
-                    <p className="text-blue-200/60 text-xs mt-1">Use o botão abaixo para abrir a autorização no aplicativo do seu banco.</p>
+                    <p className="text-blue-200/60 text-xs mt-1">Use o botão abaixo para abrir o pagamento no banco.</p>
                   </div>
                 )}
 
@@ -1041,24 +1038,24 @@ function PremiumPageInner() {
                   </button>
                 )}
 
-                {pixQrData.authorizationUrl && (
+                {pixQrData.invoiceUrl && (
                   <a
-                    href={pixQrData.authorizationUrl}
+                    href={pixQrData.invoiceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
                     style={{ background: 'linear-gradient(135deg, #0066FF, #00D4FF)', color: 'white', boxShadow: '0 0 20px rgba(0,212,255,0.25)' }}
                   >
-                    Abrir autorização no banco →
+                    Abrir pagamento no banco →
                   </a>
                 )}
 
                 <div className="flex items-center gap-2 text-xs text-cyan-300/65">
                   <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  Aguardando autorização...
+                  Aguardando confirmação do pagamento...
                 </div>
 
-                <p className="text-[10px] text-blue-200/30">O acesso será confirmado após o pagamento do QR Code inicial.</p>
+                <p className="text-[10px] text-blue-200/30">O acesso será confirmado após o pagamento do QR Code.</p>
               </div>
             ) : (
             <>
@@ -1126,7 +1123,7 @@ function PremiumPageInner() {
               <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Forma de Pagamento</label>
               <div className="grid grid-cols-3 gap-3">
                 {([
-                  { value: 'PIX', label: '🟢 Pix Auto.' },
+                  { value: 'PIX', label: '🟢 Pix' },
                   { value: 'CREDIT_CARD', label: '💳 Cartão' },
                   { value: 'BOLETO', label: '🧾 Boleto' },
                 ] as { value: BillingType; label: string }[]).map(opt => (
@@ -1146,7 +1143,7 @@ function PremiumPageInner() {
               </div>
               {billingType === 'PIX' && (
                 <p className="text-[11px] text-cyan-400/50 leading-relaxed">
-                  Pague o QR Code inicial para ativar o Pix Automático. Depois disso, as cobranças serão geradas automaticamente.
+                  No Pix, o pagamento é à vista e sem trial.
                 </p>
               )}
               {billingType === 'CREDIT_CARD' && (

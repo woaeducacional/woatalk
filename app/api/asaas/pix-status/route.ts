@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { createClient } from '@supabase/supabase-js'
-import { getPixAutomaticAuthorization } from '@/lib/asaas'
+import { getPayment } from '@/lib/asaas'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
   }
 
-  // Security: ensure this authorization belongs to the current user
+  // Security: ensure this payment belongs to the current user
   const { data: user } = await supabase
     .from('users')
     .select('subscription_id')
@@ -30,16 +30,16 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (user?.subscription_id !== id) {
-    return NextResponse.json({ error: 'Autorização não encontrada' }, { status: 403 })
+    return NextResponse.json({ error: 'Pagamento não encontrado' }, { status: 403 })
   }
 
   try {
-    const authorization = await getPixAutomaticAuthorization(id)
-    console.log('[PixStatus] status:', authorization.status, '| id:', id)
-    return NextResponse.json({ status: authorization.status })
+    const payment = await getPayment(id)
+    console.log('[PixStatus] status:', payment.status, '| id:', id)
+    return NextResponse.json({ status: payment.status })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[PixStatus] ❌ Erro ao consultar autorização:', message)
+    console.error('[PixStatus] ❌ Erro ao consultar pagamento PIX:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

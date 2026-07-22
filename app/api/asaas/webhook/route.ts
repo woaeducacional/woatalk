@@ -111,19 +111,22 @@ export async function POST(req: NextRequest) {
       // ── Pagamento confirmado → ativar/renovar acesso ──────────
       case 'PAYMENT_CONFIRMED':
       case 'PAYMENT_RECEIVED': {
-        const subId = payment?.subscription
-        if (!subId) {
-          console.warn('[AsaasWebhook] ⚠ Pagamento sem subscription_id — ignorando')
+        const subscriptionOrPaymentId = payment?.subscription ?? payment?.id
+        if (!subscriptionOrPaymentId && !payment?.externalReference) {
+          console.warn('[AsaasWebhook] ⚠ Pagamento sem referência de usuário — ignorando')
           break
         }
 
-        let userId = await findUserBySubscription(subId)
+        let userId: string | null = null
+        if (subscriptionOrPaymentId) {
+          userId = await findUserBySubscription(subscriptionOrPaymentId)
+        }
         if (!userId && payment?.externalReference) {
           console.warn('[AsaasWebhook] ⚠ Fallback: buscando por externalReference')
           userId = await findUserByExternalReference(payment.externalReference)
         }
         if (!userId) {
-          console.error('[AsaasWebhook] ❌ Usuário não encontrado para subscription:', subId)
+          console.error('[AsaasWebhook] ❌ Usuário não encontrado para pagamento:', payment?.id ?? 'sem-id')
           break
         }
 
@@ -144,6 +147,7 @@ export async function POST(req: NextRequest) {
           .update({
             subscription_status: 'active',
             subscription_current_period_end: periodEnd,
+            ...(payment?.subscription ? {} : { subscription_id: null }),
           })
           .eq('id', userId)
 
