@@ -227,7 +227,7 @@ export interface AsaasPixAutomaticAuthorization {
 }
 
 export async function createPixAutomaticAuthorization(params: {
-  customer: string
+  customerId: string
   frequency: AsaasPixAutomaticAuthorizationFrequency
   contractId: string
   startDate: string
@@ -243,6 +243,47 @@ export async function createPixAutomaticAuthorization(params: {
   }
 }): Promise<AsaasPixAutomaticAuthorization> {
   return asaasRequest<AsaasPixAutomaticAuthorization>('POST', '/pix/automatic/authorizations', params)
+}
+
+export async function createCustomerAndPixAutomaticAuthorization(params: {
+  name: string
+  email: string
+  cpfCnpj: string
+  value: number
+  description: string
+  frequency?: AsaasPixAutomaticAuthorizationFrequency
+  contractId?: string
+  startDate?: string
+  finishDate?: string
+}): Promise<{ customerId: string; customer: AsaasCustomer; authorization: AsaasPixAutomaticAuthorization }> {
+  const customer = await createCustomer({
+    name: params.name,
+    email: params.email,
+    cpfCnpj: params.cpfCnpj,
+  })
+
+  const authorization = await createPixAutomaticAuthorization({
+    customerId: customer.id,
+    value: params.value,
+    description: params.description,
+    frequency: params.frequency ?? 'MONTHLY',
+    contractId: params.contractId ?? `AUTH-${customer.id}-${Date.now()}`,
+    startDate: params.startDate ?? new Date().toISOString().split('T')[0],
+    finishDate: params.finishDate,
+    immediateQrCode: {
+      value: params.value,
+      originalValue: params.value,
+      dueDate: params.startDate ?? new Date().toISOString().split('T')[0],
+      description: params.description,
+      expirationSeconds: 86400,
+    },
+  })
+
+  return {
+    customerId: customer.id,
+    customer,
+    authorization,
+  }
 }
 
 export async function createPixAutomaticPayment(params: {
