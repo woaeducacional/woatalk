@@ -149,6 +149,20 @@ export async function cancelPixAutomaticAuthorization(authorizationId: string): 
   await asaasRequest('DELETE', `/pix/automatic/authorizations/${authorizationId}`)
 }
 
+// ── Checkout (recurring) ───────────────────────────────────
+
+export interface AsaasCheckoutResponse {
+  id: string
+  url?: string
+  link?: string
+  paymentLink?: string
+  subscription?: AsaasSubscription
+}
+
+export async function createCheckoutWithSubscription(params: Record<string, unknown>): Promise<AsaasCheckoutResponse> {
+  return asaasRequest<AsaasCheckoutResponse>('POST', '/checkouts', params)
+}
+
 // ── Payments ───────────────────────────────────────────────
 
 /** Busca a primeira cobrança pendente de uma assinatura (para obter URL de pagamento) */
@@ -213,7 +227,7 @@ export interface AsaasPixAutomaticAuthorization {
 }
 
 export async function createPixAutomaticAuthorization(params: {
-  customerId: string
+  customer: string
   frequency: AsaasPixAutomaticAuthorizationFrequency
   contractId: string
   startDate: string

@@ -9,6 +9,7 @@ import {
   AsaasPixAutomaticAuthorizationFrequency,
   createCustomer,
   createSubscription,
+  createCheckoutWithSubscription,
   createPixAutomaticAuthorization,
   cancelPixAutomaticAuthorization,
   cancelSubscription,
@@ -228,60 +229,106 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Cria a assinatura no Asaas
-  let subscription
-  try {
-    subscription = await createSubscription({
-      customer: asaasCustomerId,
-      billingType,
-      value: planValue,
-      nextDueDate,
-      cycle: plan.cycle,
-      description: `WOA Talk — ${plan.label}`,
-      redirectUrl: successUrl,
+  // Para cartão de crédito: use o Checkout configurado para assinaturas (recorrente)
+  let subscription: any = null
+  let redirectUrl: string | null = null
+
+  if (billingType === 'CREDIT_CARD') {
+    const checkoutPayload = {
+      billingTypes: ['CREDIT_CARD'],
+      chargeTypes: ['RECURRENT'],
+      minutesToExpire: 100,
+      callback: {
+        successUrl,
+        cancelUrl: `${baseUrl}/premium/cancel`,
+        expiredUrl: `${baseUrl}/premium/expired`,
+      },
+      items: [
+        {
+          description: `WOA Talk — ${plan.label}`,
+          name: plan.label,
+          quantity: 1,
+          value: planValue,
+        },
+      ],
+      customerData: {
+        name: userName,
+        email: userEmail,
+        cpfCnpj: cpfClean,
+        phone,
+      },
+      subscription: {
+        cycle: plan.cycle,
+        nextDueDate,
+      },
       externalReference: userId,
-    })
-    console.log('[AsaasCheckout] ✅ Assinatura criada:', subscription.id, '| trial:', hasTrial)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[AsaasCheckout] ❌ Erro ao criar assinatura:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
+    }
 
-  // Busca a primeira cobrança gerada para obter a URL de pagamento
-  const payment = await getFirstPendingPayment(subscription.id)
-  console.log('[AsaasCheckout] Primeira cobrança:', payment?.id, '| invoiceUrl:', payment?.invoiceUrl)
+    console.log('[AsaasCheckout] ▶ Criando Checkout (assinatura) no Asaas', { payload: checkoutPayload })
 
-  // Seta redirectUrl diretamente na fatura (não herda da assinatura em faturas via invoiceUrl)
-  if (payment?.id) {
     try {
-      await updatePayment(payment.id, { redirectUrl: successUrl })
-      console.log('[AsaasCheckout] ✅ redirectUrl setado na fatura:', payment.id)
+      const checkout = await createCheckoutWithSubscription(checkoutPayload)
+      console.log('[AsaasCheckout] ✅ Checkout criado:', JSON.stringify(checkout, null, 2))
+      subscription = checkout.subscription ?? null
+      redirectUrl = checkout.paymentLink ?? checkout.url ?? checkout.link ?? checkout.subscription?.paymentLink ?? null
     } catch (err) {
-      console.warn('[AsaasCheckout] ⚠ Não foi possível setar redirectUrl na fatura:', err)
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[AsaasCheckout] ❌ Erro ao criar Checkout para assinatura:', message)
+      return NextResponse.json({ error: message }, { status: 500 })
     }
-  }
-
-  const redirectUrl =
-    subscription.paymentLink ??
-    payment?.invoiceUrl ??
-    null
-
-  if (!redirectUrl) {
-    console.error('[AsaasCheckout] ❌ URL de pagamento não encontrada')
+  } else {
+    // Cria a assinatura no Asaas (PIX/Boleto flows)
     try {
-      await cancelSubscription(subscription.id)
-      console.log('[AsaasCheckout] ✅ Limpeza: assinatura cancelada após falta de URL')
-    } catch (cleanupError) {
-      console.warn('[AsaasCheckout] ⚠ Não foi possível cancelar assinatura de limpeza:', cleanupError)
+      subscription = await createSubscription({
+        customer: asaasCustomerId,
+        billingType,
+        value: planValue,
+        nextDueDate,
+        cycle: plan.cycle,
+        description: `WOA Talk — ${plan.label}`,
+        redirectUrl: successUrl,
+        externalReference: userId,
+      })
+      console.log('[AsaasCheckout] ✅ Assinatura criada:', subscription.id, '| trial:', hasTrial)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[AsaasCheckout] ❌ Erro ao criar assinatura:', message)
+      return NextResponse.json({ error: message }, { status: 500 })
     }
-    return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento. Tente novamente.' }, { status: 500 })
+
+    // Busca a primeira cobrança gerada para obter a URL de pagamento
+    const payment = await getFirstPendingPayment(subscription.id)
+    console.log('[AsaasCheckout] Primeira cobrança:', payment?.id, '| invoiceUrl:', payment?.invoiceUrl)
+
+    // Seta redirectUrl diretamente na fatura (não herda da assinatura em faturas via invoiceUrl)
+    if (payment?.id) {
+      try {
+        await updatePayment(payment.id, { redirectUrl: successUrl })
+        console.log('[AsaasCheckout] ✅ redirectUrl setado na fatura:', payment.id)
+      } catch (err) {
+        console.warn('[AsaasCheckout] ⚠ Não foi possível setar redirectUrl na fatura:', err)
+      }
+    }
+
+    redirectUrl = subscription.paymentLink ?? payment?.invoiceUrl ?? null
+
+    if (!redirectUrl) {
+      console.error('[AsaasCheckout] ❌ URL de pagamento não encontrada')
+      try {
+        await cancelSubscription(subscription.id)
+        console.log('[AsaasCheckout] ✅ Limpeza: assinatura cancelada após falta de URL')
+      } catch (cleanupError) {
+        console.warn('[AsaasCheckout] ⚠ Não foi possível cancelar assinatura de limpeza:', cleanupError)
+      }
+      return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento. Tente novamente.' }, { status: 500 })
+    }
   }
 
+  // Persistência no DB — só depois de termos uma redirectUrl
   await supabase
     .from('users')
     .update({
-      subscription_id: subscription.id,
+      subscription_id: subscription?.id ?? null,
       subscription_plan: planId,
       subscription_status: hasTrial ? 'trial' : 'inactive',
       ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
@@ -290,7 +337,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     redirectUrl,
-    subscriptionId: subscription.id,
+    subscriptionId: subscription?.id ?? null,
     successUrl,
   })
 }
