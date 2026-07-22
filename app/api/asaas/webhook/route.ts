@@ -229,9 +229,16 @@ export async function POST(req: NextRequest) {
 
         const { data: pixUserData } = await supabase
           .from('users')
-          .select('subscription_plan')
+          .select('subscription_plan, subscription_status')
           .eq('id', userId)
           .single()
+
+        // Se o usuário está em trial, a autorização do PIX foi para a assinatura futura.
+        // O acesso já está liberado via status 'trial'; PAYMENT_CONFIRMED ativará 'active' em 30 dias.
+        if (pixUserData?.subscription_status === 'trial') {
+          console.log('[AsaasWebhook] PIX autorizado para assinatura em trial — mantendo status trial:', userId)
+          break
+        }
 
         const savedPlan = pixUserData?.subscription_plan ?? inferPlanFromValue(payment?.value)
         const isYearly = savedPlan?.includes('yearly') ?? false

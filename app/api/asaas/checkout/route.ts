@@ -11,6 +11,7 @@ import {
   findCustomerByCpf,
   getFirstPendingPayment,
   getNextDueDate,
+  getTrialDueDate,
   updatePayment,
 } from '@/lib/asaas'
 
@@ -29,12 +30,13 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { planId, billingType, cpf, phone, ref_code } = body as {
+  const { planId, billingType, cpf, phone, ref_code, coupon_code } = body as {
     planId: AsaasPlanId
     billingType: AsaasBillingType
     cpf: string
     phone?: string
     ref_code?: string
+    coupon_code?: string
   }
 
   if (!planId || !billingType || !cpf) {
@@ -46,10 +48,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Plano inválido: ${planId}` }, { status: 400 })
   }
 
-  // Resolve affiliate discount if ref_code provided
+  // Resolve coupon discount first (takes priority over affiliate if both present)
   let planValue = plan.value
+  if (coupon_code) {
+    const couponClean = String(coupon_code).trim().toUpperCase()
+    const { data: couponData } = await supabase
+      .from('coupons')
+      .select('discount_percent')
+      .eq('code', couponClean)
+      .eq('active', true)
+      .maybeSingle()
+    if (couponData) {
+      planValue = Math.round(plan.value * (1 - couponData.discount_percent / 100) * 100) / 100
+      console.log(`[AsaasCheckout] Cupom ${couponClean} aplicado — desconto ${couponData.discount_percent}% — valor: R$${planValue}`)
+    }
+  }
+
+  // Resolve affiliate discount if ref_code provided (only if no coupon was applied)
   let resolvedAffiliateCode: string | null = null
-  if (ref_code) {
+  if (ref_code && planValue === plan.value) {
     const refClean = String(ref_code).trim().toUpperCase()
     const { data: aff } = await supabase
       .from('affiliates')
@@ -112,6 +129,10 @@ export async function POST(req: NextRequest) {
   const baseUrl = (process.env.NEXTAUTH_URL || 'http://localhost:3003').replace(/\/$/, '')
   const successUrl = `${baseUrl}/premium/success`
 
+  // Trial de 30 dias para cartão e PIX automático; boleto cobra imediatamente
+  const hasTrial = billingType === 'CREDIT_CARD' || billingType === 'PIX'
+  const nextDueDate = hasTrial ? getTrialDueDate() : getNextDueDate()
+
   // Cria a assinatura no Asaas
   let subscription
   try {
@@ -119,26 +140,27 @@ export async function POST(req: NextRequest) {
       customer: asaasCustomerId,
       billingType,
       value: planValue,
-      nextDueDate: getNextDueDate(),
+      nextDueDate,
       cycle: plan.cycle,
       description: `WOA Talk — ${plan.label}`,
       redirectUrl: successUrl,
       externalReference: userId,
     })
-    console.log('[AsaasCheckout] ✅ Assinatura criada:', subscription.id)
+    console.log('[AsaasCheckout] ✅ Assinatura criada:', subscription.id, '| trial:', hasTrial)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[AsaasCheckout] ❌ Erro ao criar assinatura:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  // Salva subscription_id, plano e código de afiliado — status ativado pelo webhook
+  // Trial: acesso imediato com status 'trial' (ativado para 'active' pelo webhook PAYMENT_CONFIRMED)
+  // Boleto: status 'inactive' até confirmação do pagamento
   await supabase
     .from('users')
     .update({
       subscription_id: subscription.id,
       subscription_plan: planId,
-      subscription_status: 'inactive',
+      subscription_status: hasTrial ? 'trial' : 'inactive',
       ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
     })
     .eq('id', userId)

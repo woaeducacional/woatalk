@@ -216,3 +216,10 @@ export function getNextDueDate(): string {
   d.setDate(d.getDate() + 1)
   return d.toISOString().split('T')[0]
 }
+
+/** Calcula o vencimento do trial (hoje + 30 dias) — usado para cartão e PIX automático */
+export function getTrialDueDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 30)
+  return d.toISOString().split('T')[0]
+}

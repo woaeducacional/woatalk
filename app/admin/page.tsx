@@ -12,6 +12,14 @@ interface Level {
   mission_groups_count: number
 }
 
+interface Coupon {
+  id: number
+  code: string
+  discount_percent: number
+  active: boolean
+  created_at: string
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const { data: session, status } = useSession()
@@ -19,6 +27,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
+  // ── Coupons ──
+  const [coupons, setCoupons] = useState<Coupon[]>([])
+  const [couponCode, setCouponCode] = useState('')
+  const [couponDiscount, setCouponDiscount] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null)
 
   // ── Banner ──
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
@@ -36,6 +52,61 @@ export default function AdminDashboard() {
       .then(d => { if (d?.banner) setBannerUrl(d.banner.image_url) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/coupons')
+      .then(r => r.ok ? r.json() : { coupons: [] })
+      .then(d => setCoupons(d.coupons ?? []))
+      .catch(() => {})
+  }, [])
+
+  const handleCreateCoupon = async () => {
+    setCouponError(null)
+    setCouponSuccess(null)
+    const code = couponCode.trim().toUpperCase()
+    const discount = Number(couponDiscount)
+    if (!code || code.length < 3) { setCouponError('Código deve ter pelo menos 3 caracteres'); return }
+    if (!discount || discount < 1 || discount > 100) { setCouponError('Desconto deve ser entre 1 e 100%'); return }
+    setCouponLoading(true)
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, discount_percent: discount }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setCouponError(data.error ?? 'Erro ao criar cupom'); return }
+      setCoupons(prev => [data.coupon, ...prev])
+      setCouponCode('')
+      setCouponDiscount('')
+      setCouponSuccess(`Cupom ${data.coupon.code} criado com sucesso!`)
+    } catch {
+      setCouponError('Erro de conexão')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const handleToggleCoupon = async (id: number, active: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/coupons/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !active }),
+      })
+      if (res.ok) {
+        setCoupons(prev => prev.map(c => c.id === id ? { ...c, active: !active } : c))
+      }
+    } catch { /* ignore */ }
+  }
+
+  const handleDeleteCoupon = async (id: number) => {
+    if (!confirm('Remover este cupom permanentemente?')) return
+    try {
+      const res = await fetch(`/api/admin/coupons/${id}`, { method: 'DELETE' })
+      if (res.ok) setCoupons(prev => prev.filter(c => c.id !== id))
+    } catch { /* ignore */ }
+  }
 
   const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -156,6 +227,93 @@ export default function AdminDashboard() {
               + Criar Nova Jornada
             </button>
           </div>
+        </div>
+
+        {/* ── COUPON MANAGEMENT ── */}
+        <div className="rounded-2xl p-5 space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          <div>
+            <p className="text-sm font-black text-white tracking-wide">🎫 Cupons de Desconto</p>
+            <p className="text-[11px] text-white/40 mt-0.5">Crie códigos de desconto para os planos</p>
+          </div>
+
+          {/* Form criar cupom */}
+          <div className="flex gap-3 items-end flex-wrap">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Código</label>
+              <input
+                type="text"
+                placeholder="EX: PROMO10"
+                value={couponCode}
+                onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); setCouponSuccess(null) }}
+                maxLength={30}
+                className="px-3 py-2 rounded-xl text-sm text-white outline-none w-40"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Desconto %</label>
+              <input
+                type="number"
+                placeholder="10"
+                min={1}
+                max={100}
+                value={couponDiscount}
+                onChange={e => { setCouponDiscount(e.target.value); setCouponError(null); setCouponSuccess(null) }}
+                className="px-3 py-2 rounded-xl text-sm text-white outline-none w-24"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }}
+              />
+            </div>
+            <button
+              onClick={handleCreateCoupon}
+              disabled={couponLoading}
+              className="px-5 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', boxShadow: '0 0 12px rgba(168,85,247,0.3)' }}
+            >
+              {couponLoading ? 'Criando...' : '+ Criar Cupom'}
+            </button>
+          </div>
+
+          {couponError && <p className="text-xs text-red-400">{couponError}</p>}
+          {couponSuccess && <p className="text-xs text-green-400">{couponSuccess}</p>}
+
+          {/* Lista de cupons */}
+          {coupons.length > 0 && (
+            <div className="space-y-2 pt-1">
+              {coupons.map(c => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.active ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.08)'}` }}
+                >
+                  <span
+                    className="text-[10px] font-black tracking-widest px-2 py-0.5 rounded-full"
+                    style={{ background: c.active ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.06)', color: c.active ? '#a855f7' : 'rgba(255,255,255,0.3)' }}
+                  >
+                    {c.active ? 'ATIVO' : 'INATIVO'}
+                  </span>
+                  <span className="font-black text-sm text-white tracking-wider">{c.code}</span>
+                  <span className="text-sm text-purple-300 font-bold">{c.discount_percent}% off</span>
+                  <span className="text-[11px] text-white/30 ml-auto">{new Date(c.created_at).toLocaleDateString('pt-BR')}</span>
+                  <button
+                    onClick={() => handleToggleCoupon(c.id, c.active)}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all"
+                    style={{ background: c.active ? 'rgba(234,179,8,0.1)' : 'rgba(34,197,94,0.1)', color: c.active ? '#eab308' : '#22c55e', border: `1px solid ${c.active ? 'rgba(234,179,8,0.3)' : 'rgba(34,197,94,0.3)'}` }}
+                  >
+                    {c.active ? 'Desativar' : 'Ativar'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCoupon(c.id)}
+                    className="px-2 py-1 rounded-lg text-[11px] font-bold text-red-400/60 border border-red-500/20 hover:bg-red-500/10 hover:text-red-300 transition-all"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {coupons.length === 0 && (
+            <p className="text-xs text-white/30 text-center py-2">Nenhum cupom cadastrado</p>
+          )}
         </div>
 
         {/* ── BANNER MANAGEMENT ── */}
