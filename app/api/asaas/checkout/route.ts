@@ -153,14 +153,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  // Trial: acesso imediato com status 'trial' (ativado para 'active' pelo webhook PAYMENT_CONFIRMED)
-  // Boleto: status 'inactive' até confirmação do pagamento
+  // O acesso só será ativado após confirmação do pagamento pelo webhook.
+  // Mesmo para cartão/Pix, não definimos premium antes do pagamento ser confirmado.
   await supabase
     .from('users')
     .update({
       subscription_id: subscription.id,
       subscription_plan: planId,
-      subscription_status: hasTrial ? 'trial' : 'inactive',
+      subscription_status: 'inactive',
       ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
     })
     .eq('id', userId)
