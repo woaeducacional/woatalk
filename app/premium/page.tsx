@@ -423,6 +423,13 @@ function PremiumPageInner() {
         return
       }
 
+      // O Pix Automático normalmente retorna QR in-app. Se o Asaas fornecer
+      // somente a URL de autorização, direciona o usuário para o fluxo externo.
+      if (!data.encodedImage && !data.payload && data.authorizationUrl) {
+        window.location.href = data.authorizationUrl
+        return
+      }
+
       setPixQrData({
         encodedImage: data.encodedImage ?? null,
         payload: data.payload ?? null,
