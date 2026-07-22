@@ -578,9 +578,6 @@ function PremiumPageInner() {
             <p className="text-blue-200/70 text-lg max-w-2xl mx-auto">
               Desbloqueie todo o potencial do WOA Talk e domine o inglês de forma épica
             </p>
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-black tracking-wide" style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.35)', color: '#00D4FF' }}>
-              🎁 30 dias grátis no cartão — no Pix o pagamento é à vista (sem trial)
-            </div>
             <div className="flex items-center justify-center gap-6 pt-2 text-sm text-blue-200/50">
               <span>💳 Cartão de Crédito</span>
               <span>🟢 Pix</span>
