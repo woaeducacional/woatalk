@@ -242,6 +242,8 @@ export async function createPixAutomaticAuthorization(params: {
   finishDate?: string
   value: number
   description: string
+  paymentCreationMode?: 'MANUAL' | 'SUBSCRIPTION'
+  retryPolicy?: 'ALLOW_THREE_IN_SEVEN_DAYS' | 'NOT_ALLOWED'
   immediateQrCode: {
     value: number
     originalValue: number

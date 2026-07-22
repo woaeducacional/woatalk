@@ -133,6 +133,9 @@ export async function POST(req: NextRequest) {
       startDate: new Date().toISOString().split('T')[0],
       value: planValue,
       description: `WOA Talk — ${plan.label}`,
+      // O Asaas cria automaticamente as cobranças recorrentes após a autorização ficar ACTIVE.
+      paymentCreationMode: 'SUBSCRIPTION',
+      retryPolicy: 'NOT_ALLOWED',
       immediateQrCode: {
         value: planValue,
         originalValue: planValue,
