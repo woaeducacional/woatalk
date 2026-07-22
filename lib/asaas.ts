@@ -210,6 +210,10 @@ export interface AsaasPixAutomaticAuthorization {
   immediateQrCode?: {
     authorizationId?: string
     authorizationUrl?: string
+    qrCode?: {
+      encodedImage?: string
+      payload?: string
+    }
     pixTransaction?: {
       authorizationUrl?: string
       qrCode?: {
@@ -224,6 +228,10 @@ export interface AsaasPixAutomaticAuthorization {
     expirationSeconds?: number
   }
   conciliationIdentifier?: string
+}
+
+export async function getPixAutomaticAuthorization(id: string): Promise<AsaasPixAutomaticAuthorization> {
+  return asaasRequest<AsaasPixAutomaticAuthorization>('GET', `/pix/automatic/authorizations/${id}`)
 }
 
 export async function createPixAutomaticAuthorization(params: {

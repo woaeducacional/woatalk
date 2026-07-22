@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { playClick } from '@/lib/sounds'
 
@@ -85,6 +85,17 @@ function PremiumPageInner() {
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false)
   const [successTrialDate, setSuccessTrialDate] = useState('')
 
+  // PIX QR state
+  const [pixQrData, setPixQrData] = useState<{
+    encodedImage: string | null
+    payload: string | null
+    authorizationUrl: string | null
+    authorizationId: string
+    trialEndDate: string
+  } | null>(null)
+  const [pixCopied, setPixCopied] = useState(false)
+  const pixPollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // Coupon state
   const [couponInput, setCouponInput] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent: number } | null>(null)
@@ -131,6 +142,41 @@ function PremiumPageInner() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [modalOpen])
 
+  useEffect(() => {
+    if (!pixQrData?.authorizationId || subscriptionSuccess) return
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/asaas/pix-status?id=${encodeURIComponent(pixQrData.authorizationId)}`)
+        if (!res.ok) return
+        const data = await res.json()
+        const status = String(data.status || '').toUpperCase()
+        if (['AUTHORIZED', 'ACTIVE', 'APPROVED', 'COMPLETED', 'ENABLED'].includes(status)) {
+          const trialDate = new Date(pixQrData.trialEndDate)
+          setSuccessTrialDate(trialDate.toLocaleDateString('pt-BR'))
+          setSubscriptionSuccess(true)
+          setSubInfo({
+            status: 'trial',
+            plan: selectedPlan,
+            currentPeriodEnd: pixQrData.trialEndDate,
+            isPremium: true,
+          })
+        }
+      } catch {
+        // O polling pode falhar momentaneamente sem interromper a autorização.
+      }
+    }
+
+    checkStatus()
+    pixPollingRef.current = setInterval(checkStatus, 4000)
+    return () => {
+      if (pixPollingRef.current) {
+        clearInterval(pixPollingRef.current)
+        pixPollingRef.current = null
+      }
+    }
+  }, [pixQrData, selectedPlan, subscriptionSuccess])
+
   async function lookupCep(cep: string) {
     const clean = cep.replace(/\D/g, '')
     if (clean.length !== 8) return
@@ -176,6 +222,9 @@ function PremiumPageInner() {
     setCepError('')
     setSubscriptionSuccess(false)
     setSuccessTrialDate('')
+    setPixQrData(null)
+    setPixCopied(false)
+    if (pixPollingRef.current) { clearInterval(pixPollingRef.current); pixPollingRef.current = null }
     setModalOpen(true)
   }
 
@@ -354,26 +403,33 @@ function PremiumPageInner() {
     setCheckoutError('')
 
     try {
-      const res = await fetch('/api/asaas/checkout', {
+      const res = await fetch('/api/asaas/pix-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planId: selectedPlan,
-          billingType,
           cpf: cpfDigits,
+          ...(phone ? { phone: phone.replace(/\D/g, '') } : {}),
           ...(refCode ? { ref_code: refCode } : {}),
           ...(finalCoupon ? { coupon_code: finalCoupon.code } : {}),
         }),
       })
       const data = await res.json()
 
-      if (!res.ok || !data.redirectUrl) {
+      if (!res.ok || !data.success || !data.authorizationId) {
         setCheckoutError(data.error || 'Erro ao iniciar pagamento. Tente novamente.')
         setCheckoutLoading(false)
         return
       }
 
-      window.location.href = data.redirectUrl
+      setPixQrData({
+        encodedImage: data.encodedImage ?? null,
+        payload: data.payload ?? null,
+        authorizationUrl: data.authorizationUrl ?? null,
+        authorizationId: data.authorizationId,
+        trialEndDate: data.trialEndDate,
+      })
+      setCheckoutLoading(false)
     } catch {
       setCheckoutError('Erro de conexão. Tente novamente.')
       setCheckoutLoading(false)
@@ -883,7 +939,7 @@ function PremiumPageInner() {
                 >
                   <p className="text-cyan-300/90 text-sm font-bold">🎁 30 dias grátis ativados</p>
                   <p className="text-blue-200/60 text-xs">
-                    Nenhum valor foi cobrado agora. A primeira cobrança do cartão ocorrerá em <span className="text-white font-bold">{successTrialDate}</span>.
+                    Nenhum valor foi cobrado agora. A primeira cobrança ocorrerá em <span className="text-white font-bold">{successTrialDate}</span>.
                   </p>
                   <p className="text-blue-200/50 text-xs mt-1">Você pode cancelar a qualquer momento antes disso sem custo.</p>
                 </div>
@@ -931,6 +987,69 @@ function PremiumPageInner() {
               </button>
             </div>
 
+            {pixQrData ? (
+              <div className="flex flex-col items-center text-center space-y-5 py-3">
+                <div className="space-y-2">
+                  <h4 className="text-xl font-black text-white">Autorize o Pix Automático</h4>
+                  <p className="text-blue-200/65 text-sm leading-relaxed">
+                    Escaneie o QR Code no aplicativo do seu banco. Esta tela será atualizada automaticamente após a autorização.
+                  </p>
+                </div>
+
+                {pixQrData.encodedImage ? (
+                  <div className="p-3 rounded-2xl bg-white shadow-lg shadow-cyan-400/20">
+                    <img
+                      src={pixQrData.encodedImage.startsWith('data:') ? pixQrData.encodedImage : `data:image/png;base64,${pixQrData.encodedImage}`}
+                      alt="QR Code para autorizar Pix Automático"
+                      className="w-56 h-56 object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full px-4 py-5 rounded-2xl" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }}>
+                    <p className="text-cyan-300 text-sm font-bold">QR visual indisponível</p>
+                    <p className="text-blue-200/60 text-xs mt-1">Use o botão abaixo para abrir a autorização no aplicativo do seu banco.</p>
+                  </div>
+                )}
+
+                {pixQrData.payload && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(pixQrData.payload as string)
+                        setPixCopied(true)
+                        setTimeout(() => setPixCopied(false), 2500)
+                      } catch {
+                        setCheckoutError('Não foi possível copiar. Selecione o código manualmente.')
+                      }
+                    }}
+                    className="w-full py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
+                    style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.45)', color: '#c084fc' }}
+                  >
+                    {pixCopied ? '✓ Código copiado!' : '📋 Copiar código Pix'}
+                  </button>
+                )}
+
+                {pixQrData.authorizationUrl && (
+                  <a
+                    href={pixQrData.authorizationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
+                    style={{ background: 'linear-gradient(135deg, #0066FF, #00D4FF)', color: 'white', boxShadow: '0 0 20px rgba(0,212,255,0.25)' }}
+                  >
+                    Abrir autorização no banco →
+                  </a>
+                )}
+
+                <div className="flex items-center gap-2 text-xs text-cyan-300/65">
+                  <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  Aguardando autorização...
+                </div>
+
+                <p className="text-[10px] text-blue-200/30">A primeira cobrança ocorrerá somente em 30 dias.</p>
+              </div>
+            ) : (
+            <>
             {/* Coupon input */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Cupom de Desconto</label>
@@ -1252,6 +1371,8 @@ function PremiumPageInner() {
             </button>
 
             <p className="text-center text-[10px] text-blue-200/25 pb-2">Pagamento seguro via Asaas · SSL · Dados criptografados</p>
+            </>
+            )}
             </div>
             )}
           </div>
