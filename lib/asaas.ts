@@ -18,6 +18,11 @@ async function asaasRequest<T>(
   } else {
     console.log('[Asaas] Usando key:', apiKey.slice(0, 12) + '...')
   }
+  // Log request attempt (do not log the API key itself)
+  try {
+    console.log('[Asaas] ▶ Request:', { method, path, body: body ?? null })
+  } catch {}
+
   const res = await fetch(`${ASAAS_BASE_URL}${path}`, {
     method,
     headers: {
@@ -27,18 +32,28 @@ async function asaasRequest<T>(
     body: body ? JSON.stringify(body) : undefined,
   })
 
+  // Read raw response text for robust logging and debugging
   const text = await res.text()
+  // Log status and a few headers for context
+  try {
+    console.log('[Asaas] ◀ Response status:', res.status, 'content-type:', res.headers.get('content-type'))
+    console.log('[Asaas] ◀ Response body (raw):', text)
+  } catch {}
+
   let data: unknown
   try {
     data = JSON.parse(text)
-  } catch {
-    throw new Error(`Asaas retornou resposta não-JSON (${res.status}): ${text}`)
+  } catch (parseErr) {
+    // If response is not JSON, include raw text in error to help debugging
+    throw new Error(`[Asaas] ${method} ${path} → resposta não-JSON (${res.status}): ${text}`)
   }
 
   if (!res.ok) {
+    // Try to extract friendly Asaas errors from the parsed body, but also include raw
     const errors = (data as { errors?: { description: string }[] }).errors
     const message = errors?.map(e => e.description).join('; ') ?? `HTTP ${res.status}`
-    throw new Error(`[Asaas] ${method} ${path} → ${message}`)
+    const raw = typeof data === 'object' ? JSON.stringify(data) : String(data)
+    throw new Error(`[Asaas] ${method} ${path} → ${message} | raw: ${raw}`)
   }
 
   return data as T
