@@ -270,7 +270,7 @@ export default function PremiumPointPage() {
             </p>
             <div className="flex items-center justify-center gap-6 pt-2 text-sm text-blue-200/50">
               <span>💳 Cartão de Crédito</span>
-              <span>🟢 Pix Automático</span>
+              <span>🟢 Pix</span>
               <span>🧾 Boleto Bancário</span>
             </div>
           </div>
@@ -413,7 +413,7 @@ export default function PremiumPointPage() {
           {/* Payment methods note */}
           <div className="text-center py-4 space-y-2">
             <p className="text-blue-200/40 text-xs">Pagamentos processados com segurança pela <span className="text-blue-200/60 font-bold">Asaas</span></p>
-            <p className="text-blue-200/30 text-xs">Pix Automático: após a primeira autorização no seu banco, as mensalidades são debitadas automaticamente.</p>
+            <p className="text-blue-200/30 text-xs">No Pix, o pagamento é único e não possui trial.</p>
           </div>
 
         </div>
@@ -463,7 +463,7 @@ export default function PremiumPointPage() {
               <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Forma de Pagamento</label>
               <div className="grid grid-cols-3 gap-3">
                 {([
-                  { value: 'PIX', label: '🟢 Pix Auto.' },
+                  { value: 'PIX', label: '🟢 Pix' },
                   { value: 'CREDIT_CARD', label: '💳 Cartão' },
                   { value: 'BOLETO', label: '🧾 Boleto' },
                 ] as { value: BillingType; label: string }[]).map(opt => (
@@ -483,7 +483,7 @@ export default function PremiumPointPage() {
               </div>
               {billingType === 'PIX' && (
                 <p className="text-[11px] text-cyan-400/50 leading-relaxed">
-                  Você será redirecionado para autorizar o Pix Automático no app do seu banco. Após isso, as mensalidades são debitadas automaticamente.
+                  No Pix, o pagamento é à vista e sem trial.
                 </p>
               )}
             </div>

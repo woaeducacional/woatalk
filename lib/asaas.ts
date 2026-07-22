@@ -87,12 +87,17 @@ export interface AsaasSubscription {
 export interface AsaasPayment {
   id: string
   subscription?: string
+  externalReference?: string
   billingType: AsaasBillingType
   status: string
   value: number
   dueDate: string
   invoiceUrl?: string
   bankSlipUrl?: string
+  qrCode?: {
+    encodedImage?: string
+    payload?: string
+  }
   pixQrCodeId?: string
   pixTransaction?: {
     authorizationUrl?: string
@@ -176,6 +181,33 @@ export async function getFirstPendingPayment(subscriptionId: string): Promise<As
 
 export async function getPayment(paymentId: string): Promise<AsaasPayment> {
   return asaasRequest<AsaasPayment>('GET', `/payments/${paymentId}`)
+}
+
+export async function createPixPayment(params: {
+  customer: string
+  value: number
+  dueDate: string
+  description: string
+  externalReference?: string
+}): Promise<AsaasPayment> {
+  return asaasRequest<AsaasPayment>('POST', '/payments', {
+    ...params,
+    billingType: 'PIX',
+  })
+}
+
+export async function getPixQrCode(paymentId: string): Promise<{ encodedImage: string | null; payload: string | null }> {
+  const data = await asaasRequest<{
+    encodedImage?: string
+    payload?: string
+    qrCode?: { encodedImage?: string; payload?: string }
+    pixTransaction?: { qrCode?: { encodedImage?: string; payload?: string } }
+  }>('GET', `/payments/${paymentId}/pixQrCode`)
+
+  return {
+    encodedImage: data.encodedImage ?? data.qrCode?.encodedImage ?? data.pixTransaction?.qrCode?.encodedImage ?? null,
+    payload: data.payload ?? data.qrCode?.payload ?? data.pixTransaction?.qrCode?.payload ?? null,
+  }
 }
 
 export async function updatePayment(paymentId: string, data: Record<string, unknown>): Promise<void> {
@@ -395,7 +427,7 @@ export function getNextDueDate(): string {
   return d.toISOString().split('T')[0]
 }
 
-/** Calcula o vencimento do trial (hoje + 30 dias) — usado para cartão e PIX automático */
+/** Calcula o vencimento do trial (hoje + 30 dias) — usado para cartão */
 export function getTrialDueDate(): string {
   const d = new Date()
   d.setDate(d.getDate() + 30)

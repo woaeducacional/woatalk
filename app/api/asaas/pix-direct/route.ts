@@ -5,12 +5,10 @@ import { createClient } from '@supabase/supabase-js'
 import {
   ASAAS_PLANS,
   AsaasPlanId,
-  AsaasPixAutomaticAuthorizationFrequency,
-  cancelPixAutomaticAuthorization,
   createCustomer,
-  createPixAutomaticAuthorization,
+  createPixPayment,
   findCustomerByCpf,
-  getPixAutomaticAuthorization,
+  getPixQrCode,
 } from '@/lib/asaas'
 
 const supabase = createClient(
@@ -20,7 +18,7 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  console.log('[PixDirect] ▶ Iniciando autorização Pix Automático direta')
+  console.log('[PixDirect] ▶ Iniciando cobrança Pix única')
 
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -118,82 +116,56 @@ export async function POST(req: NextRequest) {
     await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', userId)
   }
 
-  // Pix Automático exige um pagamento inicial para ativar a autorização.
-  // Não há trial: o QR Code inicial vence hoje.
-  const initialDueDate = new Date().toISOString().split('T')[0]
-  const frequency: AsaasPixAutomaticAuthorizationFrequency = plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY'
+  const dueDate = new Date().toISOString().split('T')[0]
 
-  console.log('[PixDirect] ▶ Criando autorização Pix Automático', { userId, planId, planValue, initialDueDate })
+  console.log('[PixDirect] ▶ Criando cobrança Pix única', { userId, planId, planValue, dueDate })
 
-  let authorization: Awaited<ReturnType<typeof createPixAutomaticAuthorization>>
+  let payment: Awaited<ReturnType<typeof createPixPayment>>
   try {
-    authorization = await createPixAutomaticAuthorization({
-      customerId: asaasCustomerId,
-      frequency,
-      contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
-      startDate: initialDueDate,
+    payment = await createPixPayment({
+      customer: asaasCustomerId,
       value: planValue,
+      dueDate,
       description: `WOA Talk — ${plan.label}`,
-      // O Asaas cria automaticamente as cobranças recorrentes após a autorização ficar ACTIVE.
-      paymentCreationMode: 'SUBSCRIPTION',
-      retryPolicy: 'NOT_ALLOWED',
-      immediateQrCode: {
-        value: planValue,
-        originalValue: planValue,
-        dueDate: initialDueDate,
-        description: `WOA Talk — ${plan.label}`,
-        expirationSeconds: 86400,
-      },
+      externalReference: userId,
     })
-    console.log('[PixDirect] ✅ Autorização criada:', authorization.id)
-    console.log('[PixDirect] Resposta completa:', JSON.stringify(authorization, null, 2))
+    console.log('[PixDirect] ✅ Cobrança PIX criada:', payment.id)
+    console.log('[PixDirect] Resposta completa:', JSON.stringify(payment, null, 2))
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[PixDirect] ❌ Erro ao criar autorização:', message)
+    console.error('[PixDirect] ❌ Erro ao criar cobrança PIX:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  // O POST pode retornar apenas o id. O QR fica disponível no GET da autorização.
-  let authorizationDetails = authorization
-  let imm = authorizationDetails.immediateQrCode
-  if (!imm?.qrCode && !imm?.pixTransaction?.qrCode && !imm?.authorizationUrl && !imm?.pixTransaction?.authorizationUrl) {
+  let encodedImage = payment.qrCode?.encodedImage ?? payment.pixTransaction?.qrCode?.encodedImage ?? null
+  let payload = payment.qrCode?.payload ?? payment.pixTransaction?.qrCode?.payload ?? null
+
+  if (!encodedImage || !payload) {
     try {
-      authorizationDetails = await getPixAutomaticAuthorization(authorization.id)
-      imm = authorizationDetails.immediateQrCode
-      console.log('[PixDirect] QR consultado via GET da autorização:', JSON.stringify(authorizationDetails, null, 2))
+      const qrData = await getPixQrCode(payment.id)
+      encodedImage = encodedImage ?? qrData.encodedImage
+      payload = payload ?? qrData.payload
+      console.log('[PixDirect] QR consultado via /payments/:id/pixQrCode')
     } catch (err) {
-      console.warn('[PixDirect] Não foi possível consultar detalhes da autorização:', err)
+      console.warn('[PixDirect] Não foi possível consultar QR Code do PIX:', err)
     }
   }
 
-  // Extract QR code data — check multiple paths Asaas may use
-  const encodedImage =
-    imm?.qrCode?.encodedImage ??
-    imm?.pixTransaction?.qrCode?.encodedImage ??
-    null
-  const payload =
-    imm?.qrCode?.payload ??
-    imm?.pixTransaction?.qrCode?.payload ??
-    null
-  const authorizationUrl =
-    imm?.authorizationUrl ??
-    imm?.pixTransaction?.authorizationUrl ??
-    null
+  const invoiceUrl = payment.invoiceUrl ?? null
 
-  if (!encodedImage && !payload && !authorizationUrl) {
-    console.error('[PixDirect] ❌ Nenhum dado de QR Code encontrado na resposta', { imm })
-    try { await cancelPixAutomaticAuthorization(authorization.id) } catch {}
+  if (!encodedImage && !payload && !invoiceUrl) {
+    console.error('[PixDirect] ❌ Nenhum dado de pagamento PIX encontrado', { paymentId: payment.id })
     return NextResponse.json(
       { error: 'Não foi possível obter o QR Code do Pix. Tente novamente.' },
       { status: 500 }
     )
   }
 
-  // Persist as pending: access is confirmed only after Asaas changes the authorization to ACTIVE.
+  // Access is confirmed only after PAYMENT_CONFIRMED/PAYMENT_RECEIVED webhook.
   await supabase
     .from('users')
     .update({
-      subscription_id: authorization.id,
+      subscription_id: payment.id,
       subscription_plan: planId,
       subscription_status: 'pending',
       subscription_current_period_end: null,
@@ -203,10 +175,10 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    authorizationId: authorization.id,
+    paymentId: payment.id,
     encodedImage,
     payload,
-    authorizationUrl,
-    initialDueDate,
+    invoiceUrl,
+    dueDate,
   })
 }
