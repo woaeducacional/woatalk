@@ -144,6 +144,27 @@ function PremiumPageInner() {
       return
     }
 
+    // Auto-validate coupon if user typed but didn't click "Aplicar"
+    let finalCoupon = appliedCoupon
+    const rawInput = couponInput.trim().toUpperCase()
+    if (rawInput && !appliedCoupon) {
+      try {
+        const vRes = await fetch(`/api/coupons/validate?code=${encodeURIComponent(rawInput)}`)
+        const vData = await vRes.json()
+        if (vData.valid) {
+          finalCoupon = { code: vData.code, discount_percent: vData.discount_percent }
+          setAppliedCoupon(finalCoupon)
+          setCouponMsg({ type: 'ok', text: `Cupom aplicado: ${vData.discount_percent}% de desconto!` })
+        } else {
+          setCouponMsg({ type: 'err', text: 'Cupom inválido ou inativo.' })
+          return
+        }
+      } catch {
+        setCouponMsg({ type: 'err', text: 'Erro ao validar cupom.' })
+        return
+      }
+    }
+
     setCheckoutLoading(true)
     setCheckoutError('')
 
@@ -156,7 +177,7 @@ function PremiumPageInner() {
           billingType,
           cpf: cpfDigits,
           ...(refCode ? { ref_code: refCode } : {}),
-          ...(appliedCoupon ? { coupon_code: appliedCoupon.code } : {}),
+          ...(finalCoupon ? { coupon_code: finalCoupon.code } : {}),
         }),
       })
       const data = await res.json()
