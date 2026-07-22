@@ -9,6 +9,8 @@ import {
   createCustomer,
   createSubscription,
   createPixAutomaticAuthorization,
+  cancelPixAutomaticAuthorization,
+  cancelSubscription,
   findCustomerByCpf,
   getFirstPendingPayment,
   getNextDueDate,
@@ -136,27 +138,59 @@ export async function POST(req: NextRequest) {
 
   if (billingType === 'PIX') {
     let authorization
-    try {
-      authorization = await createPixAutomaticAuthorization({
-        customerId: asaasCustomerId,
-        frequency: plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY',
-        contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
-        startDate: new Date().toISOString().split('T')[0],
+    const authorizationPayload = {
+      customerId: asaasCustomerId,
+      frequency: plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY',
+      contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
+      startDate: new Date().toISOString().split('T')[0],
+      value: planValue,
+      description: `WOA Talk — ${plan.label}`,
+      immediateQrCode: {
         value: planValue,
-        description: `WOA Talk — ${plan.label}`,
-        immediateQrCode: {
-          value: planValue,
-          originalValue: planValue,
-          dueDate: trialEndDate,
-          description: 'Cobrança inicial em 30 dias',
-          expirationSeconds: 86400,
-        },
-      })
+        originalValue: planValue,
+        dueDate: trialEndDate,
+        description: 'Cobrança inicial em 30 dias',
+        expirationSeconds: 86400,
+      },
+    }
+
+    console.log('[AsaasCheckout] ▶ Criando autorização Pix Automático', {
+      userId,
+      planId,
+      planValue,
+      cpf: cpfClean,
+      billingType,
+      payload: authorizationPayload,
+    })
+
+    try {
+      authorization = await createPixAutomaticAuthorization(authorizationPayload)
       console.log('[AsaasCheckout] ✅ Autorização Pix Automático criada:', authorization.id)
+      console.log('[AsaasCheckout] ▶ Resposta do Asaas Pix Automático:', JSON.stringify(authorization, null, 2))
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error('[AsaasCheckout] ❌ Erro ao criar autorização Pix Automático:', message)
       return NextResponse.json({ error: message }, { status: 500 })
+    }
+
+    const immediateQr = authorization.immediateQrCode
+    const redirectUrl =
+      immediateQr?.authorizationUrl ??
+      immediateQr?.pixTransaction?.authorizationUrl ??
+      null
+
+    if (!redirectUrl) {
+      console.error('[AsaasCheckout] ❌ URL de pagamento Pix Automático não encontrada', {
+        authorizationId: authorization.id,
+        immediateQr,
+      })
+      try {
+        await cancelPixAutomaticAuthorization(authorization.id)
+        console.log('[AsaasCheckout] ✅ Limpeza: autorização Pix Automático cancelada após falta de URL')
+      } catch (cleanupError) {
+        console.warn('[AsaasCheckout] ⚠ Não foi possível cancelar autorização Pix Automático de limpeza:', cleanupError)
+      }
+      return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento Pix Automático. Tente novamente.' }, { status: 500 })
     }
 
     await supabase
@@ -169,17 +203,6 @@ export async function POST(req: NextRequest) {
         ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
       })
       .eq('id', userId)
-
-    const immediateQr = authorization.immediateQrCode
-    const redirectUrl =
-      immediateQr?.authorizationUrl ??
-      immediateQr?.pixTransaction?.authorizationUrl ??
-      null
-
-    if (!redirectUrl) {
-      console.error('[AsaasCheckout] ❌ URL de pagamento Pix Automático não encontrada')
-      return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento Pix Automático. Tente novamente.' }, { status: 500 })
-    }
 
     return NextResponse.json({
       redirectUrl,
@@ -209,16 +232,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  await supabase
-    .from('users')
-    .update({
-      subscription_id: subscription.id,
-      subscription_plan: planId,
-      subscription_status: hasTrial ? 'trial' : 'inactive',
-      ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
-    })
-    .eq('id', userId)
-
   // Busca a primeira cobrança gerada para obter a URL de pagamento
   const payment = await getFirstPendingPayment(subscription.id)
   console.log('[AsaasCheckout] Primeira cobrança:', payment?.id, '| invoiceUrl:', payment?.invoiceUrl)
@@ -240,8 +253,24 @@ export async function POST(req: NextRequest) {
 
   if (!redirectUrl) {
     console.error('[AsaasCheckout] ❌ URL de pagamento não encontrada')
+    try {
+      await cancelSubscription(subscription.id)
+      console.log('[AsaasCheckout] ✅ Limpeza: assinatura cancelada após falta de URL')
+    } catch (cleanupError) {
+      console.warn('[AsaasCheckout] ⚠ Não foi possível cancelar assinatura de limpeza:', cleanupError)
+    }
     return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento. Tente novamente.' }, { status: 500 })
   }
+
+  await supabase
+    .from('users')
+    .update({
+      subscription_id: subscription.id,
+      subscription_plan: planId,
+      subscription_status: hasTrial ? 'trial' : 'inactive',
+      ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
+    })
+    .eq('id', userId)
 
   return NextResponse.json({
     redirectUrl,
