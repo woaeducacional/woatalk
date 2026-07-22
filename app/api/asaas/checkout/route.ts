@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
   // Busca dados do usuário no DB
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('asaas_customer_id, subscription_status, subscription_id')
+    .select('asaas_customer_id, subscription_status, subscription_id, phone')
     .eq('id', userId)
     .single()
 
