@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
         description: `WOA Talk — ${plan.label}`,
         immediateQrCode: {
           value: planValue,
+          originalValue: planValue,
           dueDate: trialEndDate,
           description: `Primeira cobrança em 30 dias — ${plan.label}`,
           expirationSeconds: 86400,
