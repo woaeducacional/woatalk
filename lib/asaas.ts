@@ -296,6 +296,37 @@ export async function createPixAutomaticPayment(params: {
   return asaasRequest<AsaasPayment>('POST', '/payments', params)
 }
 
+// ── Credit Card Direct Subscription ───────────────────────
+
+export async function createCreditCardSubscription(params: {
+  customer: string
+  value: number
+  nextDueDate: string
+  cycle: AsaasSubscriptionCycle
+  description: string
+  externalReference?: string
+  creditCard: {
+    holderName: string
+    number: string
+    expiryMonth: string
+    expiryYear: string
+    ccv: string
+  }
+  creditCardHolderInfo: {
+    name: string
+    email: string
+    cpfCnpj: string
+    postalCode: string
+    addressNumber: string
+    addressComplement?: string
+    phone: string
+    mobilePhone?: string
+  }
+  remoteIp: string
+}): Promise<AsaasSubscription> {
+  return asaasRequest<AsaasSubscription>('POST', '/subscriptions', params as unknown as Record<string, unknown>)
+}
+
 // ── Plan definitions ───────────────────────────────────────
 
 export const ASAAS_PLANS = {

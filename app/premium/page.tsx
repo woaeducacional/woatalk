@@ -17,6 +17,17 @@ interface SubscriptionInfo {
   isPremium: boolean
 }
 
+function formatCardNumber(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 16)
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
+function formatExpiry(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 4)
+  if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return digits
+}
+
 function formatCpf(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 11)
   return digits
@@ -55,6 +66,24 @@ function PremiumPageInner() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
   const modalRef = useRef<HTMLDivElement>(null)
+
+  // Card form state
+  const [cardNumber, setCardNumber] = useState('')
+  const [cardHolder, setCardHolder] = useState('')
+  const [expiryRaw, setExpiryRaw] = useState('')
+  const [ccv, setCcv] = useState('')
+  const [phone, setPhone] = useState('')
+  const [postalCode, setPostalCode] = useState('')
+  const [addressStreet, setAddressStreet] = useState('')
+  const [addressNumber, setAddressNumber] = useState('')
+  const [addressComplement, setAddressComplement] = useState('')
+  const [addressCity, setAddressCity] = useState('')
+  const [addressProvince, setAddressProvince] = useState('')
+  const [cepLoading, setCepLoading] = useState(false)
+  const [cepError, setCepError] = useState('')
+  // Success state
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState(false)
+  const [successTrialDate, setSuccessTrialDate] = useState('')
 
   // Coupon state
   const [couponInput, setCouponInput] = useState('')
@@ -102,6 +131,28 @@ function PremiumPageInner() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [modalOpen])
 
+  async function lookupCep(cep: string) {
+    const clean = cep.replace(/\D/g, '')
+    if (clean.length !== 8) return
+    setCepLoading(true)
+    setCepError('')
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`)
+      const data = await res.json()
+      if (data.erro) {
+        setCepError('CEP não encontrado.')
+      } else {
+        setAddressStreet(data.logradouro ?? '')
+        setAddressCity(data.localidade ?? '')
+        setAddressProvince(data.uf ?? '')
+      }
+    } catch {
+      setCepError('Erro ao buscar CEP.')
+    } finally {
+      setCepLoading(false)
+    }
+  }
+
   function openCheckout(planId: PlanId) {
     playClick()
     setSelectedPlan(planId)
@@ -111,6 +162,20 @@ function PremiumPageInner() {
     setCouponInput('')
     setAppliedCoupon(null)
     setCouponMsg(null)
+    setCardNumber('')
+    setCardHolder('')
+    setExpiryRaw('')
+    setCcv('')
+    setPhone('')
+    setPostalCode('')
+    setAddressStreet('')
+    setAddressNumber('')
+    setAddressComplement('')
+    setAddressCity('')
+    setAddressProvince('')
+    setCepError('')
+    setSubscriptionSuccess(false)
+    setSuccessTrialDate('')
     setModalOpen(true)
   }
 
@@ -136,7 +201,127 @@ function PremiumPageInner() {
     }
   }
 
+  async function handleCreditCardDirect() {
+    if (!selectedPlan) return
+    const cpfDigits = cpf.replace(/\D/g, '')
+    if (cpfDigits.length !== 11) {
+      setCheckoutError('Informe um CPF válido com 11 dígitos.')
+      return
+    }
+    const cardDigits = cardNumber.replace(/\D/g, '')
+    if (cardDigits.length < 13) {
+      setCheckoutError('Número do cartão inválido.')
+      return
+    }
+    if (!cardHolder.trim()) {
+      setCheckoutError('Informe o nome impresso no cartão.')
+      return
+    }
+    const expiryDigits = expiryRaw.replace(/\D/g, '')
+    if (expiryDigits.length !== 4) {
+      setCheckoutError('Data de validade inválida (MM/AA).')
+      return
+    }
+    if (ccv.length < 3) {
+      setCheckoutError('CVV inválido.')
+      return
+    }
+    const phoneDigits = phone.replace(/\D/g, '')
+    if (phoneDigits.length < 10) {
+      setCheckoutError('Informe um telefone válido.')
+      return
+    }
+    if (postalCode.replace(/\D/g, '').length !== 8) {
+      setCheckoutError('CEP inválido.')
+      return
+    }
+    if (!addressStreet.trim() || !addressNumber.trim() || !addressCity.trim() || !addressProvince.trim()) {
+      setCheckoutError('Preencha todos os campos de endereço.')
+      return
+    }
+
+    let finalCoupon = appliedCoupon
+    const rawInput = couponInput.trim().toUpperCase()
+    if (rawInput && !appliedCoupon) {
+      try {
+        const vRes = await fetch(`/api/coupons/validate?code=${encodeURIComponent(rawInput)}`)
+        const vData = await vRes.json()
+        if (vData.valid) {
+          finalCoupon = { code: vData.code, discount_percent: vData.discount_percent }
+          setAppliedCoupon(finalCoupon)
+          setCouponMsg({ type: 'ok', text: `Cupom aplicado: ${vData.discount_percent}% de desconto!` })
+        } else {
+          setCouponMsg({ type: 'err', text: 'Cupom inválido ou inativo.' })
+          return
+        }
+      } catch {
+        setCouponMsg({ type: 'err', text: 'Erro ao validar cupom.' })
+        return
+      }
+    }
+
+    setCheckoutLoading(true)
+    setCheckoutError('')
+
+    try {
+      const expiryM = expiryDigits.slice(0, 2)
+      const expiryY = expiryDigits.slice(2)
+      const res = await fetch('/api/asaas/credit-card-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: selectedPlan,
+          cpf: cpfDigits,
+          phone: phoneDigits,
+          cardNumber: cardDigits,
+          cardHolder: cardHolder.trim(),
+          expiryMonth: expiryM,
+          expiryYear: expiryY.length === 2 ? `20${expiryY}` : expiryY,
+          ccv,
+          postalCode: postalCode.replace(/\D/g, ''),
+          address: addressStreet.trim(),
+          addressNumber: addressNumber.trim(),
+          addressComplement: addressComplement.trim(),
+          city: addressCity.trim(),
+          province: addressProvince.trim(),
+          ...(refCode ? { ref_code: refCode } : {}),
+          ...(finalCoupon ? { coupon_code: finalCoupon.code } : {}),
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        // Strip raw Asaas internals from error for friendlier display
+        const rawMsg: string = data.error || 'Erro ao processar cartão. Verifique os dados e tente novamente.'
+        const friendly = rawMsg.includes('creditCard') || rawMsg.includes('Cartão') || rawMsg.includes('cartão')
+          ? rawMsg
+          : rawMsg.includes('|') ? rawMsg.split('|')[0].trim() : rawMsg
+        setCheckoutError(friendly)
+        setCheckoutLoading(false)
+        return
+      }
+
+      // Success — update local state immediately
+      const trialDate = new Date(data.trialEndDate)
+      setSuccessTrialDate(trialDate.toLocaleDateString('pt-BR'))
+      setSubscriptionSuccess(true)
+      setSubInfo({
+        status: 'trial',
+        plan: selectedPlan,
+        currentPeriodEnd: data.trialEndDate,
+        isPremium: true,
+      })
+    } catch {
+      setCheckoutError('Erro de conexão. Tente novamente.')
+      setCheckoutLoading(false)
+    }
+  }
+
   async function handleCheckout() {
+    if (billingType === 'CREDIT_CARD') {
+      return handleCreditCardDirect()
+    }
+
     if (!selectedPlan) return
     const cpfDigits = cpf.replace(/\D/g, '')
     if (cpfDigits.length !== 11) {
@@ -669,12 +854,55 @@ function PremiumPageInner() {
 
       {/* Checkout Modal */}
       {modalOpen && selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.80)', backdropFilter: 'blur(6px)' }}>
           <div
             ref={modalRef}
-            className="w-full max-w-md rounded-2xl p-8 space-y-6"
-            style={{ background: 'linear-gradient(135deg, #0a1929 0%, #050E1A 100%)', border: '1.5px solid rgba(0,212,255,0.25)', boxShadow: '0 0 60px rgba(0,212,255,0.12)' }}
+            className="w-full max-w-lg rounded-2xl overflow-y-auto"
+            style={{ background: 'linear-gradient(135deg, #0a1929 0%, #050E1A 100%)', border: '1.5px solid rgba(0,212,255,0.25)', boxShadow: '0 0 60px rgba(0,212,255,0.12)', maxHeight: '92vh' }}
           >
+
+            {/* ── SUCCESS SCREEN ── */}
+            {subscriptionSuccess ? (
+              <div className="flex flex-col items-center justify-center text-center p-10 space-y-6">
+                {/* animated checkmark */}
+                <div
+                  className="flex items-center justify-center w-20 h-20 rounded-full"
+                  style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.25) 0%, rgba(34,197,94,0.06) 100%)', border: '2px solid rgba(34,197,94,0.5)', boxShadow: '0 0 40px rgba(34,197,94,0.3)' }}
+                >
+                  <span className="text-4xl">✅</span>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black text-white tracking-wide">Assinatura ativada!</h3>
+                  <p className="text-green-400 font-bold text-sm">Bem-vindo ao {planLabel(selectedPlan)} 🎉</p>
+                </div>
+
+                <div
+                  className="w-full px-5 py-4 rounded-2xl space-y-1"
+                  style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }}
+                >
+                  <p className="text-cyan-300/90 text-sm font-bold">🎁 30 dias grátis ativados</p>
+                  <p className="text-blue-200/60 text-xs">
+                    Nenhum valor foi cobrado agora. A primeira cobrança do cartão ocorrerá em <span className="text-white font-bold">{successTrialDate}</span>.
+                  </p>
+                  <p className="text-blue-200/50 text-xs mt-1">Você pode cancelar a qualquer momento antes disso sem custo.</p>
+                </div>
+
+                <button
+                  onClick={() => setModalOpen(false)}
+                  className="w-full py-3.5 rounded-xl font-black tracking-widest text-sm transition-all hover:scale-[1.02] active:scale-95"
+                  style={{ background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: 'white', boxShadow: '0 0 24px rgba(34,197,94,0.35)' }}
+                >
+                  Começar agora →
+                </button>
+
+                <p className="text-[10px] text-blue-200/25">Pagamento seguro via Asaas · SSL</p>
+              </div>
+            ) : (
+
+            /* ── CHECKOUT FORM ── */
+            <div className="p-8 space-y-5">
+
             {/* Modal header */}
             <div className="flex items-start justify-between">
               <div>
@@ -757,11 +985,8 @@ function PremiumPageInner() {
                 value={cpf}
                 onChange={e => setCpf(formatCpf(e.target.value))}
                 maxLength={14}
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/30 text-base font-mono outline-none focus:ring-2"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1.5px solid rgba(0,212,255,0.2)',
-                }}
+                className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/30 text-base font-mono outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
               />
             </div>
 
@@ -776,7 +1001,7 @@ function PremiumPageInner() {
                 ] as { value: BillingType; label: string }[]).map(opt => (
                   <button
                     key={opt.value}
-                    onClick={() => setBillingType(opt.value)}
+                    onClick={() => { setBillingType(opt.value); setCheckoutError('') }}
                     className="py-2.5 px-2 rounded-xl text-xs font-black tracking-wide transition-all"
                     style={{
                       background: billingType === opt.value ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)',
@@ -803,9 +1028,208 @@ function PremiumPageInner() {
               )}
             </div>
 
+            {/* ── CREDIT CARD FORM ── */}
+            {billingType === 'CREDIT_CARD' && (
+              <div className="space-y-4 pt-1">
+                <div className="flex items-center gap-2 pb-1">
+                  <div className="flex-1 h-px" style={{ background: 'rgba(0,212,255,0.15)' }} />
+                  <span className="text-[10px] font-black tracking-widest text-cyan-400/50">DADOS DO CARTÃO</span>
+                  <div className="flex-1 h-px" style={{ background: 'rgba(0,212,255,0.15)' }} />
+                </div>
+
+                {/* Card number */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Número do Cartão</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0000 0000 0000 0000"
+                    value={cardNumber}
+                    onChange={e => setCardNumber(formatCardNumber(e.target.value))}
+                    maxLength={19}
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-base font-mono outline-none"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)', letterSpacing: '0.1em' }}
+                  />
+                </div>
+
+                {/* Card holder */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Nome no Cartão</label>
+                  <input
+                    type="text"
+                    placeholder="NOME COMO IMPRESSO NO CARTÃO"
+                    value={cardHolder}
+                    onChange={e => setCardHolder(e.target.value.toUpperCase())}
+                    maxLength={60}
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-sm font-mono outline-none"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                  />
+                </div>
+
+                {/* Expiry + CVV */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Validade</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="MM/AA"
+                      value={formatExpiry(expiryRaw)}
+                      onChange={e => setExpiryRaw(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      maxLength={5}
+                      className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-base font-mono outline-none"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">CVV</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="123"
+                      value={ccv}
+                      onChange={e => setCcv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      maxLength={4}
+                      className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-base font-mono outline-none"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Telefone</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="(11) 99999-9999"
+                    value={phone}
+                    onChange={e => {
+                      const d = e.target.value.replace(/\D/g, '').slice(0, 11)
+                      const fmt = d.length > 6
+                        ? `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`
+                        : d.length > 2 ? `(${d.slice(0,2)}) ${d.slice(2)}` : d
+                      setPhone(fmt)
+                    }}
+                    maxLength={16}
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-base font-mono outline-none"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pb-1 pt-1">
+                  <div className="flex-1 h-px" style={{ background: 'rgba(0,212,255,0.15)' }} />
+                  <span className="text-[10px] font-black tracking-widest text-cyan-400/50">ENDEREÇO DE COBRANÇA</span>
+                  <div className="flex-1 h-px" style={{ background: 'rgba(0,212,255,0.15)' }} />
+                </div>
+
+                {/* CEP */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">CEP</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="00000-000"
+                      value={postalCode}
+                      onChange={e => {
+                        const d = e.target.value.replace(/\D/g, '').slice(0, 8)
+                        const fmt = d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d
+                        setPostalCode(fmt)
+                        if (d.length === 8) lookupCep(d)
+                      }}
+                      maxLength={9}
+                      className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-base font-mono outline-none pr-10"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: `1.5px solid ${cepError ? 'rgba(239,68,68,0.5)' : 'rgba(0,212,255,0.2)'}` }}
+                    />
+                    {cepLoading && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400/70 text-xs animate-pulse">...</span>
+                    )}
+                  </div>
+                  {cepError && <p className="text-red-400 text-xs font-bold">{cepError}</p>}
+                </div>
+
+                {/* Street */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Rua / Logradouro</label>
+                  <input
+                    type="text"
+                    placeholder="Av. Paulista"
+                    value={addressStreet}
+                    onChange={e => setAddressStreet(e.target.value)}
+                    maxLength={100}
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-sm outline-none"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                  />
+                </div>
+
+                {/* Number + Complement */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Número</label>
+                    <input
+                      type="text"
+                      placeholder="1000"
+                      value={addressNumber}
+                      onChange={e => setAddressNumber(e.target.value)}
+                      maxLength={20}
+                      className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-sm outline-none"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Complemento</label>
+                    <input
+                      type="text"
+                      placeholder="Apto 12 (opcional)"
+                      value={addressComplement}
+                      onChange={e => setAddressComplement(e.target.value)}
+                      maxLength={60}
+                      className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-sm outline-none"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* City + State */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Cidade</label>
+                    <input
+                      type="text"
+                      placeholder="São Paulo"
+                      value={addressCity}
+                      onChange={e => setAddressCity(e.target.value)}
+                      maxLength={60}
+                      className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-sm outline-none"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">UF</label>
+                    <input
+                      type="text"
+                      placeholder="SP"
+                      value={addressProvince}
+                      onChange={e => setAddressProvince(e.target.value.toUpperCase().slice(0, 2))}
+                      maxLength={2}
+                      className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-200/25 text-sm font-mono outline-none"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(0,212,255,0.2)' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Error */}
             {checkoutError && (
-              <p className="text-red-400 text-sm font-bold text-center">{checkoutError}</p>
+              <div
+                className="flex items-start gap-2 px-4 py-3 rounded-xl text-sm font-bold"
+                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}
+              >
+                <span className="flex-shrink-0">⚠</span>
+                <span>{checkoutError}</span>
+              </div>
             )}
 
             {/* Submit */}
@@ -820,10 +1244,16 @@ function PremiumPageInner() {
                 boxShadow: !checkoutLoading ? '0 0 24px rgba(0,212,255,0.3)' : 'none',
               }}
             >
-              {checkoutLoading ? 'Processando...' : 'Continuar para Pagamento →'}
+              {checkoutLoading
+                ? 'Processando...'
+                : billingType === 'CREDIT_CARD'
+                ? '🔒 Assinar com Cartão — 30 dias grátis'
+                : 'Continuar para Pagamento →'}
             </button>
 
-            <p className="text-center text-[10px] text-blue-200/25">Pagamento seguro via Asaas · SSL</p>
+            <p className="text-center text-[10px] text-blue-200/25 pb-2">Pagamento seguro via Asaas · SSL · Dados criptografados</p>
+            </div>
+            )}
           </div>
         </div>
       )}
