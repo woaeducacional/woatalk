@@ -276,7 +276,6 @@ export async function POST(req: NextRequest) {
           value: planValue,
         },
       ],
-      customer: asaasCustomerId,
       customerData: {
         name: userName,
         email: userEmail,
