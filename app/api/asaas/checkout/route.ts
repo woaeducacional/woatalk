@@ -263,8 +263,8 @@ export async function POST(req: NextRequest) {
   }
 
   const redirectUrl =
-    payment?.invoiceUrl ??
     subscription.paymentLink ??
+    payment?.invoiceUrl ??
     null
 
   if (!redirectUrl) {
