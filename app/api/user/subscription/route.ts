@@ -28,6 +28,6 @@ export async function GET() {
     plan,
     status,
     currentPeriodEnd: user?.subscription_current_period_end ?? null,
-    isPremium: plan !== null && status === 'active',
+    isPremium: plan !== null && (status === 'active' || status === 'trial'),
   })
 }

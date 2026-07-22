@@ -56,6 +56,12 @@ function PremiumPageInner() {
   const [checkoutError, setCheckoutError] = useState('')
   const modalRef = useRef<HTMLDivElement>(null)
 
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent: number } | null>(null)
+  const [couponValidating, setCouponValidating] = useState(false)
+  const [couponMsg, setCouponMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status, router])
@@ -102,7 +108,32 @@ function PremiumPageInner() {
     setBillingType('PIX')
     setCpf('')
     setCheckoutError('')
+    setCouponInput('')
+    setAppliedCoupon(null)
+    setCouponMsg(null)
     setModalOpen(true)
+  }
+
+  async function handleApplyCoupon() {
+    const code = couponInput.trim().toUpperCase()
+    if (!code) return
+    setCouponValidating(true)
+    setCouponMsg(null)
+    try {
+      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(code)}`)
+      const data = await res.json()
+      if (data.valid) {
+        setAppliedCoupon({ code: data.code, discount_percent: data.discount_percent })
+        setCouponMsg({ type: 'ok', text: `Cupom aplicado: ${data.discount_percent}% de desconto!` })
+      } else {
+        setAppliedCoupon(null)
+        setCouponMsg({ type: 'err', text: 'Cupom inválido ou inativo.' })
+      }
+    } catch {
+      setCouponMsg({ type: 'err', text: 'Erro ao validar cupom.' })
+    } finally {
+      setCouponValidating(false)
+    }
   }
 
   async function handleCheckout() {
@@ -120,7 +151,13 @@ function PremiumPageInner() {
       const res = await fetch('/api/asaas/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: selectedPlan, billingType, cpf: cpfDigits, ...(refCode ? { ref_code: refCode } : {}) }),
+        body: JSON.stringify({
+          planId: selectedPlan,
+          billingType,
+          cpf: cpfDigits,
+          ...(refCode ? { ref_code: refCode } : {}),
+          ...(appliedCoupon ? { coupon_code: appliedCoupon.code } : {}),
+        }),
       })
       const data = await res.json()
 
@@ -230,6 +267,7 @@ function PremiumPageInner() {
   ]
 
   const isActive = subInfo?.isPremium === true
+  const isTrial = subInfo?.status === 'trial'
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #050E1A 0%, #0a1929 50%, #050E1A 100%)' }}>
@@ -275,6 +313,9 @@ function PremiumPageInner() {
             <p className="text-blue-200/70 text-lg max-w-2xl mx-auto">
               Desbloqueie todo o potencial do WOA Talk e domine o inglês de forma épica
             </p>
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-black tracking-wide" style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.35)', color: '#00D4FF' }}>
+              🎁 30 dias grátis no cartão e Pix Automático — sem cobrança agora
+            </div>
             <div className="flex items-center justify-center gap-6 pt-2 text-sm text-blue-200/50">
               <span>💳 Cartão de Crédito</span>
               <span>🟢 Pix Automático</span>
@@ -294,9 +335,13 @@ function PremiumPageInner() {
             >
               <span className="text-3xl">👑</span>
               <div className="flex-1">
-                <p className="text-white font-black tracking-wide">ASSINATURA ATIVA — {planLabel(subInfo?.plan ?? null).toUpperCase()}</p>
+                <p className="text-white font-black tracking-wide">
+                    {isTrial ? 'TRIAL ATIVO — 30 DIAS GRÁTIS' : 'ASSINATURA ATIVA'} — {planLabel(subInfo?.plan ?? null).toUpperCase()}
+                  </p>
                 <p className="text-orange-200/70 text-sm">
-                  {subInfo?.currentPeriodEnd
+                  {isTrial
+                    ? 'Você está no período gratuito. A primeira cobrança ocorrerá em 30 dias.'
+                    : subInfo?.currentPeriodEnd
                     ? `Válida até ${new Date(subInfo.currentPeriodEnd).toLocaleDateString('pt-BR')}`
                     : 'Gerencie sua assinatura abaixo.'}
                 </p>
@@ -325,6 +370,23 @@ function PremiumPageInner() {
                     boxShadow: plan.popular ? `0 0 30px ${plan.border}35` : 'none',
                   }}
                 >
+                  {/* Trial badge */}
+                  {!isCurrentPlan && !refDiscount && !plan.savingsBadge && !plan.popular && (
+                    <div
+                      className="absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full text-[9px] font-black tracking-widest"
+                      style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.40)', color: '#00D4FF' }}
+                    >
+                      30 dias grátis
+                    </div>
+                  )}
+                  {!isCurrentPlan && !refDiscount && (plan.savingsBadge || plan.popular) && (
+                    <div
+                      className="absolute top-11 left-4 z-10 px-2.5 py-1 rounded-full text-[9px] font-black tracking-widest"
+                      style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.40)', color: '#00D4FF' }}
+                    >
+                      30 dias grátis
+                    </div>
+                  )}
                   {/* Popular badge */}
                   {plan.popular && !isCurrentPlan && (
                     <div
@@ -578,6 +640,7 @@ function PremiumPageInner() {
                 { q: 'Posso cancelar a qualquer momento?', a: 'Sim! Você pode cancelar sua assinatura quando quiser diretamente nessa página, sem cobranças adicionais.' },
                 { q: 'Como funciona o Pix Automático?', a: 'No primeiro pagamento, você autoriza o débito no app do seu banco. A partir daí, as mensalidades são debitadas automaticamente sem que você precise pagar um novo QR Code.' },
                 { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de Crédito, Pix Automático e Boleto Bancário. Todos os pagamentos são processados com segurança pela Asaas.' },
+                { q: 'Como funciona o trial de 30 dias?', a: 'Ao assinar via Cartão de Crédito ou Pix Automático, você ganha 30 dias grátis com acesso completo. Nenhum valor é debitado agora. A primeira cobrança ocorre automaticamente após 30 dias. Você pode cancelar a qualquer momento antes disso sem custo algum.' },
                 { q: 'Qual a diferença entre Starter e Premium?', a: 'O Premium inclui XP turbinado, módulos especiais avançados, moedas mensais extras e comunidade elite.' },
               ].map((faq, i) => (
                 <div key={i} className="p-6 rounded-xl backdrop-blur-md border border-cyan-400/20" style={{ background: 'rgba(5,14,26,0.65)' }}>
@@ -607,7 +670,21 @@ function PremiumPageInner() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-black text-white tracking-wider">FINALIZAR ASSINATURA</h3>
-                <p className="text-cyan-400/70 text-sm mt-1">{planLabel(selectedPlan)}</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-cyan-400/70 text-sm">{planLabel(selectedPlan)}</p>
+                  {appliedCoupon && selectedPlan && (() => {
+                    const planObj = plans.find(p => p.id === selectedPlan)
+                    if (!planObj) return null
+                    const originalPrice = parseFloat(planObj.price.replace(',', '.'))
+                    const discountedPrice = (originalPrice * (1 - appliedCoupon.discount_percent / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    return (
+                      <>
+                        <span className="text-white/30 text-xs line-through">R$ {planObj.price}</span>
+                        <span className="text-green-400 text-sm font-black">R$ {discountedPrice}</span>
+                      </>
+                    )
+                  })()}
+                </div>
               </div>
               <button
                 onClick={() => setModalOpen(false)}
@@ -615,6 +692,35 @@ function PremiumPageInner() {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Coupon input */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-blue-200/60 tracking-widest uppercase">Cupom de Desconto</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Digite o código"
+                  value={couponInput}
+                  onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponMsg(null); if (!e.target.value) setAppliedCoupon(null) }}
+                  maxLength={30}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-white placeholder-blue-200/30 text-sm font-mono outline-none"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: `1.5px solid ${appliedCoupon ? 'rgba(34,197,94,0.5)' : 'rgba(0,212,255,0.2)'}` }}
+                />
+                <button
+                  onClick={handleApplyCoupon}
+                  disabled={couponValidating || !couponInput.trim()}
+                  className="px-4 py-2.5 rounded-xl text-xs font-black tracking-wide transition-all disabled:opacity-40"
+                  style={{ background: 'rgba(168,85,247,0.15)', border: '1.5px solid rgba(168,85,247,0.4)', color: '#a855f7' }}
+                >
+                  {couponValidating ? '...' : 'Aplicar'}
+                </button>
+              </div>
+              {couponMsg && (
+                <p className={`text-xs font-bold ${couponMsg.type === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+                  {couponMsg.text}
+                </p>
+              )}
             </div>
 
             {/* CPF input */}
@@ -662,6 +768,14 @@ function PremiumPageInner() {
                 <p className="text-[11px] text-cyan-400/50 leading-relaxed">
                   Você será redirecionado para autorizar o Pix Automático no app do seu banco. Após isso, as mensalidades são debitadas automaticamente.
                 </p>
+              )}
+              {(billingType === 'PIX' || billingType === 'CREDIT_CARD') && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }}>
+                  <span className="text-base">🎁</span>
+                  <p className="text-[11px] text-cyan-300/80 leading-relaxed font-bold">
+                    30 dias grátis — você não será cobrado agora. A primeira cobrança ocorre em 30 dias.
+                  </p>
+                </div>
               )}
             </div>
 
