@@ -187,6 +187,7 @@ export interface AsaasPixAutomaticAuthorization {
     conciliationIdentifier?: string
     value?: number
     dueDate?: string
+    expirationSeconds?: number
   }
   conciliationIdentifier?: string
 }
@@ -203,6 +204,7 @@ export async function createPixAutomaticAuthorization(params: {
     value: number
     dueDate: string
     description: string
+    expirationSeconds: number
   }
 }): Promise<AsaasPixAutomaticAuthorization> {
   return asaasRequest<AsaasPixAutomaticAuthorization>('POST', '/pix/automatic/authorizations', params)
