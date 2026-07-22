@@ -370,23 +370,6 @@ function PremiumPageInner() {
                     boxShadow: plan.popular ? `0 0 30px ${plan.border}35` : 'none',
                   }}
                 >
-                  {/* Trial badge */}
-                  {!isCurrentPlan && !refDiscount && !plan.savingsBadge && !plan.popular && (
-                    <div
-                      className="absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full text-[9px] font-black tracking-widest"
-                      style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.40)', color: '#00D4FF' }}
-                    >
-                      30 dias grátis
-                    </div>
-                  )}
-                  {!isCurrentPlan && !refDiscount && (plan.savingsBadge || plan.popular) && (
-                    <div
-                      className="absolute top-11 left-4 z-10 px-2.5 py-1 rounded-full text-[9px] font-black tracking-widest"
-                      style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.40)', color: '#00D4FF' }}
-                    >
-                      30 dias grátis
-                    </div>
-                  )}
                   {/* Popular badge */}
                   {plan.popular && !isCurrentPlan && (
                     <div
@@ -446,6 +429,11 @@ function PremiumPageInner() {
                         </span>
                         <span className="text-blue-200/60 text-sm">{plan.period}</span>
                       </div>
+                      {!isCurrentPlan && !refDiscount && (
+                        <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider" style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.30)', color: '#00D4FF' }}>
+                          🎁 30 dias grátis
+                        </div>
+                      )}
                       {plan.idealFor && (
                         <p className="text-[11px] leading-relaxed pt-1" style={{ color: `${plan.border}cc` }}>
                           🎯 {plan.idealFor}
@@ -688,7 +676,7 @@ function PremiumPageInner() {
               </div>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-blue-200/40 hover:text-blue-200/70 text-xl font-bold transition-colors ml-4"
+                className="flex items-center justify-center w-9 h-9 rounded-xl text-blue-200/50 hover:text-white hover:bg-white/10 text-lg font-bold transition-all ml-4 flex-shrink-0"
               >
                 ✕
               </button>
@@ -704,8 +692,15 @@ function PremiumPageInner() {
                   value={couponInput}
                   onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponMsg(null); if (!e.target.value) setAppliedCoupon(null) }}
                   maxLength={30}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-white placeholder-blue-200/30 text-sm font-mono outline-none"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: `1.5px solid ${appliedCoupon ? 'rgba(34,197,94,0.5)' : 'rgba(0,212,255,0.2)'}` }}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-white placeholder-blue-200/30 text-sm font-mono outline-none transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: `1.5px solid ${
+                      appliedCoupon ? 'rgba(34,197,94,0.6)'
+                      : couponMsg?.type === 'err' ? 'rgba(239,68,68,0.6)'
+                      : 'rgba(0,212,255,0.2)'
+                    }`,
+                  }}
                 />
                 <button
                   onClick={handleApplyCoupon}
@@ -717,9 +712,17 @@ function PremiumPageInner() {
                 </button>
               </div>
               {couponMsg && (
-                <p className={`text-xs font-bold ${couponMsg.type === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold"
+                  style={{
+                    background: couponMsg.type === 'ok' ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
+                    border: `1px solid ${couponMsg.type === 'ok' ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                    color: couponMsg.type === 'ok' ? '#4ade80' : '#f87171',
+                  }}
+                >
+                  <span>{couponMsg.type === 'ok' ? '✓' : '✕'}</span>
                   {couponMsg.text}
-                </p>
+                </div>
               )}
             </div>
 
