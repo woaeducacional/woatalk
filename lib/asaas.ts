@@ -130,6 +130,10 @@ export async function cancelSubscription(subscriptionId: string): Promise<void> 
   await asaasRequest('DELETE', `/subscriptions/${subscriptionId}`)
 }
 
+export async function cancelPixAutomaticAuthorization(authorizationId: string): Promise<void> {
+  await asaasRequest('DELETE', `/pix/automatic/authorizations/${authorizationId}`)
+}
+
 // ── Payments ───────────────────────────────────────────────
 
 /** Busca a primeira cobrança pendente de uma assinatura (para obter URL de pagamento) */

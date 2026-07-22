@@ -26,13 +26,24 @@ export async function POST() {
     return NextResponse.json({ error: 'Nenhuma assinatura ativa encontrada' }, { status: 400 })
   }
 
+  let canceledOnAsaas = false
   try {
     await cancelSubscription(user.subscription_id)
+    canceledOnAsaas = true
     console.log('[AsaasCancel] ✅ Assinatura cancelada no Asaas:', user.subscription_id)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[AsaasCancel] ❌ Erro ao cancelar no Asaas:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.warn('[AsaasCancel] ⚠ Falha ao cancelar subscription; tentando cancelar autorização Pix Automático:', message)
+
+    try {
+      await cancelPixAutomaticAuthorization(user.subscription_id)
+      canceledOnAsaas = true
+      console.log('[AsaasCancel] ✅ Autorização Pix Automático cancelada no Asaas:', user.subscription_id)
+    } catch (authErr) {
+      const authMessage = authErr instanceof Error ? authErr.message : String(authErr)
+      console.error('[AsaasCancel] ❌ Erro ao cancelar autorização Pix Automático no Asaas:', authMessage)
+      return NextResponse.json({ error: authMessage }, { status: 500 })
+    }
   }
 
   const { error: dbError } = await supabase
