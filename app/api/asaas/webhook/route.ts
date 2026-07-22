@@ -1,5 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
+)
+
+function getText(req: NextRequest) {
+  return req.text()
+}
+
+export async function POST(req: NextRequest) {
+  const raw = await getText(req)
+  let body: any = null
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    console.warn('[AsaasWebhook] Payload não-JSON recebido')
+  }
+
+  console.log('[AsaasWebhook] ◀ Raw payload:', raw)
+
+  const token = process.env.ASAAS_WEBHOOK_TOKEN ?? ''
+  const headerToken = req.headers.get('x-asaas-signature') || req.headers.get('x-asaas-token') || req.headers.get('access_token') || req.headers.get('authorization')
+
+  if (token && headerToken !== token) {
+    console.warn('[AsaasWebhook] Token inválido no header', { headerToken })
+    return NextResponse.json({ error: 'invalid token' }, { status: 401 })
+  }
+
+  // Try to extract relevant info
+  const event = body?.event || body?.type || body?.eventType || null
+  const data = body?.data ?? body
+
+  // Possible locations
+  const payment = data?.payment ?? data
+  const subscription = data?.subscription ?? data
+
+  const subscriptionId = subscription?.id ?? payment?.subscription ?? null
+  const externalReference = subscription?.externalReference ?? payment?.externalReference ?? data?.externalReference ?? null
+  const paymentStatus = payment?.status ?? null
+  const subscriptionStatus = subscription?.status ?? null
+
+  console.log('[AsaasWebhook] parsed:', { event, subscriptionId, externalReference, paymentStatus, subscriptionStatus })
+
+  // Find user by externalReference (we set externalReference = userId when creating checkout/subscriptions)
+  let userId: string | null = null
+  if (externalReference) {
+    userId = String(externalReference)
+  } else if (subscriptionId) {
+    const { data: u } = await supabase.from('users').select('id').eq('subscription_id', subscriptionId).maybeSingle()
+    if (u) userId = u.id
+  }
+
+  if (!userId) {
+    console.warn('[AsaasWebhook] Não foi possível localizar usuário para payload do webhook')
+    return NextResponse.json({ ok: true })
+  }
+
+  // Determine activation: if paymentStatus indicates paid/confirmed or subscription became ACTIVE
+  const activated = [ 'CONFIRMED', 'PAID', 'ACTIVE' ].includes(String(paymentStatus ?? subscriptionStatus ?? '').toUpperCase())
+
+  if (activated) {
+    // Try to compute period end
+    const periodEnd = subscription?.nextDueDate ?? payment?.dueDate ?? null
+    const updates: Record<string, any> = {
+      subscription_status: 'active',
+      subscription_id: subscriptionId ?? payment?.subscription ?? undefined,
+    }
+    if (periodEnd) updates.subscription_current_period_end = periodEnd
+
+    await supabase.from('users').update(updates).eq('id', userId)
+    console.log('[AsaasWebhook] Usuário marcado como active:', userId)
+  } else {
+    console.log('[AsaasWebhook] Evento recebido não marca ativação automática', { paymentStatus, subscriptionStatus })
+  }
+
+  return NextResponse.json({ ok: true })
+}
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { ASAAS_PLANS } from '@/lib/asaas'
 
 const supabase = createClient(

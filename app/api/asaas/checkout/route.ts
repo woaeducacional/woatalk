@@ -35,13 +35,18 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { planId, billingType, cpf, phone, ref_code, coupon_code } = body as {
+  const { planId, billingType, cpf, phone, ref_code, coupon_code, address, addressNumber, postalCode, province, city } = body as {
     planId: AsaasPlanId
     billingType: AsaasBillingType
     cpf: string
     phone?: string
     ref_code?: string
     coupon_code?: string
+    address?: string
+    addressNumber?: string
+    postalCode?: string
+    province?: string
+    city?: string
   }
 
   if (!planId || !billingType || !cpf) {
@@ -234,6 +239,20 @@ export async function POST(req: NextRequest) {
   let redirectUrl: string | null = null
 
   if (billingType === 'CREDIT_CARD') {
+    // For credit card recurring checkouts Asaas requires full customer data (phone + address fields).
+    const requiredForCard = ['phone', 'address', 'addressNumber', 'postalCode', 'province', 'city']
+    const missing: string[] = []
+    if (!phone) missing.push('phone')
+    if (!address) missing.push('address')
+    if (!addressNumber) missing.push('addressNumber')
+    if (!postalCode) missing.push('postalCode')
+    if (!province) missing.push('province')
+    if (!city) missing.push('city')
+
+    if (missing.length > 0) {
+      console.error('[AsaasCheckout] ❌ Campos obrigatórios para cartão ausentes:', missing)
+      return NextResponse.json({ error: 'Faltam campos obrigatórios para cartão de crédito', missing }, { status: 400 })
+    }
     const checkoutPayload = {
       billingTypes: ['CREDIT_CARD'],
       chargeTypes: ['RECURRENT'],
@@ -252,6 +271,17 @@ export async function POST(req: NextRequest) {
         },
       ],
       customer: asaasCustomerId,
+      customerData: {
+        name: userName,
+        email: userEmail,
+        cpfCnpj: cpfClean,
+        phone,
+        address,
+        addressNumber,
+        postalCode,
+        province,
+        city,
+      },
       subscription: {
         cycle: plan.cycle,
         nextDueDate,
@@ -325,7 +355,8 @@ export async function POST(req: NextRequest) {
     .update({
       subscription_id: subscription?.id ?? null,
       subscription_plan: planId,
-      subscription_status: hasTrial ? 'trial' : 'inactive',
+      // For credit card checkouts we mark subscription as 'pending' until Asaas confirms payment via webhook.
+      subscription_status: billingType === 'CREDIT_CARD' ? 'pending' : hasTrial ? 'trial' : 'inactive',
       ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
     })
     .eq('id', userId)
