@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       authorization = await createPixAutomaticAuthorization({
         customerId: asaasCustomerId,
         frequency: plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY',
-        contractId: `${userId}-${planId}-${Date.now()}`,
+        contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
         startDate: new Date().toISOString().split('T')[0],
         value: planValue,
         description: `WOA Talk — ${plan.label}`,
