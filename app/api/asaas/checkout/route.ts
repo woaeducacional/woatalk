@@ -251,12 +251,7 @@ export async function POST(req: NextRequest) {
           value: planValue,
         },
       ],
-      customerData: {
-        name: userName,
-        email: userEmail,
-        cpfCnpj: cpfClean,
-        phone,
-      },
+      customer: asaasCustomerId,
       subscription: {
         cycle: plan.cycle,
         nextDueDate,
