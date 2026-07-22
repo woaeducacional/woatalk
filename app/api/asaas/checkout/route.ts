@@ -6,6 +6,7 @@ import {
   ASAAS_PLANS,
   AsaasBillingType,
   AsaasPlanId,
+  AsaasPixAutomaticAuthorizationFrequency,
   createCustomer,
   createSubscription,
   createPixAutomaticAuthorization,
@@ -138,7 +139,22 @@ export async function POST(req: NextRequest) {
 
   if (billingType === 'PIX') {
     let authorization
-    const authorizationPayload = {
+    const authorizationPayload: {
+      customerId: string
+      frequency: AsaasPixAutomaticAuthorizationFrequency
+      contractId: string
+      startDate: string
+      finishDate?: string
+      value: number
+      description: string
+      immediateQrCode: {
+        value: number
+        originalValue: number
+        dueDate: string
+        description: string
+        expirationSeconds: number
+      }
+    } = {
       customerId: asaasCustomerId,
       frequency: plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY',
       contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
