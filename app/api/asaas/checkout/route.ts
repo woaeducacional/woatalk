@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
           value: planValue,
           originalValue: planValue,
           dueDate: trialEndDate,
-          description: `Primeira cobrança em 30 dias — ${plan.label}`,
+          description: 'Cobrança inicial em 30 dias',
           expirationSeconds: 86400,
         },
       })
