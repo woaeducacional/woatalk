@@ -10,6 +10,7 @@ import {
   createCustomer,
   createPixAutomaticAuthorization,
   findCustomerByCpf,
+  getPixAutomaticAuthorization,
   getTrialDueDate,
 } from '@/lib/asaas'
 
@@ -148,8 +149,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
+  // O POST pode retornar apenas o id. O QR fica disponível no GET da autorização.
+  let authorizationDetails = authorization
+  let imm = authorizationDetails.immediateQrCode
+  if (!imm?.qrCode && !imm?.pixTransaction?.qrCode && !imm?.authorizationUrl && !imm?.pixTransaction?.authorizationUrl) {
+    try {
+      authorizationDetails = await getPixAutomaticAuthorization(authorization.id)
+      imm = authorizationDetails.immediateQrCode
+      console.log('[PixDirect] QR consultado via GET da autorização:', JSON.stringify(authorizationDetails, null, 2))
+    } catch (err) {
+      console.warn('[PixDirect] Não foi possível consultar detalhes da autorização:', err)
+    }
+  }
+
   // Extract QR code data — check multiple paths Asaas may use
-  const imm = authorization.immediateQrCode
   const encodedImage =
     imm?.qrCode?.encodedImage ??
     imm?.pixTransaction?.qrCode?.encodedImage ??

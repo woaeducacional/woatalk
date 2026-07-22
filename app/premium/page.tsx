@@ -151,7 +151,9 @@ function PremiumPageInner() {
         if (!res.ok) return
         const data = await res.json()
         const status = String(data.status || '').toUpperCase()
-        if (['AUTHORIZED', 'ACTIVE', 'APPROVED', 'COMPLETED', 'ENABLED'].includes(status)) {
+        // No Pix Automático, ACTIVE indica que a autorização foi efetivada após o pagamento inicial.
+        // PENDING/AUTHORIZED ainda significam que o usuário precisa concluir a autorização.
+        if (status === 'ACTIVE') {
           const trialDate = new Date(pixQrData.trialEndDate)
           setSuccessTrialDate(trialDate.toLocaleDateString('pt-BR'))
           setSubscriptionSuccess(true)
