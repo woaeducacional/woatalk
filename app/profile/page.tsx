@@ -38,6 +38,9 @@ export default function ProfilePage() {
   const [badgesModalOpen, setBadgesModalOpen] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
   const [skills, setSkills] = useState<SkillData[]>([])
+  const [subInfo, setSubInfo] = useState<{ plan: string | null; status: string; currentPeriodEnd: string | null; isPremium: boolean } | null>(null)
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [cancelConfirm, setCancelConfirm] = useState(false)
   const [profile, setProfile] = useState<UserProfile>({
     id: '',
     name: '',
@@ -115,6 +118,7 @@ export default function ProfilePage() {
         .then(d => {
           const premium = d.isPremium === true
           setIsPremium(premium)
+          setSubInfo(d)
           if (premium) {
             fetch('/api/user/skills')
               .then(r => r.json())
@@ -125,6 +129,21 @@ export default function ProfilePage() {
         .catch(() => {})
     }
   }, [status])
+
+  const handleCancelSubscription = async () => {
+    if (!cancelConfirm) { setCancelConfirm(true); return }
+    setCancelLoading(true)
+    try {
+      const res = await fetch('/api/asaas/cancel', { method: 'POST' })
+      if (res.ok) {
+        setSubInfo({ plan: null, status: 'inactive', currentPeriodEnd: null, isPremium: false })
+        setIsPremium(false)
+        setCancelConfirm(false)
+      }
+    } catch { /* ignore */ } finally {
+      setCancelLoading(false)
+    }
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -396,6 +415,129 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+
+          {/* Subscription card */}
+          {subInfo && (() => {
+            const planLabels: Record<string, string> = {
+              starter_monthly: 'Starter Mensal', starter_yearly: 'Starter Anual',
+              premium_monthly: 'Premium Mensal', premium_yearly: 'Premium Anual',
+              starter_monthly_promo: 'Starter Mensal', starter_yearly_promo: 'Starter Anual',
+              premium_monthly_promo: 'Premium Mensal', premium_yearly_promo: 'Premium Anual',
+            }
+            const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+              active:   { label: 'ATIVA',        color: '#4ade80', bg: 'rgba(34,197,94,0.12)'  },
+              trial:    { label: '30 DIAS GRÁTIS', color: '#00D4FF', bg: 'rgba(0,212,255,0.10)' },
+              past_due: { label: 'PAGAMENTO PENDENTE', color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
+              inactive: { label: 'INATIVA',       color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
+            }
+            const st = statusConfig[subInfo.status] ?? statusConfig.inactive
+            const hasActiveSub = subInfo.plan && (subInfo.status === 'active' || subInfo.status === 'trial' || subInfo.status === 'past_due')
+            return (
+              <div
+                className="rounded-2xl backdrop-blur-sm border-2 p-6 sm:p-8 space-y-5"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(0,212,255,0.06), rgba(0,102,255,0.04))',
+                  borderColor: 'rgba(0,212,255,0.20)',
+                  boxShadow: '0 8px 32px rgba(0,212,255,0.06)',
+                }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-black text-cyan-300/70 tracking-widest uppercase">💎 MINHA ASSINATURA</h3>
+                  <span
+                    className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest"
+                    style={{ background: st.bg, color: st.color, border: `1px solid ${st.color}40` }}
+                  >
+                    {st.label}
+                  </span>
+                </div>
+
+                {hasActiveSub ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <p className="text-[10px] text-blue-200/40 font-black tracking-widest uppercase mb-1">Plano</p>
+                        <p className="text-white font-black text-sm">{planLabels[subInfo.plan!] ?? subInfo.plan}</p>
+                      </div>
+                      <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <p className="text-[10px] text-blue-200/40 font-black tracking-widest uppercase mb-1">
+                          {subInfo.status === 'trial' ? 'Primeira Cobrança' : 'Próxima Cobrança'}
+                        </p>
+                        <p className="text-white font-black text-sm">
+                          {subInfo.currentPeriodEnd
+                            ? new Date(subInfo.currentPeriodEnd).toLocaleDateString('pt-BR')
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <p className="text-[10px] text-blue-200/40 font-black tracking-widest uppercase mb-1">Acesso Premium</p>
+                        <p className="font-black text-sm" style={{ color: subInfo.isPremium ? '#4ade80' : '#f87171' }}>
+                          {subInfo.isPremium ? '✓ Liberado' : '✕ Sem acesso'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {subInfo.status === 'trial' && (
+                      <p className="text-[11px] text-cyan-300/60 px-1">
+                        🎁 Você está no período gratuito. Nenhum valor será cobrado antes da data acima.
+                      </p>
+                    )}
+                    {subInfo.status === 'past_due' && (
+                      <p className="text-[11px] text-yellow-300/70 px-1">
+                        ⚠️ Pagamento pendente. Regularize para manter o acesso premium.
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-3 pt-1">
+                      <button
+                        onClick={() => router.push('/premium')}
+                        className="px-4 py-2 rounded-xl text-xs font-black tracking-widest transition-all hover:scale-105"
+                        style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.30)', color: '#00D4FF' }}
+                      >
+                        Gerenciar Plano
+                      </button>
+                      {cancelConfirm ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-red-300/80">Tem certeza?</span>
+                          <button
+                            onClick={handleCancelSubscription}
+                            disabled={cancelLoading}
+                            className="px-3 py-1.5 rounded-lg text-xs font-black text-red-400 border border-red-500/50 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                          >
+                            {cancelLoading ? 'Cancelando...' : 'Sim, cancelar'}
+                          </button>
+                          <button
+                            onClick={() => setCancelConfirm(false)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-black text-white/40 border border-white/15 hover:bg-white/5 transition-all"
+                          >
+                            Voltar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setCancelConfirm(true)}
+                          className="px-4 py-2 rounded-xl text-xs font-black tracking-widest transition-all hover:scale-105"
+                          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
+                        >
+                          Cancelar Assinatura
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm text-blue-200/50">Você não possui uma assinatura ativa.</p>
+                    <button
+                      onClick={() => router.push('/premium')}
+                      className="px-5 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all hover:scale-105"
+                      style={{ background: 'linear-gradient(135deg, #0066FF, #00D4FF)', color: 'white', boxShadow: '0 0 18px rgba(0,212,255,0.25)' }}
+                    >
+                      Ver Planos →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Skills Radar Chart — Premium only */}
           {isPremium && skills.length === 5 && (
