@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { createClient } from '@supabase/supabase-js'
-import { cancelSubscription } from '@/lib/asaas'
+import { cancelSubscription, cancelPixAutomaticAuthorization } from '@/lib/asaas'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
