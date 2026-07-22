@@ -11,7 +11,6 @@ import {
   createPixAutomaticAuthorization,
   findCustomerByCpf,
   getPixAutomaticAuthorization,
-  getTrialDueDate,
 } from '@/lib/asaas'
 
 const supabase = createClient(
@@ -119,10 +118,12 @@ export async function POST(req: NextRequest) {
     await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', userId)
   }
 
-  const trialEndDate = getTrialDueDate()
+  // Pix Automático exige um pagamento inicial para ativar a autorização.
+  // Não há trial: o QR Code inicial vence hoje.
+  const initialDueDate = new Date().toISOString().split('T')[0]
   const frequency: AsaasPixAutomaticAuthorizationFrequency = plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY'
 
-  console.log('[PixDirect] ▶ Criando autorização Pix Automático', { userId, planId, planValue, trialEndDate })
+  console.log('[PixDirect] ▶ Criando autorização Pix Automático', { userId, planId, planValue, initialDueDate })
 
   let authorization: Awaited<ReturnType<typeof createPixAutomaticAuthorization>>
   try {
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
       customerId: asaasCustomerId,
       frequency,
       contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: initialDueDate,
       value: planValue,
       description: `WOA Talk — ${plan.label}`,
       // O Asaas cria automaticamente as cobranças recorrentes após a autorização ficar ACTIVE.
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest) {
       immediateQrCode: {
         value: planValue,
         originalValue: planValue,
-        dueDate: trialEndDate,
+        dueDate: initialDueDate,
         description: `WOA Talk — ${plan.label}`,
         expirationSeconds: 86400,
       },
@@ -188,14 +189,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Persist to DB — mark as trial immediately (QR generated, pending bank authorization)
+  // Persist as pending: access is confirmed only after Asaas changes the authorization to ACTIVE.
   await supabase
     .from('users')
     .update({
       subscription_id: authorization.id,
       subscription_plan: planId,
-      subscription_status: 'trial',
-      subscription_current_period_end: trialEndDate,
+      subscription_status: 'pending',
+      subscription_current_period_end: null,
       ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
     })
     .eq('id', userId)
@@ -206,6 +207,6 @@ export async function POST(req: NextRequest) {
     encodedImage,
     payload,
     authorizationUrl,
-    trialEndDate,
+    initialDueDate,
   })
 }

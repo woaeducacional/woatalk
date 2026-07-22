@@ -139,9 +139,9 @@ export async function POST(req: NextRequest) {
   const baseUrl = (process.env.NEXTAUTH_URL || 'http://localhost:3003').replace(/\/$/, '')
   const successUrl = `${baseUrl}/premium/success`
 
-  const hasTrial = billingType === 'CREDIT_CARD' || billingType === 'PIX'
+  const hasTrial = billingType === 'CREDIT_CARD'
   const nextDueDate = hasTrial ? getTrialDueDate() : getNextDueDate()
-  const trialEndDate = getTrialDueDate()
+  const initialPixDueDate = new Date().toISOString().split('T')[0]
 
   if (billingType === 'PIX') {
     let authorization
@@ -164,14 +164,14 @@ export async function POST(req: NextRequest) {
       customerId: asaasCustomerId,
       frequency: plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY',
       contractId: `WOA-${planId.split('_')[0]}-${userId.slice(0, 8)}-${Date.now().toString().slice(-4)}`,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: initialPixDueDate,
       value: planValue,
       description: `WOA Talk — ${plan.label}`,
       immediateQrCode: {
         value: planValue,
         originalValue: planValue,
-        dueDate: trialEndDate,
-        description: 'Cobrança inicial em 30 dias',
+        dueDate: initialPixDueDate,
+        description: 'Cobrança inicial para ativação do Pix Automático',
         expirationSeconds: 86400,
       },
     }
@@ -220,8 +220,8 @@ export async function POST(req: NextRequest) {
       .update({
         subscription_id: authorization.id,
         subscription_plan: planId,
-        subscription_status: 'trial',
-        subscription_current_period_end: trialEndDate,
+        subscription_status: 'pending',
+        subscription_current_period_end: null,
         ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
       })
       .eq('id', userId)
@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       redirectUrl,
       authorizationId: authorization.id,
-      trialEndDate,
+      initialDueDate: initialPixDueDate,
       successUrl,
     })
   }
