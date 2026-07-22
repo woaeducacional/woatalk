@@ -3,7 +3,7 @@
 // Docs: https://docs.asaas.com/
 // ============================================================
 
-const ASAAS_BASE_URL = 'https://api.asaas.com/v3'
+const ASAAS_BASE_URL = process.env.ASAAS_BASE_URL?.replace(/\/$/, '') ?? 'https://api.asaas.com/v3'
 
 async function asaasRequest<T>(
   method: string,
@@ -160,6 +160,62 @@ export async function getPixAuthorizationUrl(paymentId: string): Promise<string 
   } catch {
     return null
   }
+}
+
+export type AsaasPixAutomaticAuthorizationFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUALLY' | 'ANNUALLY'
+
+export interface AsaasPixAutomaticAuthorization {
+  id: string
+  customer: string
+  frequency: AsaasPixAutomaticAuthorizationFrequency
+  contractId: string
+  startDate: string
+  finishDate?: string
+  value: number
+  description: string
+  status: string
+  immediateQrCode?: {
+    authorizationId?: string
+    authorizationUrl?: string
+    pixTransaction?: {
+      authorizationUrl?: string
+      qrCode?: {
+        encodedImage?: string
+        payload?: string
+      }
+    }
+    conciliationIdentifier?: string
+    value?: number
+    dueDate?: string
+  }
+  conciliationIdentifier?: string
+}
+
+export async function createPixAutomaticAuthorization(params: {
+  customerId: string
+  frequency: AsaasPixAutomaticAuthorizationFrequency
+  contractId: string
+  startDate: string
+  finishDate?: string
+  value: number
+  description: string
+  immediateQrCode: {
+    value: number
+    dueDate: string
+    description: string
+  }
+}): Promise<AsaasPixAutomaticAuthorization> {
+  return asaasRequest<AsaasPixAutomaticAuthorization>('POST', '/pix/automatic/authorizations', params)
+}
+
+export async function createPixAutomaticPayment(params: {
+  pixAutomaticAuthorizationId: string
+  value: number
+  dueDate: string
+  description: string
+  externalReference?: string
+}): Promise<AsaasPayment> {
+  return asaasRequest<AsaasPayment>('POST', '/payments', params)
 }
 
 // ── Plan definitions ───────────────────────────────────────

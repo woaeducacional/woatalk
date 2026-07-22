@@ -39,6 +39,16 @@ async function findUserByExternalReference(externalReference: string): Promise<s
   return data?.id ?? null
 }
 
+function resolveAuthorizationId(payload: any): string | null {
+  return (
+    payload?.payment?.pixAutomaticAuthorizationId ??
+    payload?.payment?.authorizationId ??
+    payload?.subscription?.id ??
+    payload?.payment?.subscription ??
+    null
+  )
+}
+
 // Infere o planId a partir do valor do pagamento
 function inferPlanFromValue(value?: number): string | null {
   if (!value) return null
@@ -167,6 +177,89 @@ export async function POST(req: NextRequest) {
               console.log(`[AsaasWebhook] ✅ Venda creditada ao afiliado ${fullUser.affiliate_code} (${col})`)
             }
           }
+        }
+        break
+      }
+
+      case 'PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED': {
+        const authId = resolveAuthorizationId(payload)
+        if (!authId) break
+
+        let userId = await findUserBySubscription(authId)
+        if (!userId && payload?.payment?.externalReference) {
+          console.warn('[AsaasWebhook] ⚠ Fallback: buscando por externalReference')
+          userId = await findUserByExternalReference(payload.payment.externalReference)
+          if (userId) {
+            console.log('[AsaasWebhook] ✅ Usuário encontrado por externalReference para autorização automática:', userId)
+          }
+        }
+
+        console.log('[AsaasWebhook] ✅ Autorização Pix Automático criada:', authId)
+        break
+      }
+
+      case 'PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED': {
+        const authId = resolveAuthorizationId(payload)
+        if (!authId) break
+
+        let userId = await findUserBySubscription(authId)
+        if (!userId && payload?.payment?.externalReference) {
+          console.warn('[AsaasWebhook] ⚠ Fallback: buscando por externalReference')
+          userId = await findUserByExternalReference(payload.payment.externalReference)
+        }
+        if (!userId) {
+          console.error('[AsaasWebhook] ❌ Usuário não encontrado para autorização Pix Automático:', authId)
+          break
+        }
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('subscription_plan')
+          .eq('id', userId)
+          .single()
+
+        const savedPlan = userData?.subscription_plan ?? inferPlanFromValue(payload?.payment?.value)
+        const isYearly = savedPlan?.includes('yearly') ?? false
+        const cycle = isYearly ? 'YEARLY' : 'MONTHLY'
+        const periodEnd = computePeriodEnd(payload?.payment?.dueDate ?? new Date().toISOString().split('T')[0], cycle)
+
+        const { error } = await supabase
+          .from('users')
+          .update({
+            subscription_status: 'active',
+            subscription_current_period_end: periodEnd,
+          })
+          .eq('id', userId)
+
+        if (error) {
+          console.error('[AsaasWebhook] ❌ Erro ao ativar Pix Automático:', error.message)
+        } else {
+          console.log('[AsaasWebhook] ✅ Pix Automático ativado:', userId, '| plano:', savedPlan, '| até:', periodEnd)
+        }
+        break
+      }
+
+      case 'PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REVOKED': {
+        const authId = resolveAuthorizationId(payload)
+        if (!authId) break
+
+        const userId = await findUserBySubscription(authId)
+        if (!userId) break
+
+        const { error } = await supabase
+          .from('users')
+          .update({
+            subscription_status: 'inactive',
+            subscription_id: null,
+            subscription_plan: null,
+            subscription_current_period_end: null,
+          })
+          .eq('id', userId)
+
+        if (error) {
+          console.error('[AsaasWebhook] ❌ Erro ao revogar Pix Automático:', error.message)
+        } else {
+          console.log('[AsaasWebhook] ✅ Autorização Pix Automático revogada no DB:', userId)
         }
         break
       }

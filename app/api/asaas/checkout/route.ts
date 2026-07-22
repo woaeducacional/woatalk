@@ -8,6 +8,7 @@ import {
   AsaasPlanId,
   createCustomer,
   createSubscription,
+  createPixAutomaticAuthorization,
   findCustomerByCpf,
   getFirstPendingPayment,
   getNextDueDate,
@@ -129,9 +130,62 @@ export async function POST(req: NextRequest) {
   const baseUrl = (process.env.NEXTAUTH_URL || 'http://localhost:3003').replace(/\/$/, '')
   const successUrl = `${baseUrl}/premium/success`
 
-  // Trial de 30 dias para cartão e PIX automático; boleto cobra imediatamente
   const hasTrial = billingType === 'CREDIT_CARD' || billingType === 'PIX'
   const nextDueDate = hasTrial ? getTrialDueDate() : getNextDueDate()
+  const trialEndDate = getTrialDueDate()
+
+  if (billingType === 'PIX') {
+    let authorization
+    try {
+      authorization = await createPixAutomaticAuthorization({
+        customerId: asaasCustomerId,
+        frequency: plan.cycle === 'YEARLY' ? 'ANNUALLY' : 'MONTHLY',
+        contractId: `${userId}-${planId}-${Date.now()}`,
+        startDate: new Date().toISOString().split('T')[0],
+        value: planValue,
+        description: `WOA Talk — ${plan.label}`,
+        immediateQrCode: {
+          value: planValue,
+          dueDate: trialEndDate,
+          description: `Primeira cobrança em 30 dias — ${plan.label}`,
+        },
+      })
+      console.log('[AsaasCheckout] ✅ Autorização Pix Automático criada:', authorization.id)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[AsaasCheckout] ❌ Erro ao criar autorização Pix Automático:', message)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+
+    await supabase
+      .from('users')
+      .update({
+        subscription_id: authorization.id,
+        subscription_plan: planId,
+        subscription_status: 'trial',
+        subscription_current_period_end: trialEndDate,
+        ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
+      })
+      .eq('id', userId)
+
+    const immediateQr = authorization.immediateQrCode
+    const redirectUrl =
+      immediateQr?.authorizationUrl ??
+      immediateQr?.pixTransaction?.authorizationUrl ??
+      null
+
+    if (!redirectUrl) {
+      console.error('[AsaasCheckout] ❌ URL de pagamento Pix Automático não encontrada')
+      return NextResponse.json({ error: 'Não foi possível obter a URL de pagamento Pix Automático. Tente novamente.' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      redirectUrl,
+      authorizationId: authorization.id,
+      trialEndDate,
+      successUrl,
+    })
+  }
 
   // Cria a assinatura no Asaas
   let subscription
@@ -153,14 +207,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  // O acesso só será ativado após confirmação do pagamento pelo webhook.
-  // Mesmo para cartão/Pix, não definimos premium antes do pagamento ser confirmado.
   await supabase
     .from('users')
     .update({
       subscription_id: subscription.id,
       subscription_plan: planId,
-      subscription_status: 'inactive',
+      subscription_status: hasTrial ? 'trial' : 'inactive',
       ...(resolvedAffiliateCode ? { affiliate_code: resolvedAffiliateCode } : {}),
     })
     .eq('id', userId)
@@ -195,3 +247,4 @@ export async function POST(req: NextRequest) {
     successUrl,
   })
 }
+
