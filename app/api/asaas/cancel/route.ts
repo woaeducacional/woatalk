@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { createClient } from '@supabase/supabase-js'
-import { cancelSubscription } from '@/lib/asaas'
+import { cancelSubscription, cancelPixAutomaticAuthorization } from '@/lib/asaas'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,13 +26,24 @@ export async function POST() {
     return NextResponse.json({ error: 'Nenhuma assinatura ativa encontrada' }, { status: 400 })
   }
 
+  let canceledOnAsaas = false
   try {
     await cancelSubscription(user.subscription_id)
+    canceledOnAsaas = true
     console.log('[AsaasCancel] ✅ Assinatura cancelada no Asaas:', user.subscription_id)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[AsaasCancel] ❌ Erro ao cancelar no Asaas:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.warn('[AsaasCancel] ⚠ Falha ao cancelar subscription; tentando cancelar autorização Pix Automático:', message)
+
+    try {
+      await cancelPixAutomaticAuthorization(user.subscription_id)
+      canceledOnAsaas = true
+      console.log('[AsaasCancel] ✅ Autorização Pix Automático cancelada no Asaas:', user.subscription_id)
+    } catch (authErr) {
+      const authMessage = authErr instanceof Error ? authErr.message : String(authErr)
+      console.error('[AsaasCancel] ❌ Erro ao cancelar autorização Pix Automático no Asaas:', authMessage)
+      return NextResponse.json({ error: authMessage }, { status: 500 })
+    }
   }
 
   const { error: dbError } = await supabase
