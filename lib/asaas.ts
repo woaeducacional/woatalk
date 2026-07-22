@@ -324,7 +324,10 @@ export async function createCreditCardSubscription(params: {
   }
   remoteIp: string
 }): Promise<AsaasSubscription> {
-  return asaasRequest<AsaasSubscription>('POST', '/subscriptions', params as unknown as Record<string, unknown>)
+  return asaasRequest<AsaasSubscription>('POST', '/subscriptions', {
+    ...params,
+    billingType: 'CREDIT_CARD',
+  } as unknown as Record<string, unknown>)
 }
 
 // ── Plan definitions ───────────────────────────────────────
