@@ -91,7 +91,7 @@ function PremiumPageInner() {
     payload: string | null
     authorizationUrl: string | null
     authorizationId: string
-    trialEndDate: string
+    initialDueDate: string
   } | null>(null)
   const [pixCopied, setPixCopied] = useState(false)
   const pixPollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -154,13 +154,12 @@ function PremiumPageInner() {
         // No Pix Automático, ACTIVE indica que a autorização foi efetivada após o pagamento inicial.
         // PENDING/AUTHORIZED ainda significam que o usuário precisa concluir a autorização.
         if (status === 'ACTIVE') {
-          const trialDate = new Date(pixQrData.trialEndDate)
-          setSuccessTrialDate(trialDate.toLocaleDateString('pt-BR'))
+          setSuccessTrialDate(new Date(pixQrData.initialDueDate).toLocaleDateString('pt-BR'))
           setSubscriptionSuccess(true)
           setSubInfo({
             status: 'trial',
             plan: selectedPlan,
-            currentPeriodEnd: pixQrData.trialEndDate,
+            currentPeriodEnd: pixQrData.initialDueDate,
             isPremium: true,
           })
         }
@@ -429,7 +428,7 @@ function PremiumPageInner() {
         payload: data.payload ?? null,
         authorizationUrl: data.authorizationUrl ?? null,
         authorizationId: data.authorizationId,
-        trialEndDate: data.trialEndDate,
+        initialDueDate: data.initialDueDate,
       })
       setCheckoutLoading(false)
     } catch {
@@ -578,7 +577,7 @@ function PremiumPageInner() {
               Desbloqueie todo o potencial do WOA Talk e domine o inglês de forma épica
             </p>
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-black tracking-wide" style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.35)', color: '#00D4FF' }}>
-              🎁 30 dias grátis no cartão e Pix Automático — sem cobrança agora
+              🎁 30 dias grátis no cartão — Pix Automático tem cobrança inicial para ativação
             </div>
             <div className="flex items-center justify-center gap-6 pt-2 text-sm text-blue-200/50">
               <span>💳 Cartão de Crédito</span>
@@ -695,7 +694,7 @@ function PremiumPageInner() {
                       </div>
                       {!isCurrentPlan && !refDiscount && (
                         <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider" style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.30)', color: '#00D4FF' }}>
-                          🎁 30 dias grátis
+                          🎁 30 dias grátis no cartão
                         </div>
                       )}
                       {plan.idealFor && (
@@ -892,7 +891,7 @@ function PremiumPageInner() {
                 { q: 'Posso cancelar a qualquer momento?', a: 'Sim! Você pode cancelar sua assinatura quando quiser diretamente nessa página, sem cobranças adicionais.' },
                 { q: 'Como funciona o Pix Automático?', a: 'No primeiro pagamento, você autoriza o débito no app do seu banco. A partir daí, as mensalidades são debitadas automaticamente sem que você precise pagar um novo QR Code.' },
                 { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de Crédito, Pix Automático e Boleto Bancário. Todos os pagamentos são processados com segurança pela Asaas.' },
-                { q: 'Como funciona o trial de 30 dias?', a: 'Ao assinar via Cartão de Crédito ou Pix Automático, você ganha 30 dias grátis com acesso completo. Nenhum valor é debitado agora. A primeira cobrança ocorre automaticamente após 30 dias. Você pode cancelar a qualquer momento antes disso sem custo algum.' },
+                { q: 'Como funciona o trial de 30 dias?', a: 'O trial de 30 dias está disponível para assinaturas via Cartão de Crédito. No Pix Automático, o QR Code inicial precisa ser pago para ativar a autorização; depois disso, as cobranças seguem o ciclo do plano.' },
                 { q: 'Qual a diferença entre Starter e Premium?', a: 'O Premium inclui XP turbinado, módulos especiais avançados, moedas mensais extras e comunidade elite.' },
               ].map((faq, i) => (
                 <div key={i} className="p-6 rounded-xl backdrop-blur-md border border-cyan-400/20" style={{ background: 'rgba(5,14,26,0.65)' }}>
@@ -939,9 +938,13 @@ function PremiumPageInner() {
                   className="w-full px-5 py-4 rounded-2xl space-y-1"
                   style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }}
                 >
-                  <p className="text-cyan-300/90 text-sm font-bold">🎁 30 dias grátis ativados</p>
+                  <p className="text-cyan-300/90 text-sm font-bold">
+                    {billingType === 'CREDIT_CARD' ? '🎁 30 dias grátis ativados' : '✅ Pix Automático autorizado'}
+                  </p>
                   <p className="text-blue-200/60 text-xs">
-                    Nenhum valor foi cobrado agora. A primeira cobrança ocorrerá em <span className="text-white font-bold">{successTrialDate}</span>.
+                    {billingType === 'CREDIT_CARD'
+                      ? <>Nenhum valor foi cobrado agora. A primeira cobrança ocorrerá em <span className="text-white font-bold">{successTrialDate}</span>.</>
+                      : <>O pagamento inicial foi confirmado e as próximas cobranças seguirão o ciclo do plano.</>}
                   </p>
                   <p className="text-blue-200/50 text-xs mt-1">Você pode cancelar a qualquer momento antes disso sem custo.</p>
                 </div>
@@ -1048,7 +1051,7 @@ function PremiumPageInner() {
                   Aguardando autorização...
                 </div>
 
-                <p className="text-[10px] text-blue-200/30">A primeira cobrança ocorrerá somente em 30 dias.</p>
+                <p className="text-[10px] text-blue-200/30">O acesso será confirmado após o pagamento do QR Code inicial.</p>
               </div>
             ) : (
             <>
@@ -1136,10 +1139,10 @@ function PremiumPageInner() {
               </div>
               {billingType === 'PIX' && (
                 <p className="text-[11px] text-cyan-400/50 leading-relaxed">
-                  Você será redirecionado para autorizar o Pix Automático no app do seu banco. Após isso, as mensalidades são debitadas automaticamente.
+                  Pague o QR Code inicial para ativar o Pix Automático. Depois disso, as cobranças serão geradas automaticamente.
                 </p>
               )}
-              {(billingType === 'PIX' || billingType === 'CREDIT_CARD') && (
+              {billingType === 'CREDIT_CARD' && (
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }}>
                   <span className="text-base">🎁</span>
                   <p className="text-[11px] text-cyan-300/80 leading-relaxed font-bold">
