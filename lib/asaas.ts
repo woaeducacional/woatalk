@@ -186,6 +186,7 @@ export interface AsaasPixAutomaticAuthorization {
     }
     conciliationIdentifier?: string
     value?: number
+    originalValue?: number
     dueDate?: string
     expirationSeconds?: number
   }
@@ -202,6 +203,7 @@ export async function createPixAutomaticAuthorization(params: {
   description: string
   immediateQrCode: {
     value: number
+    originalValue: number
     dueDate: string
     description: string
     expirationSeconds: number
