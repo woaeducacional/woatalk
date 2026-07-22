@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
           value: planValue,
           dueDate: trialEndDate,
           description: `Primeira cobrança em 30 dias — ${plan.label}`,
+          expirationSeconds: 86400,
         },
       })
       console.log('[AsaasCheckout] ✅ Autorização Pix Automático criada:', authorization.id)
