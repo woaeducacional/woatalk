@@ -315,9 +315,13 @@ export function ListenRepeatQuestion({
       setAttemptCount((c) => c + 1)
       const diff = computeWordDiff(text, sentences[repeatIndex])
       setWordDiff(diff)
-      setShowOwlFeedback(true)
-      // Dispara salvamento de erros no banco + geração de dica pela IA
-      triggerFeedback(diff, sentences[repeatIndex])
+      if (isPremium) {
+        setShowOwlFeedback(true)
+        // Dispara salvamento de erros no banco + geração de dica pela IA apenas para premium.
+        triggerFeedback(diff, sentences[repeatIndex])
+      } else {
+        setShowOwlFeedback(false)
+      }
     }
   }
 
@@ -644,7 +648,7 @@ export function ListenRepeatQuestion({
       )}
 
       {/* ── OWL PRONUNCIATION FEEDBACK ── */}
-      {showOwlFeedback && !passed && wordDiff.length > 0 && (
+      {isPremium && showOwlFeedback && !passed && wordDiff.length > 0 && (
         <OwlFeedbackPanel
           wordDiff={wordDiff}
           aiTip={aiTip}
