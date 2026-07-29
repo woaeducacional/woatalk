@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     .from('coupons')
     .select('id, code, discount_percent, active')
     .eq('code', code)
+    .eq('coupon_type', 'discount')
     .eq('active', true)
     .maybeSingle()
 
