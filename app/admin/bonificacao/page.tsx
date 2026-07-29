@@ -35,6 +35,16 @@ interface Bonus {
   granted_by_user: GrantedByUser | null
 }
 
+interface StarterCoupon {
+  id: number
+  code: string
+  starter_months: number
+  max_uses: number | null
+  uses_count: number
+  active: boolean
+  created_at: string
+}
+
 function daysRemaining(expiresAt: string): number {
   const now = new Date()
   const end = new Date(expiresAt)
@@ -91,6 +101,16 @@ export default function AdminBonificacao() {
   const [grantError, setGrantError] = useState('')
   const [grantSuccess, setGrantSuccess] = useState('')
 
+  // Starter access coupons
+  const [starterCoupons, setStarterCoupons] = useState<StarterCoupon[]>([])
+  const [couponCode, setCouponCode] = useState('')
+  const [couponMonths, setCouponMonths] = useState(1)
+  const [couponMaxUses, setCouponMaxUses] = useState(1)
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponListLoading, setCouponListLoading] = useState(false)
+  const [couponError, setCouponError] = useState('')
+  const [couponSuccess, setCouponSuccess] = useState('')
+
   // List tab
   const [bonuses, setBonuses] = useState<Bonus[]>([])
   const [listLoading, setListLoading] = useState(false)
@@ -107,6 +127,16 @@ export default function AdminBonificacao() {
     setListLoading(false)
   }, [])
 
+  const fetchStarterCoupons = useCallback(async () => {
+    setCouponListLoading(true)
+    const res = await fetch('/api/admin/coupons?type=starter_access')
+    if (res.ok) {
+      const d = await res.json()
+      setStarterCoupons(d.coupons ?? [])
+    }
+    setCouponListLoading(false)
+  }, [])
+
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status, router])
@@ -114,6 +144,10 @@ export default function AdminBonificacao() {
   useEffect(() => {
     if (tab === 'list' && status === 'authenticated') fetchBonuses()
   }, [tab, status, fetchBonuses])
+
+  useEffect(() => {
+    if (tab === 'grant' && status === 'authenticated') fetchStarterCoupons()
+  }, [tab, status, fetchStarterCoupons])
 
   // Debounced search
   useEffect(() => {
@@ -171,6 +205,62 @@ export default function AdminBonificacao() {
     setSearchResults([])
     setGrantError('')
     setGrantSuccess('')
+  }
+
+  async function handleCreateStarterCoupon() {
+    setCouponError('')
+    setCouponSuccess('')
+
+    const code = couponCode.trim().toUpperCase()
+    if (!code || code.length < 3) {
+      setCouponError('Código deve ter pelo menos 3 caracteres')
+      return
+    }
+    if (!Number.isInteger(couponMonths) || couponMonths < 1 || couponMonths > 12) {
+      setCouponError('Meses devem ser entre 1 e 12')
+      return
+    }
+    if (!Number.isInteger(couponMaxUses) || couponMaxUses < 1) {
+      setCouponError('Utilizações deve ser no mínimo 1')
+      return
+    }
+
+    setCouponLoading(true)
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          coupon_type: 'starter_access',
+          starter_months: couponMonths,
+          max_uses: couponMaxUses,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCouponError(data.error ?? 'Erro ao criar cupom')
+        return
+      }
+
+      setStarterCoupons(prev => [data.coupon, ...prev])
+      setCouponCode('')
+      setCouponMonths(1)
+      setCouponMaxUses(1)
+      setCouponSuccess(`Cupom ${data.coupon.code} criado com sucesso!`)
+    } catch {
+      setCouponError('Erro de conexão ao criar cupom')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  async function handleDeleteStarterCoupon(id: number) {
+    if (!confirm('Excluir este cupom permanentemente?')) return
+    const res = await fetch(`/api/admin/coupons/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setStarterCoupons(prev => prev.filter(c => c.id !== id))
+    }
   }
 
   return (
@@ -344,6 +434,110 @@ export default function AdminBonificacao() {
                 </button>
               </div>
             )}
+
+            <div className="pt-2 mt-2 border-t border-white/10 space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-black text-white tracking-wide">🎟️ Cupom de Acesso Starter</p>
+                  <p className="text-[11px] text-white/45">Crie códigos para liberar de 1 a 12 meses do plano Starter</p>
+                </div>
+                <button
+                  onClick={fetchStarterCoupons}
+                  disabled={couponListLoading}
+                  className="text-[11px] font-bold px-3 py-1 rounded-lg transition-all hover:bg-white/5 disabled:opacity-40"
+                  style={{ color: '#00D4FF', border: '1px solid rgba(0,212,255,0.2)' }}
+                >
+                  {couponListLoading ? '...' : '↻ Atualizar'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
+                <input
+                  value={couponCode}
+                  onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); setCouponSuccess('') }}
+                  placeholder="Código"
+                  className="px-3 py-2.5 rounded-xl text-xs outline-none"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}
+                />
+                <select
+                  value={couponMonths}
+                  onChange={e => { setCouponMonths(Number(e.target.value)); setCouponError(''); setCouponSuccess('') }}
+                  className="px-3 py-2.5 rounded-xl text-xs outline-none"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}
+                >
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <option key={i + 1} value={i + 1} className="text-black">{i + 1} mês{(i + 1) > 1 ? 'es' : ''}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={couponMaxUses}
+                  onChange={e => { setCouponMaxUses(Number(e.target.value)); setCouponError(''); setCouponSuccess('') }}
+                  placeholder="Utilizações"
+                  className="px-3 py-2.5 rounded-xl text-xs outline-none"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}
+                />
+                <button
+                  onClick={handleCreateStarterCoupon}
+                  disabled={couponLoading}
+                  className="px-3 py-2.5 rounded-xl text-xs font-black text-white transition-all hover:scale-[1.01] disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #0055FF, #00D4FF)' }}
+                >
+                  {couponLoading ? 'Criando...' : '+ Criar Cupom'}
+                </button>
+              </div>
+
+              {couponError && <p className="text-xs text-red-400">{couponError}</p>}
+              {couponSuccess && <p className="text-xs text-green-400">{couponSuccess}</p>}
+
+              {couponListLoading ? (
+                <div className="py-4 flex justify-center">
+                  <div className="w-6 h-6 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                </div>
+              ) : starterCoupons.length === 0 ? (
+                <p className="text-xs text-white/35">Nenhum cupom de acesso Starter criado.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {starterCoupons.map(coupon => {
+                    const reachedMax = coupon.max_uses !== null && coupon.uses_count >= coupon.max_uses
+                    const isInvalid = !coupon.active || reachedMax
+                    return (
+                      <div
+                        key={coupon.id}
+                        className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${isInvalid ? 'rgba(239,68,68,0.30)' : 'rgba(255,255,255,0.10)'}` }}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-white font-black text-sm tracking-wide truncate">{coupon.code}</p>
+                          <p className="text-[11px] text-white/55">
+                            {coupon.starter_months} mês{coupon.starter_months > 1 ? 'es' : ''} Starter • Utilizações: {coupon.uses_count}/{coupon.max_uses ?? '∞'}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-black"
+                            style={isInvalid
+                              ? { background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.30)' }
+                              : { background: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.30)' }}
+                          >
+                            {isInvalid ? 'Inválido' : 'Ativo'}
+                          </span>
+
+                          <button
+                            onClick={() => handleDeleteStarterCoupon(coupon.id)}
+                            className="px-3 py-1.5 rounded-lg text-[10px] font-black text-red-400 border border-red-500/35 hover:bg-red-500/10 transition-all"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

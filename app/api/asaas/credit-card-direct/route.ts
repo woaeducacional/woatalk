@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
       .from('coupons')
       .select('discount_percent')
       .eq('code', couponClean)
+      .eq('coupon_type', 'discount')
       .eq('active', true)
       .maybeSingle()
     if (couponData) {
