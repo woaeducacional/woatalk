@@ -170,7 +170,7 @@ export default function ProfilePage() {
         return
       }
 
-      setStarterCouponMsg({ type: 'ok', text: `Cupom aplicado: +${data.monthsGranted} mês(es) no Starter.` })
+      setStarterCouponMsg({ type: 'ok', text: `Cupom aplicado: +${data.monthsGranted} mês(es) no ${data.planType === 'premium' ? 'Premium' : 'Starter'}.` })
       setStarterCouponCode('')
 
       const subRes = await fetch('/api/user/subscription')
@@ -578,7 +578,7 @@ export default function ProfilePage() {
                 )}
 
                 <div className="pt-2 border-t border-cyan-400/15 space-y-2.5">
-                  <p className="text-[11px] font-black tracking-widest text-cyan-300/70 uppercase">Cupom de Acesso Starter</p>
+                  <p className="text-[11px] font-black tracking-widest text-cyan-300/70 uppercase">Cupom de Acesso por Plano</p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       value={starterCouponCode}

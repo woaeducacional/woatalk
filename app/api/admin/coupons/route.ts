@@ -25,11 +25,11 @@ export async function GET(req: NextRequest) {
   }
 
   const requestedType = req.nextUrl.searchParams.get('type')
-  const typeParam = requestedType === 'starter_access' ? 'starter_access' : 'discount'
+  const typeParam = requestedType === 'plan_access' ? 'plan_access' : 'discount'
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('id, code, coupon_type, discount_percent, starter_months, max_uses, uses_count, active, created_at')
+    .select('id, code, coupon_type, access_plan, access_months, discount_percent, max_uses, uses_count, active, created_at')
     .eq('coupon_type', typeParam)
     .order('created_at', { ascending: false })
 
@@ -47,9 +47,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const code = String(body.code ?? '').trim().toUpperCase()
-  const coupon_type = body.coupon_type === 'starter_access' ? 'starter_access' : 'discount'
+  const coupon_type = body.coupon_type === 'plan_access' ? 'plan_access' : 'discount'
+  const access_plan = body.access_plan === 'premium' ? 'premium' : 'starter'
   const discount_percent = Number(body.discount_percent)
-  const starter_months = Number(body.starter_months)
+  const access_months = Number(body.access_months)
   const max_uses = Number(body.max_uses)
 
   if (!code || code.length < 3) {
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Desconto deve ser entre 1 e 100' }, { status: 400 })
     }
   } else {
-    if (!Number.isInteger(starter_months) || starter_months < 1 || starter_months > 12) {
+    if (!Number.isInteger(access_months) || access_months < 1 || access_months > 12) {
       return NextResponse.json({ error: 'Meses devem ser entre 1 e 12' }, { status: 400 })
     }
     if (!Number.isInteger(max_uses) || max_uses < 1) {
@@ -70,12 +71,12 @@ export async function POST(req: NextRequest) {
 
   const payload = coupon_type === 'discount'
     ? { code, coupon_type, discount_percent, active: true }
-    : { code, coupon_type, starter_months, max_uses, uses_count: 0, active: true }
+    : { code, coupon_type, access_plan, access_months, max_uses, uses_count: 0, active: true }
 
   const { data, error } = await supabase
     .from('coupons')
     .insert(payload)
-    .select('id, code, coupon_type, discount_percent, starter_months, max_uses, uses_count, active, created_at')
+    .select('id, code, coupon_type, access_plan, access_months, discount_percent, max_uses, uses_count, active, created_at')
     .single()
 
   if (error) {

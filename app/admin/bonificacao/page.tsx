@@ -35,10 +35,11 @@ interface Bonus {
   granted_by_user: GrantedByUser | null
 }
 
-interface StarterCoupon {
+interface AccessCoupon {
   id: number
   code: string
-  starter_months: number
+  access_plan: 'starter' | 'premium'
+  access_months: number
   max_uses: number | null
   uses_count: number
   active: boolean
@@ -101,9 +102,10 @@ export default function AdminBonificacao() {
   const [grantError, setGrantError] = useState('')
   const [grantSuccess, setGrantSuccess] = useState('')
 
-  // Starter access coupons
-  const [starterCoupons, setStarterCoupons] = useState<StarterCoupon[]>([])
+  // Plan access coupons
+  const [accessCoupons, setAccessCoupons] = useState<AccessCoupon[]>([])
   const [couponCode, setCouponCode] = useState('')
+  const [couponPlan, setCouponPlan] = useState<'starter' | 'premium'>('starter')
   const [couponMonths, setCouponMonths] = useState(1)
   const [couponMaxUses, setCouponMaxUses] = useState(1)
   const [couponLoading, setCouponLoading] = useState(false)
@@ -127,12 +129,12 @@ export default function AdminBonificacao() {
     setListLoading(false)
   }, [])
 
-  const fetchStarterCoupons = useCallback(async () => {
+  const fetchAccessCoupons = useCallback(async () => {
     setCouponListLoading(true)
-    const res = await fetch('/api/admin/coupons?type=starter_access')
+    const res = await fetch('/api/admin/coupons?type=plan_access')
     if (res.ok) {
       const d = await res.json()
-      setStarterCoupons(d.coupons ?? [])
+      setAccessCoupons(d.coupons ?? [])
     }
     setCouponListLoading(false)
   }, [])
@@ -146,8 +148,8 @@ export default function AdminBonificacao() {
   }, [tab, status, fetchBonuses])
 
   useEffect(() => {
-    if (tab === 'grant' && status === 'authenticated') fetchStarterCoupons()
-  }, [tab, status, fetchStarterCoupons])
+    if (tab === 'grant' && status === 'authenticated') fetchAccessCoupons()
+  }, [tab, status, fetchAccessCoupons])
 
   // Debounced search
   useEffect(() => {
@@ -207,7 +209,7 @@ export default function AdminBonificacao() {
     setGrantSuccess('')
   }
 
-  async function handleCreateStarterCoupon() {
+  async function handleCreateAccessCoupon() {
     setCouponError('')
     setCouponSuccess('')
 
@@ -232,8 +234,9 @@ export default function AdminBonificacao() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
-          coupon_type: 'starter_access',
-          starter_months: couponMonths,
+          coupon_type: 'plan_access',
+          access_plan: couponPlan,
+          access_months: couponMonths,
           max_uses: couponMaxUses,
         }),
       })
@@ -243,8 +246,9 @@ export default function AdminBonificacao() {
         return
       }
 
-      setStarterCoupons(prev => [data.coupon, ...prev])
+      setAccessCoupons(prev => [data.coupon, ...prev])
       setCouponCode('')
+      setCouponPlan('starter')
       setCouponMonths(1)
       setCouponMaxUses(1)
       setCouponSuccess(`Cupom ${data.coupon.code} criado com sucesso!`)
@@ -255,11 +259,11 @@ export default function AdminBonificacao() {
     }
   }
 
-  async function handleDeleteStarterCoupon(id: number) {
+  async function handleDeleteAccessCoupon(id: number) {
     if (!confirm('Excluir este cupom permanentemente?')) return
     const res = await fetch(`/api/admin/coupons/${id}`, { method: 'DELETE' })
     if (res.ok) {
-      setStarterCoupons(prev => prev.filter(c => c.id !== id))
+      setAccessCoupons(prev => prev.filter(c => c.id !== id))
     }
   }
 
@@ -438,11 +442,11 @@ export default function AdminBonificacao() {
             <div className="pt-2 mt-2 border-t border-white/10 space-y-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <p className="text-sm font-black text-white tracking-wide">🎟️ Cupom de Acesso Starter</p>
-                  <p className="text-[11px] text-white/45">Crie códigos para liberar de 1 a 12 meses do plano Starter</p>
+                  <p className="text-sm font-black text-white tracking-wide">🎟️ Cupom de Acesso por Plano</p>
+                  <p className="text-[11px] text-white/45">Crie códigos para liberar de 1 a 12 meses no plano Starter ou Premium</p>
                 </div>
                 <button
-                  onClick={fetchStarterCoupons}
+                  onClick={fetchAccessCoupons}
                   disabled={couponListLoading}
                   className="text-[11px] font-bold px-3 py-1 rounded-lg transition-all hover:bg-white/5 disabled:opacity-40"
                   style={{ color: '#00D4FF', border: '1px solid rgba(0,212,255,0.2)' }}
@@ -459,6 +463,15 @@ export default function AdminBonificacao() {
                   className="px-3 py-2.5 rounded-xl text-xs outline-none"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}
                 />
+                <select
+                  value={couponPlan}
+                  onChange={e => { setCouponPlan(e.target.value === 'premium' ? 'premium' : 'starter'); setCouponError(''); setCouponSuccess('') }}
+                  className="px-3 py-2.5 rounded-xl text-xs outline-none"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}
+                >
+                  <option value="starter" className="text-black">Starter</option>
+                  <option value="premium" className="text-black">Premium</option>
+                </select>
                 <select
                   value={couponMonths}
                   onChange={e => { setCouponMonths(Number(e.target.value)); setCouponError(''); setCouponSuccess('') }}
@@ -479,7 +492,7 @@ export default function AdminBonificacao() {
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}
                 />
                 <button
-                  onClick={handleCreateStarterCoupon}
+                  onClick={handleCreateAccessCoupon}
                   disabled={couponLoading}
                   className="px-3 py-2.5 rounded-xl text-xs font-black text-white transition-all hover:scale-[1.01] disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #0055FF, #00D4FF)' }}
@@ -496,10 +509,11 @@ export default function AdminBonificacao() {
                   <div className="w-6 h-6 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
                 </div>
               ) : starterCoupons.length === 0 ? (
-                <p className="text-xs text-white/35">Nenhum cupom de acesso Starter criado.</p>
+              ) : accessCoupons.length === 0 ? (
+                <p className="text-xs text-white/35">Nenhum cupom de acesso criado.</p>
               ) : (
                 <div className="space-y-2.5">
-                  {starterCoupons.map(coupon => {
+                  {accessCoupons.map(coupon => {
                     const reachedMax = coupon.max_uses !== null && coupon.uses_count >= coupon.max_uses
                     const isInvalid = !coupon.active || reachedMax
                     return (
@@ -511,7 +525,7 @@ export default function AdminBonificacao() {
                         <div className="min-w-0">
                           <p className="text-white font-black text-sm tracking-wide truncate">{coupon.code}</p>
                           <p className="text-[11px] text-white/55">
-                            {coupon.starter_months} mês{coupon.starter_months > 1 ? 'es' : ''} Starter • Utilizações: {coupon.uses_count}/{coupon.max_uses ?? '∞'}
+                            {coupon.access_months} mês{coupon.access_months > 1 ? 'es' : ''} {coupon.access_plan === 'premium' ? 'Premium' : 'Starter'} • Utilizações: {coupon.uses_count}/{coupon.max_uses ?? '∞'}
                           </p>
                         </div>
 
@@ -526,7 +540,7 @@ export default function AdminBonificacao() {
                           </span>
 
                           <button
-                            onClick={() => handleDeleteStarterCoupon(coupon.id)}
+                            onClick={() => handleDeleteAccessCoupon(coupon.id)}
                             className="px-3 py-1.5 rounded-lg text-[10px] font-black text-red-400 border border-red-500/35 hover:bg-red-500/10 transition-all"
                           >
                             Excluir
