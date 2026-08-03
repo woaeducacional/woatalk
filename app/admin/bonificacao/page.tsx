@@ -508,7 +508,6 @@ export default function AdminBonificacao() {
                 <div className="py-4 flex justify-center">
                   <div className="w-6 h-6 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
                 </div>
-              ) : starterCoupons.length === 0 ? (
               ) : accessCoupons.length === 0 ? (
                 <p className="text-xs text-white/35">Nenhum cupom de acesso criado.</p>
               ) : (
