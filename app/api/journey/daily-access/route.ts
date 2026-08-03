@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
 
 const DAILY_JOURNEY_LIMIT = 2
+// Feature flag: keep the daily-journey lock logic in place but disabled by default.
+// To reactivate in the future, set ENABLE_DAILY_JOURNEY_LIMIT=true in the environment.
+const DAILY_JOURNEY_LIMIT_ENABLED = process.env.ENABLE_DAILY_JOURNEY_LIMIT === 'true'
 
 /** Returns today's date as YYYY-MM-DD in BRT (UTC-3). */
 function getTodayBRTDate(): string {
@@ -23,6 +26,16 @@ function todayJourneyReason(): string {
  */
 export async function GET() {
   try {
+    if (!DAILY_JOURNEY_LIMIT_ENABLED) {
+      return NextResponse.json({
+        accessedPhaseIds: [],
+        count: 0,
+        isPremium: false,
+        limit: DAILY_JOURNEY_LIMIT,
+        limitEnabled: false,
+      })
+    }
+
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -58,7 +71,7 @@ export async function GET() {
 
     const accessedPhaseIds = [...new Set((rows ?? []).map((r) => r.amount as number))]
 
-    return NextResponse.json({ accessedPhaseIds, count: accessedPhaseIds.length, isPremium: false, limit: DAILY_JOURNEY_LIMIT })
+    return NextResponse.json({ accessedPhaseIds, count: accessedPhaseIds.length, isPremium: false, limit: DAILY_JOURNEY_LIMIT, limitEnabled: true })
   } catch (error) {
     console.error('Error in journey daily-access GET:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -74,6 +87,17 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!DAILY_JOURNEY_LIMIT_ENABLED) {
+      return NextResponse.json({
+        alreadyAccessed: false,
+        dailyCount: 0,
+        blocked: false,
+        isPremium: false,
+        limit: DAILY_JOURNEY_LIMIT,
+        limitEnabled: false,
+      })
+    }
+
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

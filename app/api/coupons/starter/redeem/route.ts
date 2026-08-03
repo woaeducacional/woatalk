@@ -9,10 +9,11 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 )
 
-type StarterCoupon = {
+type AccessCoupon = {
   id: number
   code: string
-  starter_months: number
+  access_plan: 'starter' | 'premium'
+  access_months: number
   max_uses: number | null
   uses_count: number
   active: boolean
@@ -47,21 +48,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
   }
 
-  let redeemed: StarterCoupon | null = null
+  let redeemed: AccessCoupon | null = null
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const { data: coupon, error: couponError } = await supabase
       .from('coupons')
-      .select('id, code, starter_months, max_uses, uses_count, active')
+      .select('id, code, access_plan, access_months, max_uses, uses_count, active')
       .eq('code', code)
-      .eq('coupon_type', 'starter_access')
-      .maybeSingle<StarterCoupon>()
+      .eq('coupon_type', 'plan_access')
+      .maybeSingle<AccessCoupon>()
 
     if (couponError) {
       return NextResponse.json({ error: couponError.message }, { status: 500 })
     }
 
-    if (!coupon || !coupon.active || !coupon.starter_months) {
+    if (!coupon || !coupon.active || !coupon.access_months || !coupon.access_plan) {
       return NextResponse.json({ error: 'Cupom inválido ou inativo' }, { status: 400 })
     }
 
@@ -80,8 +81,8 @@ export async function POST(req: NextRequest) {
       .eq('id', coupon.id)
       .eq('uses_count', coupon.uses_count)
       .eq('active', true)
-      .select('id, code, starter_months, max_uses, uses_count, active')
-      .maybeSingle<StarterCoupon>()
+      .select('id, code, access_plan, access_months, max_uses, uses_count, active')
+      .maybeSingle<AccessCoupon>()
 
     if (updateCouponError) {
       return NextResponse.json({ error: updateCouponError.message }, { status: 500 })
@@ -100,10 +101,9 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const currentEnd = user.subscription_current_period_end ? new Date(user.subscription_current_period_end) : null
   const baseDate = currentEnd && currentEnd > now ? currentEnd : now
-  const newEnd = addMonths(baseDate, redeemed.starter_months)
+  const newEnd = addMonths(baseDate, redeemed.access_months)
 
-  const currentPlan = String(user.subscription_plan ?? '')
-  const targetPlan = currentPlan.includes('premium') ? currentPlan : 'starter_monthly'
+  const targetPlan = redeemed.access_plan === 'premium' ? 'premium_monthly' : 'starter_monthly'
 
   const { error: subUpdateError } = await supabase
     .from('users')
@@ -121,12 +121,13 @@ export async function POST(req: NextRequest) {
   // Best-effort log; avoids blocking redemption if table is absent during rollout.
   await supabase
     .from('coupon_redemptions')
-    .insert({ coupon_id: redeemed.id, user_id: user.id, months_granted: redeemed.starter_months })
+    .insert({ coupon_id: redeemed.id, user_id: user.id, plan_type: redeemed.access_plan, months_granted: redeemed.access_months })
 
   return NextResponse.json({
     success: true,
     code: redeemed.code,
-    monthsGranted: redeemed.starter_months,
+    planType: redeemed.access_plan,
+    monthsGranted: redeemed.access_months,
     usesCount: redeemed.uses_count,
     maxUses: redeemed.max_uses,
     expiresAt: newEnd.toISOString(),
