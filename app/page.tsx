@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { playBubble } from '@/lib/sounds'
@@ -44,6 +44,27 @@ const phases = [
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showLgpdConsent, setShowLgpdConsent] = useState(false)
+
+  useEffect(() => {
+    try {
+      const accepted = localStorage.getItem('woa_lgpd_consent_v1')
+      if (accepted !== 'accepted') {
+        setShowLgpdConsent(true)
+      }
+    } catch {
+      setShowLgpdConsent(true)
+    }
+  }, [])
+
+  const handleAcceptLgpd = () => {
+    try {
+      localStorage.setItem('woa_lgpd_consent_v1', 'accepted')
+    } catch {
+      // No-op when storage is unavailable.
+    }
+    setShowLgpdConsent(false)
+  }
 
   return (
     <main className="overflow-x-hidden" style={{ background: '#050E1A' }}>
@@ -337,8 +358,8 @@ export default function Home() {
           <div className="flex flex-col gap-3">
             <h6 className="text-[11px] font-black tracking-[0.2em] text-blue-200/60 uppercase mb-1">Redes Sociais</h6>
             {[
-              { label: 'WOA Education', href: 'https://www.instagram.com/woaeducation', icon: '📷' },
-              { label: 'Facebook', href: 'https://www.facebook.com/share/18pZtCivaM/?mibextid=wwXIfr', icon: '�' },
+              { label: 'Instagram • WOA Educacional', href: 'https://www.instagram.com/woaeducacional', icon: '📷' },
+              { label: 'Facebook • WOA Educacional', href: 'https://www.facebook.com/share/1C963njfwi/?mibextid=wwXIfr', icon: '📘' },
               { label: 'YouTube', href: 'https://youtube.com/@woaeducacional?si=a8pxOxo1LKGCpod2', icon: '▶️' },
             ].map(s => (
               <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-blue-200/60 hover:text-white transition-colors">
@@ -354,6 +375,34 @@ export default function Home() {
           <p className="text-[11px] text-blue-200/50">Design: H5 Criativo</p>
         </div>
       </footer>
+
+      {showLgpdConsent && (
+        <div className="fixed inset-x-0 bottom-0 z-[70] p-3 sm:p-4">
+          <div
+            className="mx-auto max-w-4xl rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(5,14,26,0.95), rgba(9,28,52,0.95))',
+              border: '1px solid rgba(0,212,255,0.28)',
+              boxShadow: '0 12px 30px rgba(0,0,0,0.35), 0 0 20px rgba(0,212,255,0.2)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] sm:text-xs font-black tracking-widest text-cyan-300">LGPD</p>
+              <p className="text-xs sm:text-sm text-blue-100/85 leading-relaxed mt-1">
+                Ao continuar navegando na WOA Talk, você concorda com o tratamento de dados pessoais para melhorar sua experiência, conforme a LGPD.
+              </p>
+            </div>
+            <button
+              onClick={handleAcceptLgpd}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-black tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #00A3FF, #00D4FF)', boxShadow: '0 0 18px rgba(0,212,255,0.35)' }}
+            >
+              ACEITAR E CONTINUAR
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
