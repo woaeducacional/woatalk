@@ -1200,6 +1200,26 @@ export default function DashboardPage() {
             <span style={{ color: 'rgba(0,212,255,0.7)', fontSize: '16px' }} className="sm:text-lg">›</span>
           </Link>
 
+          {/* Support button */}
+          <Link
+            href="/support"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center justify-between w-full rounded-xl px-3 sm:px-4 py-2.5 sm:py-3.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: 'rgba(34,197,94,0.10)',
+              border: '1px solid rgba(34,197,94,0.30)',
+            }}
+          >
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-lg sm:text-xl">🛟</span>
+              <div>
+                <p className="text-xs sm:text-sm font-black tracking-wider text-white">SUPORTE</p>
+                <p className="text-[8px] sm:text-[10px]" style={{ color: 'rgba(34,197,94,0.70)' }}>Abra uma solicitação de ajuda</p>
+              </div>
+            </div>
+            <span style={{ color: 'rgba(34,197,94,0.8)', fontSize: '16px' }} className="sm:text-lg">›</span>
+          </Link>
+
           {/* Verify email button — only shown if not verified */}
           {!isEmailVerified && (
             <button
