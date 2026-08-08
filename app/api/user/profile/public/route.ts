@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveAvatarUrl } from '@/lib/avatarStorage'
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +45,10 @@ export async function GET(request: NextRequest) {
     console.log('Profile found for id:', id)
     return NextResponse.json({
       success: true,
-      profile: data,
+      profile: {
+        ...data,
+        avatar_url: resolveAvatarUrl(data.avatar_url),
+      },
     })
   } catch (error) {
     console.error('Public profile fetch error:', error)

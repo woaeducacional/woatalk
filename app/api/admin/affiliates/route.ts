@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
+import { resolveAvatarUrl } from '@/lib/avatarStorage'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -17,7 +18,20 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ affiliates: data ?? [] })
+  return NextResponse.json({
+    affiliates: (data ?? []).map((row: any) => {
+      const user = Array.isArray(row.users) ? row.users[0] : row.users
+      return {
+        ...row,
+        users: user
+          ? {
+              ...user,
+              avatar_url: resolveAvatarUrl(user.avatar_url),
+            }
+          : null,
+      }
+    }),
+  })
 }
 
 export async function POST(req: NextRequest) {

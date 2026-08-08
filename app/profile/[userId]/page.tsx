@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveAvatarUrl } from '@/lib/avatarStorage'
 import { ClientProfileContent } from './client-profile'
 
 interface UserProfile {
@@ -31,7 +32,11 @@ async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
       return null
     }
 
-    return data ?? null
+    if (!data) return null
+    return {
+      ...data,
+      avatar_url: resolveAvatarUrl(data.avatar_url) ?? undefined,
+    }
   } catch (error) {
     console.error('Failed to fetch profile:', error)
     return null

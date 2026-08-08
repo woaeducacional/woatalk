@@ -4,6 +4,7 @@ import { signInSchema } from '@/lib/validation'
 import { apiService } from '@/lib/api.service'
 import { hasUnverifiedEmail } from '@/lib/otp'
 import { sendWelcomeEmail } from '@/lib/email'
+import { resolveAvatarUrl } from '@/lib/avatarStorage'
 import type { NextAuthOptions } from 'next-auth'
 
 declare module 'next-auth' {
@@ -53,7 +54,7 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             email: user.email,
             name: user.name,
-            image: user.avatar_url,
+            image: resolveAvatarUrl(user.avatar_url),
             role: user.role ?? 'user',
           }
         } catch (err: any) {
