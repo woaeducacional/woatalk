@@ -18,6 +18,19 @@ const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'im
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const BUCKET_NAME = 'journey-assets'
 
+function normalizeStoredIconPath(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return trimmed
+  if (/^https?:\/\//i.test(trimmed)) {
+    const marker = '/storage/v1/object/public/journey-assets/'
+    const idx = trimmed.indexOf(marker)
+    if (idx >= 0) {
+      return trimmed.slice(idx + marker.length).replace(/^\/+/, '')
+    }
+  }
+  return trimmed.replace(/^\/+/, '')
+}
+
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
   if (!session?.user || session.user.role !== 'admin') {
@@ -96,10 +109,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Salvar icon_url no banco de dados
+    // Store only the relative object path so environments can switch Supabase base URL safely.
+    const storedPath = normalizeStoredIconPath(filePath)
+
+    // Salvar icon_url (path relativo) no banco de dados
     const { error: dbError } = await supabase
       .from('journey_content')
-      .update({ icon_url: publicUrl })
+      .update({ icon_url: storedPath })
       .eq('phase_id', parseInt(phaseId))
 
     if (dbError) {
@@ -113,7 +129,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       url: publicUrl,
-      path: filePath,
+      path: storedPath,
       fileName,
       message: `Ícone enviado com sucesso: ${fileName}`
     })

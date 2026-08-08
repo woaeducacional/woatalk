@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/src/lib/supabaseClient'
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const JOURNEY_ASSETS_PREFIX = '/storage/v1/object/public/journey-assets/'
+
+function resolveJourneyIconUrl(rawValue: unknown): string | null {
+  if (typeof rawValue !== 'string') return null
+  const icon = rawValue.trim()
+  if (!icon) return null
+  if (/^https?:\/\//i.test(icon)) return icon
+  if (!SUPABASE_URL) return null
+  return `${SUPABASE_URL}${JOURNEY_ASSETS_PREFIX}${icon.replace(/^\/+/, '')}`
+}
+
 /** GET /api/journey — list all published journeys (public) */
 export async function GET() {
   if (!supabase) return NextResponse.json({ journeys: [] })
@@ -37,7 +49,7 @@ export async function GET() {
       description: row.description ?? '',
       blocked: row.blocked ?? false,
       is_pro: row.is_pro ?? false,
-      icon_url: row.icon_url || null,
+      icon_url: resolveJourneyIconUrl(row.icon_url),
     })),
   })
 }

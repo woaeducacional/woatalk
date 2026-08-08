@@ -4,6 +4,18 @@ import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
 import type { JourneyContent } from '@/lib/journeyContent'
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const JOURNEY_ASSETS_PREFIX = '/storage/v1/object/public/journey-assets/'
+
+function resolveJourneyIconUrl(rawValue: unknown): string | null {
+  if (typeof rawValue !== 'string') return null
+  const icon = rawValue.trim()
+  if (!icon) return null
+  if (/^https?:\/\//i.test(icon)) return icon
+  if (!SUPABASE_URL) return null
+  return `${SUPABASE_URL}${JOURNEY_ASSETS_PREFIX}${icon.replace(/^\/+/, '')}`
+}
+
 // GET — Fetch journey content for a phase
 export async function GET(
   _request: NextRequest,
@@ -26,6 +38,7 @@ export async function GET(
         phase_id: data.phase_id,
         title: data.title,
         description: data.description,
+        icon_url: resolveJourneyIconUrl(data.icon_url),
         mission_groups: data.mission_groups,
         block1: data.block1,
         block2: data.block2,
