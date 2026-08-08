@@ -93,6 +93,7 @@ function CircleCard({ journey, isCenter, isDailyLocked = false, isSeqLocked = fa
           alt={journey.title}
           width={isCenter ? 130 : 80}
           height={isCenter ? 130 : 80}
+          unoptimized
           className={`object-contain relative z-10 ${locked ? 'grayscale opacity-35' : ''}`}
         />
       )}
