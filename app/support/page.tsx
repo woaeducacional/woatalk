@@ -8,6 +8,7 @@ type MyTicket = {
   id: string
   subject: string
   problem: string
+  screenshot_url?: string | null
   status: 'open' | 'in_progress' | 'resolved'
   created_at: string
 }
@@ -30,6 +31,7 @@ export default function SupportPage() {
 
   const [subject, setSubject] = useState('')
   const [problem, setProblem] = useState('')
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -70,10 +72,14 @@ export default function SupportPage() {
 
     setLoading(true)
     try {
+      const formData = new FormData()
+      formData.append('subject', trimmedSubject)
+      formData.append('problem', trimmedProblem)
+      if (screenshotFile) formData.append('screenshot', screenshotFile)
+
       const res = await fetch('/api/support-tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: trimmedSubject, problem: trimmedProblem }),
+        body: formData,
       })
 
       const data = await res.json()
@@ -85,6 +91,7 @@ export default function SupportPage() {
       setSuccess('Solicitação enviada com sucesso. Nosso time vai analisar seu caso.')
       setSubject('')
       setProblem('')
+      setScreenshotFile(null)
       if (data.ticket) {
         setTickets(prev => [data.ticket as MyTicket, ...prev])
       }
@@ -149,6 +156,21 @@ export default function SupportPage() {
               />
             </div>
 
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold tracking-widest text-blue-200/70 uppercase">Print do problema (opcional)</label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={e => {
+                  const f = e.target.files?.[0] ?? null
+                  setScreenshotFile(f)
+                }}
+                className="w-full px-3 py-2.5 rounded-xl text-xs text-white/80 outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+              />
+              <p className="text-[11px] text-white/45">Formatos: PNG, JPG, WebP. Máximo: 5MB.</p>
+            </div>
+
             {error && <p className="text-xs text-red-400">{error}</p>}
             {success && <p className="text-xs text-green-400">{success}</p>}
 
@@ -188,6 +210,16 @@ export default function SupportPage() {
                     </span>
                   </div>
                   <p className="text-[11px] text-white/35 mt-1">{new Date(ticket.created_at).toLocaleString('pt-BR')}</p>
+                  {ticket.screenshot_url && (
+                    <a
+                      href={ticket.screenshot_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 text-[11px] font-bold text-cyan-300 hover:text-cyan-200"
+                    >
+                      📎 Ver print anexado
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
