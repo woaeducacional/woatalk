@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
+import { resolveAvatarUrl } from '@/lib/avatarStorage'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -21,5 +22,10 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ users: data ?? [] })
+  return NextResponse.json({
+    users: (data ?? []).map((u: any) => ({
+      ...u,
+      avatar_url: resolveAvatarUrl(u.avatar_url),
+    })),
+  })
 }

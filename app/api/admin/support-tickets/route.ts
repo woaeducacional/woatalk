@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/authOptions'
 import { supabase } from '@/src/lib/supabaseClient'
+import { resolveSupportScreenshotUrl } from '@/lib/supportTicketStorage'
 
 type SupportTicketRow = {
   id: string
   subject: string
   problem: string
+  screenshot_url: string | null
   status: 'open' | 'in_progress' | 'resolved'
   created_at: string
   users: Array<{
@@ -36,7 +38,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('support_tickets')
     .select(`
-      id, subject, problem, status, created_at,
+      id, subject, problem, screenshot_url, status, created_at,
       users!support_tickets_user_id_fkey (id, name, email, subscription_plan)
     `)
     .order('created_at', { ascending: false })
@@ -51,6 +53,7 @@ export async function GET() {
     id: row.id,
     subject: row.subject,
     problem: row.problem,
+    screenshot_url: resolveSupportScreenshotUrl(row.screenshot_url),
     status: row.status,
     created_at: row.created_at,
     user: {

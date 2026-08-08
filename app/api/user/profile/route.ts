@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/authOptions'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { normalizeStoredAvatarPath, resolveAvatarUrl } from '@/lib/avatarStorage'
 import path from 'path'
 
 export async function POST(request: NextRequest) {
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
-    let avatarUrl = null
+    let avatarPath: string | null = null
+    let uploadedAvatarPublicUrl: string | null = null
 
     // Handle avatar file upload
     const avatarFile = formData.get('avatar') as File
@@ -81,7 +83,8 @@ export async function POST(request: NextRequest) {
         .getPublicUrl(fileName)
       
       const baseUrl = publicUrlData?.publicUrl || null
-      avatarUrl = baseUrl ? `${baseUrl}?t=${Date.now()}` : null
+      avatarPath = normalizeStoredAvatarPath(fileName)
+      uploadedAvatarPublicUrl = baseUrl ? `${baseUrl}?t=${Date.now()}` : null
     }
 
     // Extract profile fields
@@ -96,8 +99,8 @@ export async function POST(request: NextRequest) {
     }
 
     // If avatar was uploaded, set it as pending moderation
-    if (avatarUrl) {
-      profile.avatar_url = avatarUrl
+    if (avatarPath) {
+      profile.avatar_url = avatarPath
       profile.avatar_status = 'pending'
     }
 
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // If avatar was uploaded, notify all admins for approval
-    if (avatarUrl) {
+    if (avatarPath) {
       // Get the user's ID and name
       const { data: userData } = await supabaseServer
         .from('users')
@@ -141,7 +144,7 @@ export async function POST(request: NextRequest) {
               requester_id: userData.id,
               requester_name: userData.name,
               requester_email: session.user.email,
-              avatar_url: avatarUrl,
+              avatar_url: uploadedAvatarPublicUrl,
             },
           }))
 
@@ -152,8 +155,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      avatar_url: avatarUrl,
-      avatar_status: avatarUrl ? 'pending' : undefined,
+      avatar_url: uploadedAvatarPublicUrl,
+      avatar_status: avatarPath ? 'pending' : undefined,
       message: 'Profile updated successfully',
     })
   } catch (error) {
@@ -201,7 +204,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      profile: data,
+      profile: {
+        ...data,
+        avatar_url: resolveAvatarUrl(data.avatar_url),
+      },
     })
   } catch (error) {
     console.error('Profile fetch error:', error)

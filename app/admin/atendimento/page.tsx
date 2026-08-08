@@ -8,6 +8,7 @@ type AdminTicket = {
   id: string
   subject: string
   problem: string
+  screenshot_url?: string | null
   status: 'open' | 'in_progress' | 'resolved'
   created_at: string
   user: {
@@ -143,6 +144,25 @@ export default function AdminAtendimentoPage() {
                   <p className="text-[11px] text-white/45 mb-2">Problema enviado</p>
                   <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">{selected.problem}</p>
                 </div>
+                {selected.screenshot_url && (
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)' }}>
+                    <p className="text-[11px] text-white/45 mb-2">Print anexado</p>
+                    <a
+                      href={selected.screenshot_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-black text-cyan-300 hover:text-cyan-200"
+                    >
+                      📎 Abrir imagem em nova aba
+                    </a>
+                    <img
+                      src={selected.screenshot_url}
+                      alt="Print do problema"
+                      className="mt-3 rounded-lg w-full max-h-[380px] object-contain"
+                      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </section>
