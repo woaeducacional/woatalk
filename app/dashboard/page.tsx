@@ -1140,7 +1140,7 @@ export default function DashboardPage() {
           onClick={() => setChallengeOpen(false)}
         >
           <div
-            className="relative w-full max-w-2xl rounded-3xl p-5 sm:p-7"
+            className="relative w-full max-w-xl max-h-[84vh] overflow-y-auto rounded-3xl p-4 sm:p-5"
             style={{ background: 'rgba(5,14,26,0.97)', border: '1px solid rgba(255,215,0,0.3)', boxShadow: '0 0 60px rgba(255,180,0,0.12)' }}
             onClick={e => e.stopPropagation()}
           >
@@ -1149,18 +1149,18 @@ export default function DashboardPage() {
               className="absolute top-4 right-4 text-white/30 hover:text-white/70 transition-colors text-lg leading-none"
             >✕</button>
 
-            <div className="mb-5">
+            <div className="mb-4">
               <p className="text-[10px] font-black tracking-[0.25em] mb-2" style={{ color: 'rgba(255,215,0,0.75)' }}>DESAFIOS</p>
               <h3 className="text-2xl font-black text-white">Seu progresso na rotina</h3>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {(Object.keys(challengeSnapshot) as ChallengePeriod[]).map((period) => {
                 const summary = challengeSnapshot[period]
                 const progressPercent = summary.percent
 
                 return (
-                  <div key={period} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div key={period} className="rounded-2xl p-3.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div>
                         <p className="text-[10px] font-black tracking-widest text-white/60">{summary.meta.title}</p>
@@ -1172,7 +1172,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    <div className="rounded-xl p-3 mb-3" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)' }}>
+                    <div className="rounded-xl p-2.5 mb-3" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)' }}>
                       <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: '#FFD700' }}>RECOMPENSA</p>
                       <p className="text-sm font-bold text-white">{summary.meta.reward}</p>
                     </div>
