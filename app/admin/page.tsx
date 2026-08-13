@@ -46,10 +46,34 @@ export default function AdminDashboard() {
   const [bannerFile, setBannerFile] = useState<File | null>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
 
+  // ── Challenge config ──
+  const [dailyReward, setDailyReward] = useState('XP + WOA Coins + Streak')
+  const [weeklyReward, setWeeklyReward] = useState('XP + WOA Coins + Badge semanal')
+  const [monthlyReward, setMonthlyReward] = useState('XP + WOA Coins + Badge mensal')
+  const [monthlyWinnerName, setMonthlyWinnerName] = useState('A definir')
+  const [monthlyWinnerBadge, setMonthlyWinnerBadge] = useState('Vencedor mensal')
+  const [monthlyWinnerNote, setMonthlyWinnerNote] = useState('Conquista do melhor desempenho do mês')
+  const [challengeConfigLoading, setChallengeConfigLoading] = useState(false)
+  const [challengeConfigSaved, setChallengeConfigSaved] = useState<string | null>(null)
+  const [challengeConfigError, setChallengeConfigError] = useState<string | null>(null)
+
   useEffect(() => {
     fetch('/api/admin/banner')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.banner) setBannerUrl(d.banner.image_url) })
+      .catch(() => {})
+
+    fetch('/api/admin/challenge-config')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return
+        setDailyReward(d.daily_reward ?? 'XP + WOA Coins + Streak')
+        setWeeklyReward(d.weekly_reward ?? 'XP + WOA Coins + Badge semanal')
+        setMonthlyReward(d.monthly_reward ?? 'XP + WOA Coins + Badge mensal')
+        setMonthlyWinnerName(d.monthly_winner_name ?? 'A definir')
+        setMonthlyWinnerBadge(d.monthly_winner_badge ?? 'Vencedor mensal')
+        setMonthlyWinnerNote(d.monthly_winner_note ?? 'Conquista do melhor desempenho do mês')
+      })
       .catch(() => {})
   }, [])
 
@@ -106,6 +130,39 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/admin/coupons/${id}`, { method: 'DELETE' })
       if (res.ok) setCoupons(prev => prev.filter(c => c.id !== id))
     } catch { /* ignore */ }
+  }
+
+  const handleChallengeConfigSave = async () => {
+    setChallengeConfigError(null)
+    setChallengeConfigSaved(null)
+    setChallengeConfigLoading(true)
+
+    try {
+      const res = await fetch('/api/admin/challenge-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          daily_reward: dailyReward,
+          weekly_reward: weeklyReward,
+          monthly_reward: monthlyReward,
+          monthly_winner_name: monthlyWinnerName,
+          monthly_winner_badge: monthlyWinnerBadge,
+          monthly_winner_note: monthlyWinnerNote,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        setChallengeConfigError(data.error ?? 'Erro ao salvar configuração')
+        return
+      }
+
+      setChallengeConfigSaved('Configuração dos desafios salva com sucesso!')
+    } catch {
+      setChallengeConfigError('Erro de conexão')
+    } finally {
+      setChallengeConfigLoading(false)
+    }
   }
 
   const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,6 +290,49 @@ export default function AdminDashboard() {
             >
               + Criar Nova Jornada
             </button>
+          </div>
+        </div>
+
+        {/* ── CHALLENGE CONFIG ── */}
+        <div className="rounded-2xl p-5 space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,215,0,0.18)' }}>
+          <div>
+            <p className="text-sm font-black text-white tracking-wide">🏆 Premiações dos Desafios</p>
+            <p className="text-[11px] text-white/40 mt-0.5">Configure as recompensas diárias, semanais e mensais e o vencedor mensal exibido para todos.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Recompensa diária</label>
+              <input value={dailyReward} onChange={e => setDailyReward(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Recompensa semanal</label>
+              <input value={weeklyReward} onChange={e => setWeeklyReward(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Recompensa mensal</label>
+              <input value={monthlyReward} onChange={e => setMonthlyReward(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Vencedor mensal</label>
+              <input value={monthlyWinnerName} onChange={e => setMonthlyWinnerName(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Badge do vencedor</label>
+              <input value={monthlyWinnerBadge} onChange={e => setMonthlyWinnerBadge(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Descrição da premiação</label>
+              <textarea value={monthlyWinnerNote} onChange={e => setMonthlyWinnerNote(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none resize-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <button onClick={handleChallengeConfigSave} disabled={challengeConfigLoading} className="px-4 py-2.5 rounded-xl font-black text-xs tracking-widest text-white transition-all hover:scale-[1.02] disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #FFD700, #CC8800)' }}>
+              {challengeConfigLoading ? 'SALVANDO...' : 'SALVAR PREMIAÇÕES'}
+            </button>
+            {challengeConfigSaved && <span className="text-xs text-emerald-400">{challengeConfigSaved}</span>}
+            {challengeConfigError && <span className="text-xs text-red-400">{challengeConfigError}</span>}
           </div>
         </div>
 
