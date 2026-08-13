@@ -36,6 +36,48 @@ type JourneyItem = { phase_id: number; title: string; description: string; block
 
 const OCEAN_ICONS_DEFAULT = '/images/jornada-secreta.png'
 
+const CHALLENGE_DEFINITIONS: Record<ChallengePeriod, {
+  title: string
+  subtitle: string
+  reward: string
+  description: string[]
+}> = {
+  daily: {
+    title: 'DESAFIO DIÁRIO',
+    subtitle: 'Desafio mínimo recomendado',
+    reward: 'XP + WOA Coins + Streak',
+    description: [
+      'Completar 1 missão',
+      'Fazer 1 comentário em uma atividade de outro usuário',
+      'Curtir 3 atividades de outros usuários',
+    ],
+  },
+  weekly: {
+    title: 'DESAFIO SEMANAL',
+    subtitle: 'Desafio mínimo recomendado',
+    reward: 'XP + WOA Coins + Badge semanal',
+    description: [
+      'Completar 7 missões',
+      'Fazer 7 comentários em atividades de outros usuários',
+      'Curtir 21 atividades',
+      'Assistir 1 aula no WOA Play e realizar as práticas',
+      'Manter o streak de 7 dias',
+    ],
+  },
+  monthly: {
+    title: 'DESAFIO MENSAL',
+    subtitle: 'Desafio mínimo recomendado',
+    reward: 'XP + WOA Coins + Badge mensal',
+    description: [
+      'Completar 28 missões',
+      'Fazer 30 comentários',
+      'Curtir 90 atividades',
+      'Assistir 6 aulas no WOA Play e realizar as práticas',
+      'Manter o streak durante o mês',
+    ],
+  },
+}
+
 function getChallengeGoals({ missions, comments, likes, streak, woaPlayLessons }: {
   missions: number
   comments: number
@@ -594,9 +636,24 @@ export default function DashboardPage() {
     const allGoals = getChallengeGoals({ missions, comments, likes, streak, woaPlayLessons })
 
     return {
-      daily: { ...getChallengeSummary('daily', allGoals.daily), goals: allGoals.daily, label: 'Diário' },
-      weekly: { ...getChallengeSummary('weekly', allGoals.weekly), goals: allGoals.weekly, label: 'Semanal' },
-      monthly: { ...getChallengeSummary('monthly', allGoals.monthly), goals: allGoals.monthly, label: 'Mensal' },
+      daily: {
+        ...getChallengeSummary('daily', allGoals.daily),
+        goals: allGoals.daily,
+        label: 'Diário',
+        meta: CHALLENGE_DEFINITIONS.daily,
+      },
+      weekly: {
+        ...getChallengeSummary('weekly', allGoals.weekly),
+        goals: allGoals.weekly,
+        label: 'Semanal',
+        meta: CHALLENGE_DEFINITIONS.weekly,
+      },
+      monthly: {
+        ...getChallengeSummary('monthly', allGoals.monthly),
+        goals: allGoals.monthly,
+        label: 'Mensal',
+        meta: CHALLENGE_DEFINITIONS.monthly,
+      },
     }
   }, [completedPhaseIds.length, streakCount])
 
@@ -1106,12 +1163,30 @@ export default function DashboardPage() {
                   <div key={period} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div>
-                        <p className="text-[10px] font-black tracking-widest text-white/60">{summary.label.toUpperCase()}</p>
-                        <p className="text-lg font-black text-white">{summary.done}/{summary.total} concluídos</p>
+                        <p className="text-[10px] font-black tracking-widest text-white/60">{summary.meta.title}</p>
+                        <p className="text-[11px] text-white/40 mt-1">{summary.meta.subtitle}</p>
+                        <p className="text-lg font-black text-white mt-2">{summary.done}/{summary.total} concluídos</p>
                       </div>
                       <span className="text-[10px] font-black tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.25)', color: '#FFD700' }}>
                         {progressPercent}%
                       </span>
+                    </div>
+
+                    <div className="rounded-xl p-3 mb-3" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)' }}>
+                      <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: '#FFD700' }}>RECOMPENSA</p>
+                      <p className="text-sm font-bold text-white">{summary.meta.reward}</p>
+                    </div>
+
+                    <div className="mb-3">
+                      <p className="text-[10px] font-black tracking-widest text-white/50 mb-2">O QUE PRECISA FAZER</p>
+                      <ul className="space-y-2 text-sm text-white/75">
+                        {summary.meta.description.map((item) => (
+                          <li key={item} className="flex gap-2">
+                            <span className="text-cyan-400 mt-0.5">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
 
                     <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
