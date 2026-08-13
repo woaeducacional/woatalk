@@ -102,6 +102,7 @@ export default function CommunityPage() {
   const [userId, setUserId] = useState<string | undefined>()
   const [xpRanking, setXpRanking] = useState<RankUser[]>([])
   const [streakRanking, setStreakRanking] = useState<RankUser[]>([])
+  const [challengeConfig, setChallengeConfig] = useState<{ monthly_reward: string; monthly_winner_name: string; monthly_winner_badge: string; monthly_winner_note: string } | null>(null)
   const [mobileTab, setMobileTab] = useState<MobileTab>('posts')
 
   useEffect(() => {
@@ -124,6 +125,11 @@ export default function CommunityPage() {
           setStreakRanking(d.streakRanking ?? [])
         }
       })
+      .catch(() => {})
+
+    fetch('/api/public/challenge-config')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setChallengeConfig(d) })
       .catch(() => {})
   }, [])
 
@@ -224,6 +230,25 @@ export default function CommunityPage() {
 
         {/* ── Chat groups grid ── */}
         <ChatGroupGrid />
+
+        {challengeConfig && (
+          <div className="mb-6 rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(168,85,247,0.10))', border: '1px solid rgba(255,215,0,0.3)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">👑</span>
+              <p className="text-[10px] font-black tracking-widest text-yellow-300">VENCEDOR MENSAL</p>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+              <div>
+                <p className="text-2xl font-black text-white">{challengeConfig.monthly_winner_name}</p>
+                <p className="text-[11px] text-white/60">{challengeConfig.monthly_winner_badge}</p>
+              </div>
+              <div className="rounded-xl px-3 py-2 text-xs font-bold" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)' }}>
+                {challengeConfig.monthly_reward}
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-white/70">{challengeConfig.monthly_winner_note}</p>
+          </div>
+        )}
 
         {/* ── MOBILE: tabs ── */}
         <div className="lg:hidden">

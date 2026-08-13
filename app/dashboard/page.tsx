@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/src/components/ui/Button'
 import Link from 'next/link'
@@ -20,9 +20,62 @@ interface TickerPost {
   users: { id: string; name: string; avatar_url: string | null }
 }
 
+type ChallengePeriod = 'daily' | 'weekly' | 'monthly'
+
+type ChallengeGoal = {
+  key: string
+  label: string
+  current: number
+  target: number
+  suffix: string
+  color: string
+  note?: string
+}
+
 type JourneyItem = { phase_id: number; title: string; description: string; blocked: boolean; is_pro: boolean; icon_url?: string | null }
 
 const OCEAN_ICONS_DEFAULT = '/images/jornada-secreta.png'
+
+function getChallengeGoals({ missions, comments, likes, streak, woaPlayLessons }: {
+  missions: number
+  comments: number
+  likes: number
+  streak: number
+  woaPlayLessons: number
+}) {
+  const clamp = (value: number, max: number) => Math.max(0, Math.min(value, max))
+
+  return {
+    daily: [
+      { key: 'missions', label: 'Missões', current: clamp(missions, 1), target: 1, suffix: '', color: '#00D4FF', note: 'Conclua 1 missão' },
+      { key: 'comments', label: 'Comentários', current: clamp(comments, 1), target: 1, suffix: '', color: '#A855F7', note: 'Comente em outra atividade' },
+      { key: 'likes', label: 'Curtidas', current: clamp(likes, 3), target: 3, suffix: '', color: '#FF6B35', note: 'Curta 3 atividades' },
+    ],
+    weekly: [
+      { key: 'missions', label: 'Missões', current: clamp(missions, 7), target: 7, suffix: '', color: '#00D4FF', note: 'Complete 7 missões' },
+      { key: 'comments', label: 'Comentários', current: clamp(comments, 7), target: 7, suffix: '', color: '#A855F7', note: 'Participe 7 vezes' },
+      { key: 'likes', label: 'Curtidas', current: clamp(likes, 21), target: 21, suffix: '', color: '#FF6B35', note: 'Curta 21 atividades' },
+      { key: 'streak', label: 'Streak', current: clamp(streak, 7), target: 7, suffix: 'd', color: '#FFB000', note: 'Mantenha 7 dias' },
+      { key: 'woaplay', label: 'WOA Play', current: clamp(woaPlayLessons, 1), target: 1, suffix: ' aula', color: '#FFD700', note: 'Assista 1 aula e pratique' },
+    ],
+    monthly: [
+      { key: 'missions', label: 'Missões', current: clamp(missions, 28), target: 28, suffix: '', color: '#00D4FF', note: 'Complete 28 missões' },
+      { key: 'comments', label: 'Comentários', current: clamp(comments, 30), target: 30, suffix: '', color: '#A855F7', note: 'Faça 30 comentários' },
+      { key: 'likes', label: 'Curtidas', current: clamp(likes, 90), target: 90, suffix: '', color: '#FF6B35', note: 'Curta 90 atividades' },
+      { key: 'streak', label: 'Streak', current: clamp(streak, 30), target: 30, suffix: 'd', color: '#FFB000', note: 'Mantenha o hábito' },
+      { key: 'woaplay', label: 'WOA Play', current: clamp(woaPlayLessons, 6), target: 6, suffix: ' aulas', color: '#FFD700', note: 'Assista 6 aulas e pratique' },
+    ],
+  }
+}
+
+function getChallengeSummary(period: ChallengePeriod, goals: ChallengeGoal[]) {
+  const done = goals.filter(goal => goal.current >= goal.target).length
+  const total = goals.length
+  const percent = Math.round((done / total) * 100)
+  const isComplete = done === total
+
+  return { done, total, percent, isComplete }
+}
 
 function CircleCard({ journey, isCenter, isDailyLocked = false, isSeqLocked = false }: { journey: JourneyItem; isCenter: boolean; isDailyLocked?: boolean; isSeqLocked?: boolean }) {
   const iconSrc = journey.icon_url || OCEAN_ICONS_DEFAULT
@@ -378,6 +431,7 @@ export default function DashboardPage() {
   const [badgeCount, setBadgeCount] = useState(0)
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [levelOpen, setLevelOpen] = useState(false)
+  const [challengeOpen, setChallengeOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [journeys, setJourneys] = useState<JourneyItem[]>([])
   const [lastPhaseId, setLastPhaseId] = useState<number | null>(null)
@@ -386,6 +440,7 @@ export default function DashboardPage() {
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [verifyCode, setVerifyCode] = useState(['', '', '', '', '', ''])
   const [verifyStep, setVerifyStep] = useState<'send' | 'input' | 'done'>('send')
+  const [challengeConfig, setChallengeConfig] = useState<{ daily_reward: string; weekly_reward: string; monthly_reward: string; monthly_winner_name: string; monthly_winner_badge: string; monthly_winner_note: string } | null>(null)
   const [verifyError, setVerifyError] = useState<string | null>(null)
   const [verifyLoading, setVerifyLoading] = useState(false)
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -484,6 +539,10 @@ export default function DashboardPage() {
       .then(r => r.ok ? r.json() : { posts: [] })
       .then(d => setRecentPosts(d.posts ?? []))
       .catch(() => {})
+    fetch('/api/public/challenge-config')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setChallengeConfig(d) })
+      .catch(() => {})
     refreshDailyAccess()
     fetch('/api/journey/completed')
       .then(r => r.ok ? r.json() : { completedPhaseIds: [] })
@@ -525,6 +584,25 @@ export default function DashboardPage() {
 
   const isAdmin = session?.user?.role === 'admin'
   const { level, xpIntoLevel, xpForLevel, xpToNext, progress: xpProgress } = calcLevel(xpTotal)
+
+  const challengeSnapshot = useMemo(() => {
+    const missions = completedPhaseIds.length
+    const comments = 0
+    const likes = 0
+    const streak = streakCount
+    const woaPlayLessons = 0
+    const allGoals = getChallengeGoals({ missions, comments, likes, streak, woaPlayLessons })
+
+    return {
+      daily: { ...getChallengeSummary('daily', allGoals.daily), goals: allGoals.daily, label: 'Diário' },
+      weekly: { ...getChallengeSummary('weekly', allGoals.weekly), goals: allGoals.weekly, label: 'Semanal' },
+      monthly: { ...getChallengeSummary('monthly', allGoals.monthly), goals: allGoals.monthly, label: 'Mensal' },
+    }
+  }, [completedPhaseIds.length, streakCount])
+
+  const overallChallengePercent = Math.round(
+    ((challengeSnapshot.daily.percent + challengeSnapshot.weekly.percent + challengeSnapshot.monthly.percent) / 3)
+  )
 
   const handleToggleBlocked = async (phaseId: number) => {
     const journey = journeys.find((j) => j.phase_id === phaseId)
@@ -781,6 +859,64 @@ export default function DashboardPage() {
             </div>
           </section>
 
+          {/* ── DESAFIOS ── */}
+          <section className="rounded-2xl p-5" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
+            <button
+              type="button"
+              onClick={() => { playClick(); setChallengeOpen(true) }}
+              className="w-full text-left"
+            >
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🏆</span>
+                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>DESAFIOS</p>
+                </div>
+                <span className="text-[10px] font-black tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>
+                  {overallChallengePercent}%
+                </span>
+              </div>
+
+              <div className="flex items-end justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-white font-black text-sm">Progresso da rotina</p>
+                  <p className="text-[11px] text-white/50">Meta atual: {challengeSnapshot.daily.done}/{challengeSnapshot.daily.total} concluído hoje</p>
+                </div>
+              </div>
+
+              {challengeConfig && (
+                <div className="mb-3 rounded-xl p-2.5" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)' }}>
+                  <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: '#FFD700' }}>VENCEDOR MENSAL</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-black text-white">{challengeConfig.monthly_winner_name}</p>
+                      <p className="text-[10px] text-white/55">{challengeConfig.monthly_winner_badge}</p>
+                    </div>
+                    <span className="text-[10px] font-black px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFD700' }}>{challengeConfig.monthly_reward}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,215,0,0.12)' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${overallChallengePercent}%`, background: 'linear-gradient(90deg, #FFD700, #FFB000)' }} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-black tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                <div className="rounded-xl p-2" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}>
+                  <div className="text-cyan-400">{challengeSnapshot.daily.done}/{challengeSnapshot.daily.total}</div>
+                  <div className="mt-1 text-[8px] text-white/50">DIÁRIO</div>
+                </div>
+                <div className="rounded-xl p-2" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.15)' }}>
+                  <div className="text-violet-400">{challengeSnapshot.weekly.done}/{challengeSnapshot.weekly.total}</div>
+                  <div className="mt-1 text-[8px] text-white/50">SEMANAL</div>
+                </div>
+                <div className="rounded-xl p-2" style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.15)' }}>
+                  <div className="text-orange-400">{challengeSnapshot.monthly.done}/{challengeSnapshot.monthly.total}</div>
+                  <div className="mt-1 text-[8px] text-white/50">MENSAL</div>
+                </div>
+              </div>
+            </button>
+          </section>
+
           {/* ── MISSÃO DO DIA + PRÓXIMA CONQUISTA ── */}
           <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* MISSÃO DO DIA */}
@@ -938,6 +1074,76 @@ export default function DashboardPage() {
       </div>
       {/* ── BADGES MODAL ── */}
       {badgesOpen && <BadgesModal onClose={() => setBadgesOpen(false)} />}
+
+      {/* ── DESAFIOS MODAL ── */}
+      {challengeOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setChallengeOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl rounded-3xl p-5 sm:p-7"
+            style={{ background: 'rgba(5,14,26,0.97)', border: '1px solid rgba(255,215,0,0.3)', boxShadow: '0 0 60px rgba(255,180,0,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setChallengeOpen(false)}
+              className="absolute top-4 right-4 text-white/30 hover:text-white/70 transition-colors text-lg leading-none"
+            >✕</button>
+
+            <div className="mb-5">
+              <p className="text-[10px] font-black tracking-[0.25em] mb-2" style={{ color: 'rgba(255,215,0,0.75)' }}>DESAFIOS</p>
+              <h3 className="text-2xl font-black text-white">Seu progresso na rotina</h3>
+            </div>
+
+            <div className="space-y-4">
+              {(Object.keys(challengeSnapshot) as ChallengePeriod[]).map((period) => {
+                const summary = challengeSnapshot[period]
+                const progressPercent = summary.percent
+
+                return (
+                  <div key={period} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-[10px] font-black tracking-widest text-white/60">{summary.label.toUpperCase()}</p>
+                        <p className="text-lg font-black text-white">{summary.done}/{summary.total} concluídos</p>
+                      </div>
+                      <span className="text-[10px] font-black tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.25)', color: '#FFD700' }}>
+                        {progressPercent}%
+                      </span>
+                    </div>
+
+                    <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${progressPercent}%`, background: 'linear-gradient(90deg, #00D4FF, #FFD700)' }} />
+                    </div>
+
+                    <div className="space-y-2">
+                      {summary.goals.map((goal) => {
+                        const ratio = Math.min((goal.current / goal.target) * 100, 100)
+                        return (
+                          <div key={goal.key} className="rounded-xl p-2.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div className="flex items-center justify-between gap-3 mb-1.5">
+                              <span className="text-[11px] font-bold text-white/80">{goal.label}</span>
+                              <span className="text-[10px] font-black" style={{ color: goal.color }}>
+                                {goal.current}{goal.suffix}/{goal.target}{goal.suffix}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                              <div className="h-full rounded-full transition-all" style={{ width: `${ratio}%`, background: goal.color }} />
+                            </div>
+                            {goal.note && <p className="text-[9px] text-white/40 mt-1">{goal.note}</p>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── WOAPLAY PREMIUM MODAL ── */}
       {showWoaPlayPremiumModal && (
