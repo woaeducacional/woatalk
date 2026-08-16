@@ -288,12 +288,37 @@ export function UnifiedJourneyFlow({ phaseId }: UnifiedJourneyFlowProps) {
 
   const handleActivityChange = async (current: number, total: number) => {
     setActivityInfo({ current, total })
+
+    // Persistência central do progresso individual.
+    // A atividade anterior é considerada concluída quando o aluno avança.
+    const completedActivityIndex = current - 1
+
+    if (completedActivityIndex >= 0) {
+      fetch('/api/activity-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phase_id: phaseId,
+          mission_group_id: currentGroup,
+          activity_index: completedActivityIndex,
+          xp_earned: 0,
+          step_completed: true,
+        }),
+      }).catch(() => {})
+    }
+
     if (current <= 1) return
+
     try {
       const res = await fetch('/api/streak/update', { method: 'POST' })
       const data = await res.json()
+
       if (data.status && data.status !== 'already_counted') {
-        setStreakUpdate({ status: data.status, streak: data.streak, recoveryCost: data.recoveryCost ?? 4 })
+        setStreakUpdate({
+          status: data.status,
+          streak: data.streak,
+          recoveryCost: data.recoveryCost ?? 4,
+        })
       }
     } catch { /* silent */ }
   }
