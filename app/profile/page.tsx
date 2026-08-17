@@ -41,9 +41,6 @@ export default function ProfilePage() {
   const [subInfo, setSubInfo] = useState<{ plan: string | null; status: string; currentPeriodEnd: string | null; isPremium: boolean } | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
-  const [starterCouponCode, setStarterCouponCode] = useState('')
-  const [starterCouponLoading, setStarterCouponLoading] = useState(false)
-  const [starterCouponMsg, setStarterCouponMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [profile, setProfile] = useState<UserProfile>({
     id: '',
     name: '',
@@ -145,44 +142,6 @@ export default function ProfilePage() {
       }
     } catch { /* ignore */ } finally {
       setCancelLoading(false)
-    }
-  }
-
-  const handleApplyStarterCoupon = async () => {
-    const code = starterCouponCode.trim().toUpperCase()
-    if (!code) {
-      setStarterCouponMsg({ type: 'err', text: 'Digite um código de cupom.' })
-      return
-    }
-
-    setStarterCouponLoading(true)
-    setStarterCouponMsg(null)
-    try {
-      const res = await fetch('/api/coupons/starter/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setStarterCouponMsg({ type: 'err', text: data.error ?? 'Não foi possível aplicar o cupom.' })
-        return
-      }
-
-      setStarterCouponMsg({ type: 'ok', text: `Cupom aplicado: +${data.monthsGranted} mês(es) no ${data.planType === 'premium' ? 'Premium' : 'Starter'}.` })
-      setStarterCouponCode('')
-
-      const subRes = await fetch('/api/user/subscription')
-      if (subRes.ok) {
-        const subData = await subRes.json()
-        setSubInfo(subData)
-        setIsPremium(subData.isPremium === true)
-      }
-    } catch {
-      setStarterCouponMsg({ type: 'err', text: 'Erro de conexão ao aplicar cupom.' })
-    } finally {
-      setStarterCouponLoading(false)
     }
   }
 
@@ -577,36 +536,6 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-cyan-400/15 space-y-2.5">
-                  <p className="text-[11px] font-black tracking-widest text-cyan-300/70 uppercase">Cupom de Acesso por Plano</p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      value={starterCouponCode}
-                      onChange={(e) => { setStarterCouponCode(e.target.value.toUpperCase()); setStarterCouponMsg(null) }}
-                      placeholder="Digite o código"
-                      className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none"
-                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}
-                    />
-                    <button
-                      onClick={handleApplyStarterCoupon}
-                      disabled={starterCouponLoading || !starterCouponCode.trim()}
-                      className="px-4 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ background: 'linear-gradient(135deg, #0055FF, #00D4FF)', color: 'white' }}
-                    >
-                      {starterCouponLoading ? 'Aplicando...' : 'Aplicar Cupom'}
-                    </button>
-                  </div>
-                  {starterCouponMsg && (
-                    <p
-                      className="text-xs px-3 py-2 rounded-lg"
-                      style={starterCouponMsg.type === 'ok'
-                        ? { color: '#4ade80', background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.30)' }
-                        : { color: '#f87171', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.30)' }}
-                    >
-                      {starterCouponMsg.text}
-                    </p>
-                  )}
-                </div>
               </div>
             )
           })()}
