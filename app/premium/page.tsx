@@ -98,7 +98,11 @@ function PremiumPageInner() {
 
   // Coupon state
   const [couponInput, setCouponInput] = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent: number } | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState<
+    | { code: string; type: 'discount'; discount_percent: number }
+    | { code: string; type: 'plan_access'; access_plan: 'starter' | 'premium'; access_months: number }
+    | null
+  >(null)
   const [couponValidating, setCouponValidating] = useState(false)
   const [couponMsg, setCouponMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
@@ -234,9 +238,20 @@ function PremiumPageInner() {
     try {
       const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(code)}`)
       const data = await res.json()
-      if (data.valid) {
-        setAppliedCoupon({ code: data.code, discount_percent: data.discount_percent })
+      if (data.valid && data.type === 'discount') {
+        setAppliedCoupon({ code: data.code, type: 'discount', discount_percent: data.discount_percent })
         setCouponMsg({ type: 'ok', text: `Cupom aplicado: ${data.discount_percent}% de desconto!` })
+      } else if (data.valid && data.type === 'plan_access') {
+        setAppliedCoupon({
+          code: data.code,
+          type: 'plan_access',
+          access_plan: data.access_plan,
+          access_months: data.access_months,
+        })
+        setCouponMsg({
+          type: 'ok',
+          text: `Cupom de acesso válido: +${data.access_months} mês(es) de ${data.access_plan === 'premium' ? 'Premium' : 'Starter'}.`,
+        })
       } else {
         setAppliedCoupon(null)
         setCouponMsg({ type: 'err', text: 'Cupom inválido ou inativo.' })
@@ -293,10 +308,22 @@ function PremiumPageInner() {
       try {
         const vRes = await fetch(`/api/coupons/validate?code=${encodeURIComponent(rawInput)}`)
         const vData = await vRes.json()
-        if (vData.valid) {
-          finalCoupon = { code: vData.code, discount_percent: vData.discount_percent }
+        if (vData.valid && vData.type === 'discount') {
+          finalCoupon = { code: vData.code, type: 'discount', discount_percent: vData.discount_percent }
           setAppliedCoupon(finalCoupon)
           setCouponMsg({ type: 'ok', text: `Cupom aplicado: ${vData.discount_percent}% de desconto!` })
+        } else if (vData.valid && vData.type === 'plan_access') {
+          finalCoupon = {
+            code: vData.code,
+            type: 'plan_access',
+            access_plan: vData.access_plan,
+            access_months: vData.access_months,
+          }
+          setAppliedCoupon(finalCoupon)
+          setCouponMsg({
+            type: 'ok',
+            text: `Cupom de acesso válido: +${vData.access_months} mês(es) de ${vData.access_plan === 'premium' ? 'Premium' : 'Starter'}.`,
+          })
         } else {
           setCouponMsg({ type: 'err', text: 'Cupom inválido ou inativo.' })
           return
@@ -383,10 +410,22 @@ function PremiumPageInner() {
       try {
         const vRes = await fetch(`/api/coupons/validate?code=${encodeURIComponent(rawInput)}`)
         const vData = await vRes.json()
-        if (vData.valid) {
-          finalCoupon = { code: vData.code, discount_percent: vData.discount_percent }
+        if (vData.valid && vData.type === 'discount') {
+          finalCoupon = { code: vData.code, type: 'discount', discount_percent: vData.discount_percent }
           setAppliedCoupon(finalCoupon)
           setCouponMsg({ type: 'ok', text: `Cupom aplicado: ${vData.discount_percent}% de desconto!` })
+        } else if (vData.valid && vData.type === 'plan_access') {
+          finalCoupon = {
+            code: vData.code,
+            type: 'plan_access',
+            access_plan: vData.access_plan,
+            access_months: vData.access_months,
+          }
+          setAppliedCoupon(finalCoupon)
+          setCouponMsg({
+            type: 'ok',
+            text: `Cupom de acesso válido: +${vData.access_months} mês(es) de ${vData.access_plan === 'premium' ? 'Premium' : 'Starter'}.`,
+          })
         } else {
           setCouponMsg({ type: 'err', text: 'Cupom inválido ou inativo.' })
           return
@@ -974,6 +1013,13 @@ function PremiumPageInner() {
                   {appliedCoupon && selectedPlan && (() => {
                     const planObj = plans.find(p => p.id === selectedPlan)
                     if (!planObj) return null
+                    if (appliedCoupon.type === 'plan_access') {
+                      return (
+                        <span className="text-cyan-400 text-xs font-black uppercase">
+                          Cupom de acesso ativo: +{appliedCoupon.access_months} mês(es) de {appliedCoupon.access_plan}
+                        </span>
+                      )
+                    }
                     const originalPrice = parseFloat(planObj.price.replace(',', '.'))
                     const discountedPrice = (originalPrice * (1 - appliedCoupon.discount_percent / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     return (

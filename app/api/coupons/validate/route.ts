@@ -14,12 +14,28 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('id, code, discount_percent, active')
+    .select('id, code, coupon_type, discount_percent, access_plan, access_months, active')
     .eq('code', code)
-    .eq('coupon_type', 'discount')
+    .in('coupon_type', ['discount', 'plan_access'])
     .eq('active', true)
     .maybeSingle()
 
   if (error || !data) return NextResponse.json({ valid: false })
-  return NextResponse.json({ valid: true, code: data.code, discount_percent: data.discount_percent })
+
+  if (data.coupon_type === 'discount') {
+    return NextResponse.json({
+      valid: true,
+      code: data.code,
+      type: 'discount',
+      discount_percent: data.discount_percent,
+    })
+  }
+
+  return NextResponse.json({
+    valid: true,
+    code: data.code,
+    type: 'plan_access',
+    access_plan: data.access_plan,
+    access_months: data.access_months,
+  })
 }
