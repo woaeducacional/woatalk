@@ -40,7 +40,7 @@ export default function ProfilePage() {
   const [skills, setSkills] = useState<SkillData[]>([])
   const [subInfo, setSubInfo] = useState<{ plan: string | null; status: string; currentPeriodEnd: string | null; isPremium: boolean } | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
-  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false)
   const [profile, setProfile] = useState<UserProfile>({
     id: '',
     name: '',
@@ -131,18 +131,27 @@ export default function ProfilePage() {
   }, [status])
 
   const handleCancelSubscription = async () => {
-    if (!cancelConfirm) { setCancelConfirm(true); return }
     setCancelLoading(true)
     try {
       const res = await fetch('/api/asaas/cancel', { method: 'POST' })
       if (res.ok) {
         setSubInfo({ plan: null, status: 'inactive', currentPeriodEnd: null, isPremium: false })
         setIsPremium(false)
-        setCancelConfirm(false)
       }
     } catch { /* ignore */ } finally {
       setCancelLoading(false)
     }
+  }
+
+  const handleOpenSupport = () => {
+    setHelpMenuOpen(false)
+    router.push('/support')
+  }
+
+  const handleCancelFromMenu = async () => {
+    setHelpMenuOpen(false)
+    if (!window.confirm('Cancelar o plano atual? Você perderá o acesso premium imediatamente.')) return
+    await handleCancelSubscription()
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -495,32 +504,6 @@ export default function ProfilePage() {
                       >
                         Gerenciar Plano
                       </button>
-                      {cancelConfirm ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-red-300/80">Tem certeza?</span>
-                          <button
-                            onClick={handleCancelSubscription}
-                            disabled={cancelLoading}
-                            className="px-3 py-1.5 rounded-lg text-xs font-black text-red-400 border border-red-500/50 hover:bg-red-500/10 transition-all disabled:opacity-50"
-                          >
-                            {cancelLoading ? 'Cancelando...' : 'Sim, cancelar'}
-                          </button>
-                          <button
-                            onClick={() => setCancelConfirm(false)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-black text-white/40 border border-white/15 hover:bg-white/5 transition-all"
-                          >
-                            Voltar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setCancelConfirm(true)}
-                          className="px-4 py-2 rounded-xl text-xs font-black tracking-widest transition-all hover:scale-105"
-                          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
-                        >
-                          Cancelar Assinatura
-                        </button>
-                      )}
                     </div>
                   </>
                 ) : (
@@ -721,6 +704,50 @@ export default function ProfilePage() {
             >
               SAIR
             </button>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <div className="relative">
+              <button
+                onClick={() => setHelpMenuOpen((v) => !v)}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-[11px] font-bold tracking-[0.18em] uppercase transition-all hover:scale-[1.02]"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.7)',
+                }}
+              >
+                <span aria-hidden="true">⚙️</span>
+                <span>Ajuda</span>
+              </button>
+
+              {helpMenuOpen && (
+                <div
+                  className="absolute right-0 top-[calc(100%+8px)] w-52 rounded-xl p-2 z-20"
+                  style={{
+                    background: 'rgba(6,16,26,0.96)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
+                  }}
+                >
+                  <button
+                    onClick={handleOpenSupport}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-white/80 transition-colors hover:bg-white/5"
+                  >
+                    Ir para suporte
+                  </button>
+                  {(subInfo && ['active', 'trial', 'past_due'].includes(subInfo.status)) && (
+                    <button
+                      onClick={handleCancelFromMenu}
+                      disabled={cancelLoading}
+                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      {cancelLoading ? 'Cancelando...' : 'Cancelar plano'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
