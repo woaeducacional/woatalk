@@ -810,6 +810,64 @@ export default function DashboardPage() {
 
         <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6 pb-24 md:pb-10">
 
+          {/* ── DESAFIOS ── */}
+          <section className="rounded-2xl p-5" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
+            <button
+              type="button"
+              onClick={() => { playClick(); setChallengeOpen(true) }}
+              className="w-full text-left"
+            >
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🏆</span>
+                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>DESAFIOS</p>
+                </div>
+                <span className="text-[10px] font-black tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>
+                  {overallChallengePercent}%
+                </span>
+              </div>
+
+              <div className="flex items-end justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-white font-black text-sm">Progresso da rotina</p>
+                  <p className="text-[11px] text-white/50">Meta atual: {challengeSnapshot.daily.done}/{challengeSnapshot.daily.total} concluído hoje</p>
+                </div>
+              </div>
+
+              {challengeConfig && (
+                <div className="mb-3 rounded-xl p-2.5" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)' }}>
+                  <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: '#FFD700' }}>VENCEDOR MENSAL</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-black text-white">{challengeConfig.monthly_winner_name}</p>
+                      <p className="text-[10px] text-white/55">{challengeConfig.monthly_winner_badge}</p>
+                    </div>
+                    <span className="text-[10px] font-black px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFD700' }}>{challengeConfig.monthly_reward}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,215,0,0.12)' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${overallChallengePercent}%`, background: 'linear-gradient(90deg, #FFD700, #FFB000)' }} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-black tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                <div className="rounded-xl p-2" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}>
+                  <div className="text-cyan-400">{challengeSnapshot.daily.done}/{challengeSnapshot.daily.total}</div>
+                  <div className="mt-1 text-[8px] text-white/50">DIÁRIO</div>
+                </div>
+                <div className="rounded-xl p-2" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.15)' }}>
+                  <div className="text-violet-400">{challengeSnapshot.weekly.done}/{challengeSnapshot.weekly.total}</div>
+                  <div className="mt-1 text-[8px] text-white/50">SEMANAL</div>
+                </div>
+                <div className="rounded-xl p-2" style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.15)' }}>
+                  <div className="text-orange-400">{challengeSnapshot.monthly.done}/{challengeSnapshot.monthly.total}</div>
+                  <div className="mt-1 text-[8px] text-white/50">MENSAL</div>
+                </div>
+              </div>
+            </button>
+          </section>
+
           {/* ── SUA JORNADA — env tabs ── */}
           <section className="rounded-2xl overflow-hidden" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(0,212,255,0.15)' }}>
             <p className="text-center text-xs font-black tracking-[0.25em] text-white pt-4 pb-3">SUA JORNADA</p>
@@ -914,64 +972,6 @@ export default function DashboardPage() {
               <p className="text-2xl font-black text-white leading-none">{coinsBalance.toLocaleString('pt-BR')}</p>
               <p className="text-[9px] mt-2" style={{ color: 'rgba(255,215,0,0.55)' }}>Use na loja e recompensas</p>
             </div>
-          </section>
-
-          {/* ── DESAFIOS ── */}
-          <section className="rounded-2xl p-5" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
-            <button
-              type="button"
-              onClick={() => { playClick(); setChallengeOpen(true) }}
-              className="w-full text-left"
-            >
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">🏆</span>
-                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>DESAFIOS</p>
-                </div>
-                <span className="text-[10px] font-black tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>
-                  {overallChallengePercent}%
-                </span>
-              </div>
-
-              <div className="flex items-end justify-between gap-3 mb-2">
-                <div>
-                  <p className="text-white font-black text-sm">Progresso da rotina</p>
-                  <p className="text-[11px] text-white/50">Meta atual: {challengeSnapshot.daily.done}/{challengeSnapshot.daily.total} concluído hoje</p>
-                </div>
-              </div>
-
-              {challengeConfig && (
-                <div className="mb-3 rounded-xl p-2.5" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)' }}>
-                  <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: '#FFD700' }}>VENCEDOR MENSAL</p>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-black text-white">{challengeConfig.monthly_winner_name}</p>
-                      <p className="text-[10px] text-white/55">{challengeConfig.monthly_winner_badge}</p>
-                    </div>
-                    <span className="text-[10px] font-black px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFD700' }}>{challengeConfig.monthly_reward}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,215,0,0.12)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${overallChallengePercent}%`, background: 'linear-gradient(90deg, #FFD700, #FFB000)' }} />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-black tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                <div className="rounded-xl p-2" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}>
-                  <div className="text-cyan-400">{challengeSnapshot.daily.done}/{challengeSnapshot.daily.total}</div>
-                  <div className="mt-1 text-[8px] text-white/50">DIÁRIO</div>
-                </div>
-                <div className="rounded-xl p-2" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.15)' }}>
-                  <div className="text-violet-400">{challengeSnapshot.weekly.done}/{challengeSnapshot.weekly.total}</div>
-                  <div className="mt-1 text-[8px] text-white/50">SEMANAL</div>
-                </div>
-                <div className="rounded-xl p-2" style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.15)' }}>
-                  <div className="text-orange-400">{challengeSnapshot.monthly.done}/{challengeSnapshot.monthly.total}</div>
-                  <div className="mt-1 text-[8px] text-white/50">MENSAL</div>
-                </div>
-              </div>
-            </button>
           </section>
 
           {/* ── MISSÃO DO DIA + PRÓXIMA CONQUISTA ── */}
