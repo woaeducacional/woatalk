@@ -1353,26 +1353,26 @@ export default function DashboardPage() {
           onClick={() => setConversationOpen(false)}
         >
           <div
-            className="relative w-full max-w-lg max-h-[80vh] overflow-hidden rounded-3xl p-4"
-            style={{ background: 'linear-gradient(180deg, rgba(21,16,42,0.98), rgba(8,15,30,0.98))', border: '1px solid rgba(168,85,247,0.3)', boxShadow: '0 0 60px rgba(168,85,247,0.18)' }}
+            className="relative w-full max-w-2xl max-h-[82vh] overflow-hidden rounded-[28px] p-5 sm:p-6"
+            style={{ background: 'linear-gradient(180deg, rgba(21,16,42,0.98), rgba(8,15,30,0.98))', border: '1px solid rgba(168,85,247,0.3)', boxShadow: '0 0 80px rgba(168,85,247,0.2)' }}
             onClick={e => e.stopPropagation()}
           >
             <button
               onClick={() => setConversationOpen(false)}
-              className="absolute top-4 right-4 text-white/30 hover:text-white/70 transition-colors text-lg leading-none"
+              className="absolute top-5 right-5 text-white/30 hover:text-white/70 transition-colors text-2xl leading-none"
             >✕</button>
 
-            <div className="mb-4 pr-8">
-              <p className="text-[10px] font-black tracking-[0.25em] mb-2" style={{ color: 'rgba(216,180,254,0.7)' }}>CONVERSATION PRACTICE</p>
-              <h3 className="text-xl font-black text-white">
+            <div className="mb-5 pr-10">
+              <p className="text-[12px] sm:text-[14px] font-black tracking-[0.28em] mb-2" style={{ color: 'rgba(216,180,254,0.7)' }}>CONVERSATION PRACTICE</p>
+              <h3 className="text-3xl sm:text-4xl font-black text-white leading-tight">
                 {conversationTheme === 'viagens' ? '✈️ Viagens' : conversationTheme === 'trabalho' ? '💼 Trabalho' : '🎤 Entrevistas'}
               </h3>
-              <p className="text-xs text-white/60 mt-1">The conversation stays in English. If you answer in Portuguese, the coach will gently guide you back to English.</p>
+              <p className="text-base sm:text-lg text-white/70 mt-2 leading-relaxed">The conversation stays in English. If you answer in Portuguese, the coach will gently guide you back to English.</p>
             </div>
 
-            <div className="space-y-3 max-h-[44vh] overflow-y-auto pr-1">
+            <div className="space-y-4 max-h-[46vh] overflow-y-auto pr-1">
               {conversationMessages.length === 0 && !conversationLoading && (
-                <div className="rounded-xl p-3 text-xs text-white/50" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="rounded-2xl p-4 text-base sm:text-lg text-white/60" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   Preparing your practice conversation...
                 </div>
               )}
@@ -1380,7 +1380,7 @@ export default function DashboardPage() {
               {conversationMessages.map((message, index) => (
                 <div
                   key={`${message.role}-${index}`}
-                  className={`rounded-xl p-3 text-sm ${message.role === 'assistant' ? 'ml-0 mr-8' : 'ml-8 mr-0'}`}
+                  className={`rounded-2xl p-4 text-base sm:text-lg leading-relaxed ${message.role === 'assistant' ? 'ml-0 mr-8' : 'ml-8 mr-0'}`}
                   style={{
                     background: message.role === 'assistant' ? 'rgba(168,85,247,0.12)' : 'rgba(0,212,255,0.12)',
                     border: `1px solid ${message.role === 'assistant' ? 'rgba(168,85,247,0.2)' : 'rgba(0,212,255,0.2)'}`,
@@ -1392,25 +1392,25 @@ export default function DashboardPage() {
               ))}
 
               {conversationLoading && (
-                <div className="rounded-xl p-3 text-xs text-white/50" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="rounded-2xl p-4 text-base sm:text-lg text-white/60" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   The coach is preparing the next question...
                 </div>
               )}
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-5 flex gap-3">
               <textarea
                 value={conversationInput}
                 onChange={(e) => setConversationInput(e.target.value)}
                 rows={3}
                 placeholder="Type your answer in English..."
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white placeholder-white/30 resize-none"
+                className="flex-1 rounded-2xl border border-white/10 bg-white/5 p-4 text-base sm:text-lg text-white placeholder-white/30 resize-none"
               />
               <button
                 type="button"
                 onClick={handleSendConversationMessage}
                 disabled={conversationLoading || !conversationInput.trim()}
-                className="self-end rounded-xl px-4 py-3 text-xs font-black tracking-widest text-white disabled:opacity-50"
+                className="self-end rounded-2xl px-5 py-4 text-sm sm:text-base font-black tracking-widest text-white disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
               >
                 SEND
