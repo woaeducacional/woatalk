@@ -917,7 +917,6 @@ function PremiumPageInner() {
             <h3 className="text-2xl font-black text-white text-center">Dúvidas frequentes</h3>
             <div className="space-y-4 max-w-3xl mx-auto">
               {[
-                { q: 'Posso cancelar a qualquer momento?', a: 'Sim! Você pode cancelar sua assinatura quando quiser diretamente nessa página, sem cobranças adicionais.' },
                 { q: 'Como funciona o Pix?', a: 'No Pix, você paga um QR Code para concluir a compra. É um pagamento único, sem trial automático.' },
                 { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de Crédito, Pix e Boleto Bancário. Todos os pagamentos são processados com segurança pela Asaas.' },
                 { q: 'Como funciona o trial de 30 dias?', a: 'O trial de 30 dias está disponível para assinaturas via Cartão de Crédito. No Pix, não há trial: o pagamento é à vista.' },
@@ -975,9 +974,6 @@ function PremiumPageInner() {
                       ? <>Nenhum valor foi cobrado agora. A primeira cobrança ocorrerá em <span className="text-white font-bold">{successTrialDate}</span>.</>
                       : <>Seu pagamento foi aprovado e seu acesso foi liberado.</>}
                   </p>
-                  {billingType === 'CREDIT_CARD' && (
-                    <p className="text-blue-200/50 text-xs mt-1">Você pode cancelar a qualquer momento antes disso sem custo.</p>
-                  )}
                 </div>
 
                 <button
