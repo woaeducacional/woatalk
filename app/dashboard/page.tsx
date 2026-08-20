@@ -1142,47 +1142,65 @@ export default function DashboardPage() {
             </div>
 
             {/* CONVERSAÇÃO COM IA */}
-            {isPremium && (
-              <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.8), rgba(59,7,100,0.9))', border: '1px solid rgba(168,85,247,0.35)' }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🗣️</span>
-                    <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>CONVERSA COM IA</p>
-                  </div>
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#F3E8FF' }}>PREMIUM</span>
+            <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.8), rgba(59,7,100,0.9))', border: '1px solid rgba(168,85,247,0.35)' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🗣️</span>
+                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>CONVERSA COM IA</p>
                 </div>
-
-                <p className="text-xs text-white/70">Pratique inglês em contexto real.</p>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'viagens', emoji: '✈️', label: 'Viagens' },
-                    { id: 'trabalho', emoji: '💼', label: 'Trabalho' },
-                    { id: 'entrevistas', emoji: '🎤', label: 'Entrevistas' },
-                  ].map((theme) => (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      onClick={() => startConversationPractice(theme.id as 'viagens' | 'trabalho' | 'entrevistas')}
-                      className="rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.02]"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
-                    >
-                      <span className="text-xl">{theme.emoji}</span>
-                      <span className="text-[10px] font-bold text-white/80">{theme.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => startConversationPractice(conversationTheme || 'viagens')}
-                  className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
-                  style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
-                >
-                  ABRIR MODAL
-                </button>
+                {!isPremium && <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#F3E8FF' }}>PREMIUM</span>}
               </div>
-            )}
+
+              <p className="text-xs text-white/70">
+                {isPremium ? 'Pratique inglês em contexto real.' : 'Converse com o tutor de IA e simule situações reais do dia a dia'}
+              </p>
+
+              {isPremium ? (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'viagens', emoji: '✈️', label: 'Viagens' },
+                      { id: 'trabalho', emoji: '💼', label: 'Trabalho' },
+                      { id: 'entrevistas', emoji: '🎤', label: 'Entrevistas' },
+                    ].map((theme) => (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => startConversationPractice(theme.id as 'viagens' | 'trabalho' | 'entrevistas')}
+                        className="rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.02]"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      >
+                        <span className="text-xl">{theme.emoji}</span>
+                        <span className="text-[10px] font-bold text-white/80">{theme.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => startConversationPractice(conversationTheme || 'viagens')}
+                    className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                    style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
+                  >
+                    ABRIR MODAL
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-xl p-3 text-[11px] font-bold text-white/80" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    Disponível somente no plano premium
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/premium')}
+                    className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                    style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
+                  >
+                    VER PLANOS
+                  </button>
+                </>
+              )}
+            </div>
 
             {/* WOA PLAY */}
             <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
