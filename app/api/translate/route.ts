@@ -60,6 +60,13 @@ function protectProperNouns(text: string): { protected: string; restore: (s: str
   return { protected: protected_, restore }
 }
 
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    message: 'Use POST to translate text. Send { text, targetLang } in the request body.',
+  })
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json()
   const { text, targetLang = 'pt' } = body

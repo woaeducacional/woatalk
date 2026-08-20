@@ -43,7 +43,6 @@ export default function PremiumPointPage() {
   const router = useRouter()
 
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null)
-  const [loadingCancel, setLoadingCancel] = useState(false)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null)
@@ -119,25 +118,6 @@ export default function PremiumPointPage() {
     } catch {
       setCheckoutError('Erro de conexão. Tente novamente.')
       setCheckoutLoading(false)
-    }
-  }
-
-  async function handleCancel() {
-    if (!confirm('Tem certeza que deseja cancelar sua assinatura? O acesso será removido imediatamente.')) return
-    setLoadingCancel(true)
-    try {
-      const res = await fetch('/api/asaas/cancel', { method: 'POST' })
-      const data = await res.json()
-      if (res.ok) {
-        setSubInfo(prev => prev ? { ...prev, status: 'inactive', isPremium: false, plan: null, currentPeriodEnd: null } : null)
-        alert('Assinatura cancelada com sucesso.')
-      } else {
-        alert(data.error || 'Erro ao cancelar assinatura.')
-      }
-    } catch {
-      alert('Erro de conexão. Tente novamente.')
-    } finally {
-      setLoadingCancel(false)
     }
   }
 
@@ -274,35 +254,6 @@ export default function PremiumPointPage() {
               <span>🧾 Boleto Bancário</span>
             </div>
           </div>
-
-          {/* Active subscription banner */}
-          {isActive && (
-            <div
-              className="flex items-center gap-4 px-6 py-4 rounded-2xl border"
-              style={{
-                background: 'linear-gradient(135deg, rgba(176,80,0,0.2), rgba(255,107,0,0.1))',
-                border: '2px solid #FF9A00',
-                boxShadow: '0 0 30px rgba(255,154,0,0.2)',
-              }}
-            >
-              <span className="text-3xl">👑</span>
-              <div className="flex-1">
-                <p className="text-white font-black tracking-wide">ASSINATURA ATIVA — {planLabel(subInfo?.plan ?? null).toUpperCase()}</p>
-                <p className="text-orange-200/70 text-sm">
-                  {subInfo?.currentPeriodEnd
-                    ? `Válida até ${new Date(subInfo.currentPeriodEnd).toLocaleDateString('pt-BR')}`
-                    : 'Gerencie sua assinatura abaixo.'}
-                </p>
-              </div>
-              <button
-                onClick={handleCancel}
-                disabled={loadingCancel}
-                className="px-4 py-2 rounded-xl font-black tracking-widest text-xs transition-all hover:scale-105 active:scale-95 border border-red-500/50 text-red-400 hover:border-red-400 hover:text-red-300"
-              >
-                {loadingCancel ? 'Cancelando...' : 'Cancelar'}
-              </button>
-            </div>
-          )}
 
           {/* Pricing Cards */}
           <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6">
