@@ -52,7 +52,6 @@ function PremiumPageInner() {
   const searchParams = useSearchParams()
 
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null)
-  const [loadingCancel, setLoadingCancel] = useState(false)
 
   // Affiliate ref code
   const [refCode, setRefCode] = useState<string | null>(null)
@@ -478,25 +477,6 @@ function PremiumPageInner() {
     }
   }
 
-  async function handleCancel() {
-    if (!confirm('Tem certeza que deseja cancelar sua assinatura? O acesso será removido imediatamente.')) return
-    setLoadingCancel(true)
-    try {
-      const res = await fetch('/api/asaas/cancel', { method: 'POST' })
-      const data = await res.json()
-      if (res.ok) {
-        setSubInfo(prev => prev ? { ...prev, status: 'inactive', isPremium: false, plan: null, currentPeriodEnd: null } : null)
-        alert('Assinatura cancelada com sucesso.')
-      } else {
-        alert(data.error || 'Erro ao cancelar assinatura.')
-      }
-    } catch {
-      alert('Erro de conexão. Tente novamente.')
-    } finally {
-      setLoadingCancel(false)
-    }
-  }
-
   const plans = [
     {
       id: 'starter_monthly' as PlanId,
@@ -521,7 +501,10 @@ function PremiumPageInner() {
       badge: 'ANUAL',
       price: '287,00',
       period: '/ ano',
+      originalPrice: '358,80',
       savingsBadge: 'Economize ~20%',
+      savingsText: '💰 Economia de R$ 71,80',
+      comparisonText: 'De R$ 358,80 por R$ 287,00/ano',
       idealFor: 'Para quem já decidiu e quer economizar na jornada anual.',
       gradient: 'linear-gradient(135deg, #005090, #0080CC)',
       border: '#40BFFF',
@@ -557,7 +540,10 @@ function PremiumPageInner() {
       badge: 'ANUAL',
       price: '867,00',
       period: '/ ano',
+      originalPrice: '1.078,80',
       savingsBadge: 'Economize ~20%',
+      savingsText: '💰 Economia de R$ 211,80',
+      comparisonText: 'De R$ 1.078,80 por R$ 867,00/ano',
       idealFor: 'Para quem quer o máximo com o melhor custo-benefício.',
       gradient: 'linear-gradient(135deg, #7c2d12, #c2410c)',
       border: '#f97316',
@@ -647,13 +633,6 @@ function PremiumPageInner() {
                     : 'Gerencie sua assinatura abaixo.'}
                 </p>
               </div>
-              <button
-                onClick={handleCancel}
-                disabled={loadingCancel}
-                className="px-4 py-2 rounded-xl font-black tracking-widest text-xs transition-all hover:scale-105 active:scale-95 border border-red-500/50 text-red-400 hover:border-red-400 hover:text-red-300"
-              >
-                {loadingCancel ? 'Cancelando...' : 'Cancelar'}
-              </button>
             </div>
           )}
 
@@ -718,6 +697,9 @@ function PremiumPageInner() {
                           {plan.badge}
                         </span>
                       </div>
+                      {'comparisonText' in plan && plan.comparisonText && (
+                        <p className="text-[11px] text-blue-200/60 font-bold">{plan.comparisonText}</p>
+                      )}
                       {refDiscount && (
                         <p className="text-white/40 text-sm line-through">R$ {plan.price}</p>
                       )}
@@ -730,6 +712,9 @@ function PremiumPageInner() {
                         </span>
                         <span className="text-blue-200/60 text-sm">{plan.period}</span>
                       </div>
+                      {'savingsText' in plan && plan.savingsText && (
+                        <div className="text-[11px] font-black mt-1" style={{ color: '#34d399' }}>{plan.savingsText}</div>
+                      )}
                       {!isCurrentPlan && !refDiscount && (
                         <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider" style={{ background: 'rgba(0,212,255,0.10)', border: '1px solid rgba(0,212,255,0.30)', color: '#00D4FF' }}>
                           🎁 30 dias grátis no cartão
@@ -797,9 +782,12 @@ function PremiumPageInner() {
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-black text-white">R$ 97,94</span>
-                      <span className="text-blue-200/60 text-sm">/ mês (12x)</span>
+                      <span className="text-blue-200/60 text-sm">(12x no cartão)</span>
                     </div>
-                    <p className="text-blue-200/50 text-xs">ou R$ 947,00 à vista</p>
+                    <p className="text-[11px] font-black text-white">R$ 947,00 à vista 💰</p>
+                    <p className="text-[10px] font-black tracking-widest" style={{ color: '#86efac' }}>Economize ~12%</p>
+                    <p className="text-[11px] text-blue-200/60 font-bold">De R$ 1.175,28 por R$ 947,00 à vista</p>
+                    <p className="text-[11px] font-black" style={{ color: '#34d399' }}>💰 Economia de R$ 228,28</p>
                     <p className="text-[11px] leading-relaxed pt-1" style={{ color: 'rgba(134,239,172,0.8)' }}>
                       🎯 Ideal para quem deseja orientação humana durante a jornada, com mentorias mensais para manter a constância e evoluir com segurança.
                     </p>
@@ -855,9 +843,12 @@ function PremiumPageInner() {
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-black text-white">R$ 196,19</span>
-                      <span className="text-blue-200/60 text-sm">/ mês (12x)</span>
+                      <span className="text-blue-200/60 text-sm">(12x no cartão)</span>
                     </div>
-                    <p className="text-blue-200/50 text-xs">ou R$ 1.897,00 à vista</p>
+                    <p className="text-[11px] font-black text-white">R$ 1.897,00 à vista 💰</p>
+                    <p className="text-[10px] font-black tracking-widest" style={{ color: '#fbbf24' }}>Economize ~20%</p>
+                    <p className="text-[11px] text-blue-200/60 font-bold">De R$ 2.354,28 por R$ 1.897,00 à vista</p>
+                    <p className="text-[11px] font-black" style={{ color: '#fbbf24' }}>💰 Economia de R$ 457,28</p>
                     <p className="text-[11px] leading-relaxed pt-1" style={{ color: 'rgba(251,191,36,0.85)' }}>
                       🎯 Ideal para quem deseja acompanhamento próximo com professores e prática semanal de conversação para acelerar sua evolução.
                     </p>
@@ -1144,6 +1135,25 @@ function PremiumPageInner() {
                   {couponMsg.text}
                 </div>
               )}
+
+              {appliedCoupon && appliedCoupon.type === 'discount' && selectedPlan && (() => {
+                const planObj = plans.find(p => p.id === selectedPlan)
+                if (!planObj) return null
+                const originalPrice = parseFloat(planObj.price.replace(',', '.'))
+                const discountValue = originalPrice * (appliedCoupon.discount_percent / 100)
+                const finalPrice = originalPrice - discountValue
+                return (
+                  <div className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold"
+                    style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.30)' }}>
+                    <span className="text-blue-200/70">Economia</span>
+                    <div className="flex items-center gap-2 text-green-400">
+                      <span className="text-white/30 line-through">R$ {planObj.price}</span>
+                      <span>R$ {finalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-green-300">(-R$ {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* CPF input */}

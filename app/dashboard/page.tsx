@@ -488,6 +488,13 @@ export default function DashboardPage() {
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [isPremium, setIsPremium] = useState(false)
   const [dailyAccessedPhaseIds,  setDailyAccessedPhaseIds]  = useState<number[]>([])
+  const [conversationTheme, setConversationTheme] = useState<'viagens' | 'trabalho' | 'entrevistas'>('viagens')
+  const [conversationOpen, setConversationOpen] = useState(false)
+  const [conversationLoading, setConversationLoading] = useState(false)
+  const [conversationInput, setConversationInput] = useState('')
+  const [conversationMessages, setConversationMessages] = useState<Array<{ role: 'assistant' | 'user'; content: string }>>([])
+  const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'assistant' | 'user'; content: string }>>([])
+  const [conversationStep, setConversationStep] = useState(0)
 
   const refreshDailyAccess = useCallback(() => {
     fetch('/api/journey/daily-access')
@@ -626,6 +633,81 @@ export default function DashboardPage() {
 
   const isAdmin = session?.user?.role === 'admin'
   const { level, xpIntoLevel, xpForLevel, xpToNext, progress: xpProgress } = calcLevel(xpTotal)
+
+  const startConversationPractice = useCallback(async (theme: 'viagens' | 'trabalho' | 'entrevistas') => {
+    setConversationTheme(theme)
+    setConversationOpen(true)
+    setConversationLoading(true)
+    setConversationInput('')
+    setConversationMessages([])
+    setConversationHistory([])
+    setConversationStep(0)
+
+    try {
+      const response = await fetch('/api/pronunciation/topic-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: theme, history: [], userSpeech: '', questionNumber: 0 }),
+      })
+
+      if (!response.ok) throw new Error('Failed to start conversation')
+
+      const data = await response.json() as { feedback?: string; question?: string; isComplete?: boolean; questionNumber?: number }
+      const initialQuestion = data.question || 'Let’s talk about this topic.'
+      const firstAssistantMessage = { role: 'assistant' as const, content: initialQuestion }
+      setConversationHistory([{ role: 'assistant', content: initialQuestion }])
+      setConversationMessages([firstAssistantMessage])
+      setConversationStep(data.questionNumber ?? 1)
+    } catch {
+      setConversationMessages([{ role: 'assistant', content: 'Hi! Let’s practice English in a natural conversation. Tell me about your experience in this topic.' }])
+      setConversationHistory([{ role: 'assistant', content: 'Hi! Let’s practice English in a natural conversation. Tell me about your experience in this topic.' }])
+      setConversationStep(1)
+    } finally {
+      setConversationLoading(false)
+    }
+  }, [])
+
+  const handleSendConversationMessage = useCallback(async () => {
+    const trimmed = conversationInput.trim()
+    if (!trimmed || conversationLoading) return
+
+    const userTurn = { role: 'user' as const, content: trimmed }
+    const newHistory = [...conversationHistory, userTurn]
+    const nextMessages = [...conversationMessages, userTurn]
+    setConversationMessages(nextMessages)
+    setConversationInput('')
+    setConversationLoading(true)
+
+    try {
+      const response = await fetch('/api/pronunciation/topic-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: conversationTheme,
+          history: newHistory,
+          userSpeech: trimmed,
+          questionNumber: conversationStep,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to get next reply')
+
+      const data = await response.json() as { feedback?: string; question?: string; isComplete?: boolean; questionNumber?: number }
+      const assistantReply = [data.feedback, data.question].filter(Boolean).join('\n')
+      const assistantTurn = { role: 'assistant' as const, content: assistantReply }
+      const updatedHistory = [...newHistory, assistantTurn]
+      setConversationHistory(updatedHistory)
+      setConversationMessages([...nextMessages, assistantTurn])
+      setConversationStep(data.questionNumber ?? conversationStep + 1)
+    } catch {
+      const fallbackAssistantTurn = { role: 'assistant' as const, content: 'Good try! Please answer in English and keep the conversation focused on this topic.' }
+      const updatedHistory = [...newHistory, fallbackAssistantTurn]
+      setConversationHistory(updatedHistory)
+      setConversationMessages([...nextMessages, fallbackAssistantTurn])
+    } finally {
+      setConversationLoading(false)
+    }
+  }, [conversationHistory, conversationInput, conversationLoading, conversationStep, conversationTheme, conversationMessages])
 
   const challengeSnapshot = useMemo(() => {
     const missions = completedPhaseIds.length
@@ -1059,6 +1141,49 @@ export default function DashboardPage() {
               <Link href="/community" onClick={() => playClick()} className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]" style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)' }}>VER FEED →</Link>
             </div>
 
+            {/* CONVERSAÇÃO COM IA */}
+            {isPremium && (
+              <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.8), rgba(59,7,100,0.9))', border: '1px solid rgba(168,85,247,0.35)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🗣️</span>
+                    <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>CONVERSA COM IA</p>
+                  </div>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#F3E8FF' }}>PREMIUM</span>
+                </div>
+
+                <p className="text-xs text-white/70">Pratique inglês em contexto real.</p>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'viagens', emoji: '✈️', label: 'Viagens' },
+                    { id: 'trabalho', emoji: '💼', label: 'Trabalho' },
+                    { id: 'entrevistas', emoji: '🎤', label: 'Entrevistas' },
+                  ].map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => startConversationPractice(theme.id as 'viagens' | 'trabalho' | 'entrevistas')}
+                      className="rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.02]"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+                    >
+                      <span className="text-xl">{theme.emoji}</span>
+                      <span className="text-[10px] font-bold text-white/80">{theme.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => startConversationPractice(conversationTheme || 'viagens')}
+                  className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                  style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
+                >
+                  ABRIR MODAL
+                </button>
+              </div>
+            )}
+
             {/* WOA PLAY */}
             <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
               <div className="flex items-center justify-between">
@@ -1215,6 +1340,81 @@ export default function DashboardPage() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONVERSAÇÃO PREMIUM MODAL ── */}
+      {conversationOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setConversationOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-lg max-h-[80vh] overflow-hidden rounded-3xl p-4"
+            style={{ background: 'linear-gradient(180deg, rgba(21,16,42,0.98), rgba(8,15,30,0.98))', border: '1px solid rgba(168,85,247,0.3)', boxShadow: '0 0 60px rgba(168,85,247,0.18)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setConversationOpen(false)}
+              className="absolute top-4 right-4 text-white/30 hover:text-white/70 transition-colors text-lg leading-none"
+            >✕</button>
+
+            <div className="mb-4 pr-8">
+              <p className="text-[10px] font-black tracking-[0.25em] mb-2" style={{ color: 'rgba(216,180,254,0.7)' }}>CONVERSATION PRACTICE</p>
+              <h3 className="text-xl font-black text-white">
+                {conversationTheme === 'viagens' ? '✈️ Viagens' : conversationTheme === 'trabalho' ? '💼 Trabalho' : '🎤 Entrevistas'}
+              </h3>
+              <p className="text-xs text-white/60 mt-1">The conversation stays in English. If you answer in Portuguese, the coach will gently guide you back to English.</p>
+            </div>
+
+            <div className="space-y-3 max-h-[44vh] overflow-y-auto pr-1">
+              {conversationMessages.length === 0 && !conversationLoading && (
+                <div className="rounded-xl p-3 text-xs text-white/50" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  Preparing your practice conversation...
+                </div>
+              )}
+
+              {conversationMessages.map((message, index) => (
+                <div
+                  key={`${message.role}-${index}`}
+                  className={`rounded-xl p-3 text-sm ${message.role === 'assistant' ? 'ml-0 mr-8' : 'ml-8 mr-0'}`}
+                  style={{
+                    background: message.role === 'assistant' ? 'rgba(168,85,247,0.12)' : 'rgba(0,212,255,0.12)',
+                    border: `1px solid ${message.role === 'assistant' ? 'rgba(168,85,247,0.2)' : 'rgba(0,212,255,0.2)'}`,
+                    color: 'rgba(255,255,255,0.9)',
+                  }}
+                >
+                  {message.content}
+                </div>
+              ))}
+
+              {conversationLoading && (
+                <div className="rounded-xl p-3 text-xs text-white/50" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  The coach is preparing the next question...
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <textarea
+                value={conversationInput}
+                onChange={(e) => setConversationInput(e.target.value)}
+                rows={3}
+                placeholder="Type your answer in English..."
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white placeholder-white/30 resize-none"
+              />
+              <button
+                type="button"
+                onClick={handleSendConversationMessage}
+                disabled={conversationLoading || !conversationInput.trim()}
+                className="self-end rounded-xl px-4 py-3 text-xs font-black tracking-widest text-white disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
+              >
+                SEND
+              </button>
             </div>
           </div>
         </div>
