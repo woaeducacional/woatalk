@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { resolveAvatarUrl } from '../../lib/avatarStorage'
 
 export type PostType = 'badge_earned' | 'streak_milestone' | 'journey_completed' | 'block_completed' | 'xp_milestone'
 export type Reaction = 'heart'
@@ -101,7 +102,7 @@ class CommunityService {
     for (const row of xpHistory ?? []) {
       const u = (row as unknown as { users: { id: string; name: string; avatar_url: string | null } }).users
       if (!u?.id) continue
-      if (!map[u.id]) map[u.id] = { id: u.id, name: u.name, xp_total: 0, avatar_url: u.avatar_url ?? null }
+      if (!map[u.id]) map[u.id] = { id: u.id, name: u.name, xp_total: 0, avatar_url: resolveAvatarUrl(u.avatar_url) }
       map[u.id].xp_total += row.amount
     }
     const xpRanking = Object.values(map)
