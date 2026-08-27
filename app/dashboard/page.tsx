@@ -11,6 +11,7 @@ import { EagleTip } from '@/src/components/EagleTip'
 import { BadgesModal } from '@/src/components/BadgesModal'
 import { NotificationBell } from '@/src/components/NotificationBell'
 import { calcLevel } from '@/lib/level'
+import { resolveAvatarUrl } from '@/lib/avatarStorage'
 
 interface TickerPost {
   id: string

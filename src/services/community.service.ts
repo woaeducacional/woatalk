@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { resolveAvatarUrl } from '../../lib/avatarStorage'
 
 export type PostType = 'badge_earned' | 'streak_milestone' | 'journey_completed' | 'block_completed' | 'xp_milestone'
 export type Reaction = 'heart'
@@ -78,14 +79,16 @@ class CommunityService {
       .limit(limit)
   }
 
-  async getRankings() {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  async getRankings(period: 'weekly' | 'monthly' = 'weekly') {
+    const cutoff = period === 'monthly'
+      ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
     const [{ data: xpHistory }, { data: streakRanking }] = await Promise.all([
       this.db()
         .from('xp_history')
-        .select('user_id, amount, users!xp_history_user_id_fkey(id, name)')
-        .gte('created_at', weekAgo),
+        .select('user_id, amount, users!xp_history_user_id_fkey(id, name, avatar_url)')
+        .gte('created_at', cutoff),
       this.db()
         .from('users')
         .select('id, name, streak_count')
@@ -94,12 +97,12 @@ class CommunityService {
         .limit(10),
     ])
 
-    // Aggregate weekly XP per user
-    const map: Record<string, { id: string; name: string; xp_total: number }> = {}
+    // Aggregate XP per user for the selected period
+    const map: Record<string, { id: string; name: string; xp_total: number; avatar_url: string | null }> = {}
     for (const row of xpHistory ?? []) {
-      const u = (row as unknown as { users: { id: string; name: string } }).users
+      const u = (row as unknown as { users: { id: string; name: string; avatar_url: string | null } }).users
       if (!u?.id) continue
-      if (!map[u.id]) map[u.id] = { id: u.id, name: u.name, xp_total: 0 }
+      if (!map[u.id]) map[u.id] = { id: u.id, name: u.name, xp_total: 0, avatar_url: resolveAvatarUrl(u.avatar_url) }
       map[u.id].xp_total += row.amount
     }
     const xpRanking = Object.values(map)
