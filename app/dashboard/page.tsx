@@ -492,6 +492,8 @@ export default function DashboardPage() {
   const [xpTotal, setXpTotal] = useState(0)
   const [coinsBalance, setCoinsBalance] = useState(0)
   const [streakCount, setStreakCount] = useState(0)
+  const [commentsMade, setCommentsMade] = useState(0)
+  const [likesMade, setLikesMade] = useState(0)
   const [badgeCount, setBadgeCount] = useState(0)
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [levelOpen, setLevelOpen] = useState(false)
@@ -555,11 +557,13 @@ export default function DashboardPage() {
       .then(d => { if (d?.banner) setBanner(d.banner) })
       .catch(() => {})
     fetch('/api/user/stats')
-      .then(r => r.ok ? r.json() : { xp_total: 0, coins_balance: 0 })
+      .then(r => r.ok ? r.json() : { xp_total: 0, coins_balance: 0, comments_made: 0, likes_made: 0 })
       .then(d => {
         setXpTotal(d.xp_total ?? 0)
         setCoinsBalance(d.coins_balance ?? 0)
         setStreakCount(d.streak_count ?? 0)
+        setCommentsMade(d.comments_made ?? 0)
+        setLikesMade(d.likes_made ?? 0)
       })
       .catch(() => {})
     fetch('/api/user/badges')
@@ -739,8 +743,8 @@ export default function DashboardPage() {
 
   const challengeSnapshot = useMemo(() => {
     const missions = completedPhaseIds.length
-    const comments = 0
-    const likes = 0
+    const comments = commentsMade
+    const likes = likesMade
     const streak = streakCount
     const woaPlayLessons = 0
     const allGoals = getChallengeGoals({ missions, comments, likes, streak, woaPlayLessons })
@@ -765,7 +769,7 @@ export default function DashboardPage() {
         meta: CHALLENGE_DEFINITIONS.monthly,
       },
     }
-  }, [completedPhaseIds.length, streakCount])
+  }, [completedPhaseIds.length, streakCount, commentsMade, likesMade])
 
   const overallChallengePercent = Math.round(
     ((challengeSnapshot.daily.percent + challengeSnapshot.weekly.percent + challengeSnapshot.monthly.percent) / 3)
