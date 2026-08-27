@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (error || !data) return NextResponse.json({ xp_total: 0, coins_balance: 0, streak_count: 0 })
-    return NextResponse.json({ xp_total: data.xp_total ?? 0, coins_balance: data.coins_balance ?? 0, streak_count: data.streak_count ?? 0 })
+    return NextResponse.json({ id: token.id, xp_total: data.xp_total ?? 0, coins_balance: data.coins_balance ?? 0, streak_count: data.streak_count ?? 0 })
   } catch {
     return NextResponse.json({ xp_total: 0, coins_balance: 0, streak_count: 0 })
   }

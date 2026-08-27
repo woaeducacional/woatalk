@@ -17,7 +17,7 @@ interface CommunityPost {
   created_at: string
   users: { id: string; name: string }
   reactions: { reaction: string; user_id: string }[]
-  comments: { phrase: string; user_id: string; user_name?: string }[]
+  comments: { id: string; content: string; user_id: string; user_name?: string }[]
 }
 
 interface RankUser {

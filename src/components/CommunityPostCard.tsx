@@ -1,8 +1,271 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { UserNameLink } from './UserNameLink'
+
+type PostType = 'badge_earned' | 'streak_milestone' | 'journey_completed' | 'block_completed' | 'xp_milestone'
+
+const POST_CONFIG: Record<PostType, { icon: string; color: string; label: string }> = {
+  badge_earned:       { icon: '🏅', color: '#A855F7', label: 'BADGE' },
+  streak_milestone:   { icon: '🔥', color: '#FF6B35', label: 'STREAK' },
+  journey_completed:  { icon: '🌊', color: '#00D4FF', label: 'JORNADA' },
+  block_completed:    { icon: '✅', color: '#22c55e', label: 'BLOCO' },
+  xp_milestone:       { icon: '⚡', color: '#FFD700', label: 'XP' },
+}
+
+function formatPayload(type: PostType, payload: Record<string, unknown>): string {
+  switch (type) {
+    case 'badge_earned':      return `Conquistou o badge "${payload.badge}"!`
+    case 'streak_milestone':  return `Atingiu ${payload.streak} dias de streak!`
+    case 'journey_completed': return `Completou a Jornada ${payload.phaseId}!`
+    case 'block_completed':   return `Completou o Bloco ${(payload.missionGroupId as number) + 1} da Jornada ${payload.phaseId}!`
+    case 'xp_milestone':      return `Alcançou ${Number(payload.xp).toLocaleString('pt-BR')} XP!`
+    default: return ''
+  }
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'agora'
+  if (mins < 60) return `${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h`
+  return `${Math.floor(hours / 24)}d`
+}
+
+interface CommunityPost {
+  id: string
+  post_type: PostType
+  payload: Record<string, unknown>
+  created_at: string
+  users: { id: string; name: string }
+  reactions: { reaction: string; user_id: string }[]
+  comments: { id: string; content: string; user_id: string; user_name?: string }[]
+}
+
+interface Props {
+  post: CommunityPost
+  onDelete?: (id: string) => void
+  currentUserId?: string
+}
+
+export function CommunityPostCard({ post, onDelete, currentUserId }: Props) {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'admin'
+  const config = POST_CONFIG[post.post_type]
+
+  const [reactions, setReactions] = useState(post.reactions)
+  const [comments, setComments] = useState(post.comments)
+  const [likeLoading, setLikeLoading] = useState(false)
+  const [commentOpen, setCommentOpen] = useState(false)
+  const [commentInput, setCommentInput] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  // ── heart reaction ──
+  const heartCount = reactions.length
+  const hasHeart = reactions.some(r => r.user_id === currentUserId)
+
+  const toggleHeart = async () => {
+    if (!currentUserId || likeLoading) return
+    setLikeLoading(true)
+    try {
+      if (hasHeart) {
+        await fetch(`/api/community/posts/${post.id}/react?reaction=heart`, { method: 'DELETE' })
+        setReactions(prev => prev.filter(r => r.user_id !== currentUserId))
+      } else {
+        await fetch(`/api/community/posts/${post.id}/react`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reaction: 'heart' }),
+        })
+        setReactions(prev => [...prev, { reaction: 'heart', user_id: currentUserId }])
+      }
+    } catch { }
+    setLikeLoading(false)
+  }
+
+  // ── comments ──
+  const myComment = comments.find(c => c.user_id === currentUserId)
+
+  const submitComment = async () => {
+    const text = commentInput.trim()
+    if (!text || submitting || !currentUserId) return
+    setSubmitting(true)
+    try {
+      await fetch(`/api/community/posts/${post.id}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text }),
+      })
+      setComments(prev => [
+        ...prev.filter(c => c.user_id !== currentUserId),
+        { id: `temp-${Date.now()}`, content: text, user_id: currentUserId, user_name: session?.user?.name ?? undefined },
+      ])
+      setCommentInput('')
+      setCommentOpen(false)
+    } catch { }
+    setSubmitting(false)
+  }
+
+  const removeMyComment = async () => {
+    if (!currentUserId || likeLoading) return
+    setLikeLoading(true)
+    try {
+      await fetch(`/api/community/posts/${post.id}/comment`, { method: 'DELETE' })
+      setComments(prev => prev.filter(c => c.user_id !== currentUserId))
+    } catch { }
+    setLikeLoading(false)
+  }
+
+  const adminDeleteComment = async (commentId: string) => {
+    try {
+      await fetch(`/api/community/comments/${commentId}`, { method: 'DELETE' })
+      setComments(prev => prev.filter(c => c.id !== commentId))
+    } catch { }
+  }
+
+  const handleDeletePost = async () => {
+    if (!confirm('Excluir este post?')) return
+    await fetch(`/api/community/posts/${post.id}`, { method: 'DELETE' })
+    onDelete?.(post.id)
+  }
+
+  return (
+    <div
+      className="rounded-2xl p-5 backdrop-blur-md relative transition-all hover:scale-[1.01]"
+      style={{
+        background: 'rgba(5,14,26,0.70)',
+        border: `1px solid ${config.color}35`,
+        boxShadow: `0 4px 24px ${config.color}10`,
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+            style={{ background: `${config.color}20`, border: `1px solid ${config.color}50` }}
+          >
+            {config.icon}
+          </div>
+          <div>
+            <p className="text-sm font-black text-white tracking-wide">
+              <UserNameLink userId={post.users?.id ?? ''} name={post.users?.name ?? 'Jogador'} className="text-white" />
+            </p>
+            <p className="text-[11px] tracking-widest" style={{ color: `${config.color}90` }}>
+              {config.label} • {timeAgo(post.created_at)}
+            </p>
+          </div>
+        </div>
+        {isAdmin && (
+          <button onClick={handleDeletePost} className="text-[10px] text-red-400/50 hover:text-red-400 transition-colors px-2 py-1 rounded">
+            ✕ post
+          </button>
+        )}
+      </div>
+
+      {/* Body */}
+      <p className="text-base text-blue-100/90 mb-4" style={{ textShadow: `0 0 8px ${config.color}20` }}>
+        {formatPayload(post.post_type, post.payload)}
+      </p>
+
+      {/* Actions row */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Heart */}
+        <button
+          onClick={toggleHeart}
+          disabled={likeLoading || !currentUserId}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all hover:scale-110 disabled:opacity-50"
+          style={{
+            background: hasHeart ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${hasHeart ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.1)'}`,
+          }}
+        >
+          <span>❤️</span>
+          {heartCount > 0 && <span className="text-xs font-bold text-white/80">{heartCount}</span>}
+        </button>
+
+        {/* Comment toggle */}
+        {currentUserId && (
+          <button
+            onClick={() => setCommentOpen(o => !o)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105"
+            style={{
+              background: commentOpen ? `${config.color}18` : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${commentOpen ? config.color + '60' : 'rgba(255,255,255,0.1)'}`,
+              color: commentOpen ? config.color : 'rgba(255,255,255,0.5)',
+            }}
+          >
+            <span>💬</span>
+            <span>{comments.length > 0 ? comments.length : 'Comentar'}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Comment input */}
+      {commentOpen && !myComment && (
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={commentInput}
+            onChange={e => setCommentInput(e.target.value.slice(0, 300))}
+            onKeyDown={e => e.key === 'Enter' && submitComment()}
+            placeholder="Escreva um comentário..."
+            className="flex-1 px-3 py-2 rounded-xl text-xs text-white outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }}
+            autoFocus
+          />
+          <button
+            onClick={submitComment}
+            disabled={submitting || !commentInput.trim()}
+            className="px-3 py-2 rounded-xl text-xs font-black text-white disabled:opacity-40 transition-all hover:scale-105"
+            style={{ background: `${config.color}30`, border: `1px solid ${config.color}60` }}
+          >
+            {submitting ? '...' : 'Enviar'}
+          </button>
+        </div>
+      )}
+
+      {/* Comments list */}
+      {comments.length > 0 && (
+        <div className="flex flex-col gap-1 mt-3">
+          {comments.map((c) => {
+            const firstName = (c.user_name ?? 'Alguém').split(' ').slice(0, 2).join(' ')
+            const isOwn = c.user_id === currentUserId
+            return (
+              <div
+                key={c.id}
+                className="flex items-start gap-1.5 text-xs px-2 py-1.5 rounded-lg group"
+                style={{ background: isOwn ? `${config.color}12` : 'rgba(255,255,255,0.03)' }}
+              >
+                <span className="font-bold flex-shrink-0" style={{ color: isOwn ? config.color : 'rgba(255,255,255,0.55)' }}>
+                  {firstName}:
+                </span>
+                <span className="flex-1 break-all" style={{ color: 'rgba(255,255,255,0.75)' }}>{c.content}</span>
+                {isOwn && (
+                  <button
+                    onClick={removeMyComment}
+                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all ml-1 flex-shrink-0"
+                    title="Remover meu comentário"
+                  >✕</button>
+                )}
+                {isAdmin && !isOwn && (
+                  <button
+                    onClick={() => adminDeleteComment(c.id)}
+                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all ml-1 flex-shrink-0"
+                    title="Admin: apagar comentário"
+                  >✕</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 type PostType = 'badge_earned' | 'streak_milestone' | 'journey_completed' | 'block_completed' | 'xp_milestone'
 
