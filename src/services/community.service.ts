@@ -28,7 +28,7 @@ class CommunityService {
     const postIds = posts.map((p: { id: string }) => p.id)
     const [{ data: reactions }, { data: comments }] = await Promise.all([
       this.db().from('community_reactions').select('post_id, reaction, user_id').in('post_id', postIds),
-      this.db().from('community_comments').select('post_id, phrase, user_id, users!community_comments_user_id_fkey(name)').in('post_id', postIds),
+      this.db().from('community_comments').select('id, post_id, content, user_id, users!community_comments_user_id_fkey(name)').in('post_id', postIds),
     ])
 
     const reactionMap: Record<string, { reaction: string; user_id: string }[]> = {}
@@ -36,11 +36,11 @@ class CommunityService {
       if (!reactionMap[r.post_id]) reactionMap[r.post_id] = []
       reactionMap[r.post_id].push(r)
     }
-    const commentMap: Record<string, { phrase: string; user_id: string; user_name?: string }[]> = {}
+    const commentMap: Record<string, { id: string; content: string; user_id: string; user_name?: string }[]> = {}
     for (const c of comments ?? []) {
       if (!commentMap[c.post_id]) commentMap[c.post_id] = []
-      const row = c as unknown as { post_id: string; phrase: string; user_id: string; users?: { name: string } }
-      commentMap[row.post_id].push({ phrase: row.phrase, user_id: row.user_id, user_name: row.users?.name })
+      const row = c as unknown as { id: string; post_id: string; content: string; user_id: string; users?: { name: string } }
+      commentMap[row.post_id].push({ id: row.id, content: row.content, user_id: row.user_id, user_name: row.users?.name })
     }
 
     const enriched = posts.map((p: Record<string, unknown>) => ({
@@ -59,12 +59,16 @@ class CommunityService {
     return this.db().from('community_reactions').delete().match({ post_id: postId, user_id: userId, reaction })
   }
 
-  async addComment(postId: string, userId: string, phrase: CommentPhrase) {
-    return this.db().from('community_comments').upsert({ post_id: postId, user_id: userId, phrase }, { onConflict: 'post_id,user_id,phrase' })
+  async addComment(postId: string, userId: string, content: string) {
+    return this.db().from('community_comments').upsert({ post_id: postId, user_id: userId, content }, { onConflict: 'post_id,user_id' })
   }
 
-  async removeComment(postId: string, userId: string, phrase: CommentPhrase) {
-    return this.db().from('community_comments').delete().match({ post_id: postId, user_id: userId, phrase })
+  async removeComment(postId: string, userId: string) {
+    return this.db().from('community_comments').delete().match({ post_id: postId, user_id: userId })
+  }
+
+  async deleteComment(commentId: string) {
+    return this.db().from('community_comments').delete().eq('id', commentId)
   }
 
   async deletePost(postId: string) {

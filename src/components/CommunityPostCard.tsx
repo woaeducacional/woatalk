@@ -1,18 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { UserNameLink } from './UserNameLink'
 
 type PostType = 'badge_earned' | 'streak_milestone' | 'journey_completed' | 'block_completed' | 'xp_milestone'
-
-const COMMENT_PHRASES: Record<string, string> = {
-  congrats:   'Congratulations! 🎉',
-  amazing:    'Amazing work! Keep it up!',
-  onfire:     "You're on fire! Keep going! 🔥",
-  inspiring:  "You're an inspiration! ⭐",
-}
-const COMMENT_KEYS = Object.keys(COMMENT_PHRASES)
 
 const POST_CONFIG: Record<PostType, { icon: string; color: string; label: string }> = {
   badge_earned:       { icon: '🏅', color: '#A855F7', label: 'BADGE' },
@@ -50,7 +42,7 @@ interface CommunityPost {
   created_at: string
   users: { id: string; name: string }
   reactions: { reaction: string; user_id: string }[]
-  comments: { phrase: string; user_id: string; user_name?: string }[]
+  comments: { id: string; content: string; user_id: string; user_name?: string }[]
 }
 
 interface Props {
@@ -66,29 +58,18 @@ export function CommunityPostCard({ post, onDelete, currentUserId }: Props) {
 
   const [reactions, setReactions] = useState(post.reactions)
   const [comments, setComments] = useState(post.comments)
-  const [loading, setLoading] = useState(false)
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const pickerRef = useRef<HTMLDivElement>(null)
-
-  // Close picker on outside click
-  useEffect(() => {
-    if (!pickerOpen) return
-    const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setPickerOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [pickerOpen])
+  const [likeLoading, setLikeLoading] = useState(false)
+  const [commentOpen, setCommentOpen] = useState(false)
+  const [commentInput, setCommentInput] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   // ── heart reaction ──
   const heartCount = reactions.length
   const hasHeart = reactions.some(r => r.user_id === currentUserId)
 
   const toggleHeart = async () => {
-    if (!currentUserId || loading) return
-    setLoading(true)
+    if (!currentUserId || likeLoading) return
+    setLikeLoading(true)
     try {
       if (hasHeart) {
         await fetch(`/api/community/posts/${post.id}/react?reaction=heart`, { method: 'DELETE' })
@@ -102,35 +83,50 @@ export function CommunityPostCard({ post, onDelete, currentUserId }: Props) {
         setReactions(prev => [...prev, { reaction: 'heart', user_id: currentUserId }])
       }
     } catch { }
-    setLoading(false)
+    setLikeLoading(false)
   }
 
-  // ── phrase comments ──
-  const userPhrases = new Set(comments.filter(c => c.user_id === currentUserId).map(c => c.phrase))
+  // ── comments ──
+  const myComment = comments.find(c => c.user_id === currentUserId)
 
-  const selectPhrase = async (key: string) => {
-    if (!currentUserId || loading) return
-    setPickerOpen(false)
-    setLoading(true)
-    const hasIt = userPhrases.has(key)
+  const submitComment = async () => {
+    const text = commentInput.trim()
+    if (!text || submitting || !currentUserId) return
+    setSubmitting(true)
     try {
-      if (hasIt) {
-        await fetch(`/api/community/posts/${post.id}/comment?phrase=${key}`, { method: 'DELETE' })
-        setComments(prev => prev.filter(c => !(c.user_id === currentUserId && c.phrase === key)))
-      } else {
-        await fetch(`/api/community/posts/${post.id}/comment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phrase: key }),
-        })
-        const userName = session?.user?.name ?? undefined
-        setComments(prev => [...prev, { phrase: key, user_id: currentUserId, user_name: userName }])
-      }
+      await fetch(`/api/community/posts/${post.id}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text }),
+      })
+      setComments(prev => [
+        ...prev.filter(c => c.user_id !== currentUserId),
+        { id: `temp-${Date.now()}`, content: text, user_id: currentUserId, user_name: session?.user?.name ?? undefined },
+      ])
+      setCommentInput('')
+      setCommentOpen(false)
     } catch { }
-    setLoading(false)
+    setSubmitting(false)
   }
 
-  const handleDelete = async () => {
+  const removeMyComment = async () => {
+    if (!currentUserId || likeLoading) return
+    setLikeLoading(true)
+    try {
+      await fetch(`/api/community/posts/${post.id}/comment`, { method: 'DELETE' })
+      setComments(prev => prev.filter(c => c.user_id !== currentUserId))
+    } catch { }
+    setLikeLoading(false)
+  }
+
+  const adminDeleteComment = async (commentId: string) => {
+    try {
+      await fetch(`/api/community/comments/${commentId}`, { method: 'DELETE' })
+      setComments(prev => prev.filter(c => c.id !== commentId))
+    } catch { }
+  }
+
+  const handleDeletePost = async () => {
     if (!confirm('Excluir este post?')) return
     await fetch(`/api/community/posts/${post.id}`, { method: 'DELETE' })
     onDelete?.(post.id)
@@ -156,11 +152,7 @@ export function CommunityPostCard({ post, onDelete, currentUserId }: Props) {
           </div>
           <div>
             <p className="text-sm font-black text-white tracking-wide">
-              <UserNameLink
-                userId={post.users?.id ?? ''}
-                name={post.users?.name ?? 'Jogador'}
-                className="text-white"
-              />
+              <UserNameLink userId={post.users?.id ?? ''} name={post.users?.name ?? 'Jogador'} className="text-white" />
             </p>
             <p className="text-[11px] tracking-widest" style={{ color: `${config.color}90` }}>
               {config.label} • {timeAgo(post.created_at)}
@@ -168,11 +160,8 @@ export function CommunityPostCard({ post, onDelete, currentUserId }: Props) {
           </div>
         </div>
         {isAdmin && (
-          <button
-            onClick={handleDelete}
-            className="text-[10px] text-red-400/50 hover:text-red-400 transition-colors px-2 py-1 rounded"
-          >
-            ✕
+          <button onClick={handleDeletePost} className="text-[10px] text-red-400/50 hover:text-red-400 transition-colors px-2 py-1 rounded">
+            ✕ post
           </button>
         )}
       </div>
@@ -182,13 +171,13 @@ export function CommunityPostCard({ post, onDelete, currentUserId }: Props) {
         {formatPayload(post.post_type, post.payload)}
       </p>
 
-      {/* Heart + comment button row */}
-      <div className="flex items-center gap-2 mb-3" ref={pickerRef}>
+      {/* Actions row */}
+      <div className="flex items-center gap-2 flex-wrap">
         {/* Heart */}
         <button
           onClick={toggleHeart}
-          disabled={loading || !currentUserId}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all hover:scale-110"
+          disabled={likeLoading || !currentUserId}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all hover:scale-110 disabled:opacity-50"
           style={{
             background: hasHeart ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)',
             border: `1px solid ${hasHeart ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.1)'}`,
@@ -198,70 +187,77 @@ export function CommunityPostCard({ post, onDelete, currentUserId }: Props) {
           {heartCount > 0 && <span className="text-xs font-bold text-white/80">{heartCount}</span>}
         </button>
 
-        {/* Add comment toggle */}
+        {/* Comment toggle */}
         {currentUserId && (
-          <div className="relative">
-            <button
-              onClick={() => setPickerOpen(o => !o)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105"
-              style={{
-                background: pickerOpen ? `${config.color}18` : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${pickerOpen ? config.color + '60' : 'rgba(255,255,255,0.1)'}`,
-                color: pickerOpen ? config.color : 'rgba(255,255,255,0.5)',
-              }}
-            >
-              <span>💬</span>
-              <span>{comments.length > 0 ? comments.length : 'Comentar'}</span>
-            </button>
-
-            {/* Phrase picker dropdown */}
-            {pickerOpen && (
-              <div
-                className="absolute left-0 top-full mt-2 w-60 rounded-xl overflow-hidden z-20 shadow-2xl"
-                style={{ background: 'rgba(8,20,38,0.97)', border: `1px solid ${config.color}40` }}
-              >
-                {COMMENT_KEYS.map(key => {
-                  const active = userPhrases.has(key)
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => selectPhrase(key)}
-                      className="w-full text-left px-4 py-2.5 text-sm transition-all hover:bg-white/5 flex items-center justify-between"
-                      style={{
-                        color: active ? config.color : 'rgba(255,255,255,0.7)',
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      }}
-                    >
-                      <span className={active ? 'font-bold' : ''}>{COMMENT_PHRASES[key]}</span>
-                      {active && <span className="text-[11px] ml-2 opacity-70">✓ remover</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => setCommentOpen(o => !o)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105"
+            style={{
+              background: commentOpen ? `${config.color}18` : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${commentOpen ? config.color + '60' : 'rgba(255,255,255,0.1)'}`,
+              color: commentOpen ? config.color : 'rgba(255,255,255,0.5)',
+            }}
+          >
+            <span>💬</span>
+            <span>{comments.length > 0 ? comments.length : 'Comentar'}</span>
+          </button>
         )}
       </div>
 
-      {/* Existing comments list */}
+      {/* Comment input */}
+      {commentOpen && !myComment && (
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={commentInput}
+            onChange={e => setCommentInput(e.target.value.slice(0, 300))}
+            onKeyDown={e => e.key === 'Enter' && submitComment()}
+            placeholder="Escreva um comentário..."
+            className="flex-1 px-3 py-2 rounded-xl text-xs text-white outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }}
+            autoFocus
+          />
+          <button
+            onClick={submitComment}
+            disabled={submitting || !commentInput.trim()}
+            className="px-3 py-2 rounded-xl text-xs font-black text-white disabled:opacity-40 transition-all hover:scale-105"
+            style={{ background: `${config.color}30`, border: `1px solid ${config.color}60` }}
+          >
+            {submitting ? '...' : 'Enviar'}
+          </button>
+        </div>
+      )}
+
+      {/* Comments list */}
       {comments.length > 0 && (
-        <div className="flex flex-col gap-1 mt-1">
-          {comments.map((c, i) => {
+        <div className="flex flex-col gap-1 mt-3">
+          {comments.map((c) => {
             const firstName = (c.user_name ?? 'Alguém').split(' ').slice(0, 2).join(' ')
             const isOwn = c.user_id === currentUserId
             return (
               <div
-                key={i}
-                className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg"
+                key={c.id}
+                className="flex items-start gap-1.5 text-xs px-2 py-1.5 rounded-lg group"
                 style={{ background: isOwn ? `${config.color}12` : 'rgba(255,255,255,0.03)' }}
               >
-                <span className="font-bold" style={{ color: isOwn ? config.color : 'rgba(255,255,255,0.55)' }}>
-                  {firstName}
+                <span className="font-bold flex-shrink-0" style={{ color: isOwn ? config.color : 'rgba(255,255,255,0.55)' }}>
+                  {firstName}:
                 </span>
-                <span className="text-white/40">·</span>
-                <span style={{ color: isOwn ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.45)' }}>
-                  {COMMENT_PHRASES[c.phrase]}
-                </span>
+                <span className="flex-1 break-all" style={{ color: 'rgba(255,255,255,0.75)' }}>{c.content}</span>
+                {isOwn && (
+                  <button
+                    onClick={removeMyComment}
+                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all ml-1 flex-shrink-0"
+                    title="Remover meu comentário"
+                  >✕</button>
+                )}
+                {isAdmin && !isOwn && (
+                  <button
+                    onClick={() => adminDeleteComment(c.id)}
+                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all ml-1 flex-shrink-0"
+                    title="Admin: apagar comentário"
+                  >✕</button>
+                )}
               </div>
             )
           })}

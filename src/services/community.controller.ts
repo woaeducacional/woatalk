@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/authOptions"
-import { communityService, Reaction, CommentPhrase } from "./community.service"
+import { communityService, Reaction } from "./community.service"
 import { supabase } from "../lib/supabaseClient"
 
 async function getUserId(email: string): Promise<string | null> {
@@ -58,8 +58,10 @@ export async function addComment(request: NextRequest, postId: string) {
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = await getUserId(session.user.email)
   if (!userId) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  const { phrase } = await request.json()
-  const { error } = await communityService.addComment(postId, userId, phrase as CommentPhrase)
+  const { content } = await request.json()
+  const text = typeof content === 'string' ? content.trim() : ''
+  if (!text || text.length > 300) return NextResponse.json({ error: 'Comentário inválido (1–300 caracteres)' }, { status: 400 })
+  const { error } = await communityService.addComment(postId, userId, text)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
@@ -69,10 +71,17 @@ export async function removeComment(request: NextRequest, postId: string) {
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = await getUserId(session.user.email)
   if (!userId) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  const url = new URL(request.url)
-  const phrase = url.searchParams.get('phrase') as CommentPhrase
-  if (!phrase) return NextResponse.json({ error: 'Missing phrase' }, { status: 400 })
-  const { error } = await communityService.removeComment(postId, userId, phrase)
+  const { error } = await communityService.removeComment(postId, userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
+export async function deleteComment(request: NextRequest, commentId: string) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email || session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  }
+  const { error } = await communityService.deleteComment(commentId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
