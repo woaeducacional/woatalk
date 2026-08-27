@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
   monthly_winner_user_id: null,
   monthly_winner_badge: 'Vencedor mensal',
   monthly_winner_note: 'Conquista do melhor desempenho do mês',
+  winner_confirmed: false,
 }
 
 export async function GET() {

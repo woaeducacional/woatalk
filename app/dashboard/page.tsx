@@ -34,6 +34,8 @@ type ChallengeGoal = {
 
 type JourneyItem = { phase_id: number; title: string; description: string; blocked: boolean; is_pro: boolean; icon_url?: string | null }
 
+type RankingUser = { id: string; name: string; xp_total: number; avatar_url: string | null }
+
 const OCEAN_ICONS_DEFAULT = '/images/jornada-secreta.png'
 
 const CHALLENGE_DEFINITIONS: Record<ChallengePeriod, {
@@ -464,6 +466,25 @@ function JourneyGlobeCarousel({
   )
 }
 
+function getEndOfMonthCountdown() {
+  const now = new Date()
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0)
+  const diff = endOfMonth.getTime() - now.getTime()
+  if (diff <= 0) return { days: 0, hours: 0 }
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  return { days, hours }
+}
+
+function AvatarPlaceholder({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="4" fill="rgba(0,212,255,0.55)" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(0,212,255,0.55)" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -482,7 +503,8 @@ export default function DashboardPage() {
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [verifyCode, setVerifyCode] = useState(['', '', '', '', '', ''])
   const [verifyStep, setVerifyStep] = useState<'send' | 'input' | 'done'>('send')
-  const [challengeConfig, setChallengeConfig] = useState<{ daily_reward: string; weekly_reward: string; monthly_reward: string; monthly_winner_name: string; monthly_winner_badge: string; monthly_winner_note: string } | null>(null)
+  const [challengeConfig, setChallengeConfig] = useState<{ daily_reward: string; weekly_reward: string; monthly_reward: string; monthly_winner_name: string; monthly_winner_badge: string; monthly_winner_note: string; winner_confirmed: boolean } | null>(null)
+  const [monthlyRanking, setMonthlyRanking] = useState<RankingUser[]>([])
   const [verifyError, setVerifyError] = useState<string | null>(null)
   const [verifyLoading, setVerifyLoading] = useState(false)
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -591,6 +613,10 @@ export default function DashboardPage() {
     fetch('/api/public/challenge-config')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setChallengeConfig(d) })
+      .catch(() => {})
+    fetch('/api/community/rankings?period=monthly')
+      .then(r => r.ok ? r.json() : { xpRanking: [] })
+      .then(d => setMonthlyRanking(d.xpRanking ?? []))
       .catch(() => {})
     refreshDailyAccess()
     fetch('/api/journey/completed')
@@ -743,6 +769,20 @@ export default function DashboardPage() {
     ((challengeSnapshot.daily.percent + challengeSnapshot.weekly.percent + challengeSnapshot.monthly.percent) / 3)
   )
 
+  const PRIZE_DEFAULT = 'XP + WOA Coins + Badge mensal'
+  const prizeSet = !!(challengeConfig?.monthly_reward && challengeConfig.monthly_reward !== PRIZE_DEFAULT)
+  const top3 = monthlyRanking.slice(0, 3)
+  const currentUserRankIdx = monthlyRanking.findIndex(u => u.id === (session?.user as { id?: string })?.id)
+  const currentUserRank = currentUserRankIdx >= 0 ? currentUserRankIdx + 1 : null
+  const currentUserData = currentUserRankIdx >= 0 ? monthlyRanking[currentUserRankIdx] : null
+  const { days: cdDays, hours: cdHours } = getEndOfMonthCountdown()
+  const { level: userLevel } = calcLevel(xpTotal)
+  const RANK_BADGES: Record<number, { label: string; color: string; bg: string; border: string }> = {
+    1: { label: 'OURO', color: '#FFD700', bg: 'rgba(255,215,0,0.12)', border: 'rgba(255,215,0,0.3)' },
+    2: { label: 'PRATA', color: '#C0C0C0', bg: 'rgba(192,192,192,0.12)', border: 'rgba(192,192,192,0.3)' },
+    3: { label: 'BRONZE', color: '#CD7F32', bg: 'rgba(205,127,50,0.12)', border: 'rgba(205,127,50,0.3)' },
+  }
+
   const handleToggleBlocked = async (phaseId: number) => {
     const journey = journeys.find((j) => j.phase_id === phaseId)
     if (!journey) return
@@ -892,62 +932,102 @@ export default function DashboardPage() {
 
         <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6 pb-24 md:pb-10">
 
-          {/* ── DESAFIOS ── */}
-          <section className="rounded-2xl p-5" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
-            <button
-              type="button"
-              onClick={() => { playClick(); setChallengeOpen(true) }}
-              className="w-full text-left"
-            >
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">🏆</span>
-                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>DESAFIOS</p>
-                </div>
-                <span className="text-[10px] font-black tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700' }}>
-                  {overallChallengePercent}%
-                </span>
-              </div>
-
-              <div className="flex items-end justify-between gap-3 mb-2">
-                <div>
-                  <p className="text-white font-black text-sm">Progresso da rotina</p>
-                  <p className="text-[11px] text-white/50">Meta atual: {challengeSnapshot.daily.done}/{challengeSnapshot.daily.total} concluído hoje</p>
-                </div>
-              </div>
-
-              {challengeConfig && (
-                <div className="mb-3 rounded-xl p-2.5" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)' }}>
-                  <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: '#FFD700' }}>VENCEDOR MENSAL</p>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-black text-white">{challengeConfig.monthly_winner_name}</p>
-                      <p className="text-[10px] text-white/55">{challengeConfig.monthly_winner_badge}</p>
-                    </div>
-                    <span className="text-[10px] font-black px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFD700' }}>{challengeConfig.monthly_reward}</span>
+          {/* ── DESAFIO DO MÊS ── */}
+          <section className="rounded-2xl overflow-hidden" style={{ background: 'rgba(5,14,26,0.85)', border: '1px solid rgba(255,215,0,0.25)', boxShadow: '0 0 40px rgba(255,180,0,0.06)' }}>
+            <div className="flex flex-col md:flex-row">
+              {/* LEFT: Leaderboard */}
+              <div className="flex-1 p-5">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🏆</span>
+                    <p className="text-sm font-black tracking-widest" style={{ color: '#FFD700' }}>DESAFIO DO MÊS</p>
+                  </div>
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.25)' }}>
+                    <span className="text-[10px]">⏱</span>
+                    <span className="text-[11px] font-black" style={{ color: '#FF6060' }}>{cdDays}d {cdHours}h</span>
                   </div>
                 </div>
-              )}
+                <p className="text-[11px] text-white/45 mb-4">Aprenda, pratique e suba no ranking!</p>
 
-              <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,215,0,0.12)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${overallChallengePercent}%`, background: 'linear-gradient(90deg, #FFD700, #FFB000)' }} />
+                {/* Top 3 rows */}
+                <div className="space-y-2 mb-3">
+                  {top3.length === 0
+                    ? [1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2 animate-pulse" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                        <div className="w-7 h-7 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                        <div className="flex-1 h-3 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                      </div>
+                    ))
+                    : top3.map((user, idx) => {
+                      const rank = idx + 1
+                      const badge = RANK_BADGES[rank]
+                      const isConfirmedWinner = rank === 1 && challengeConfig?.winner_confirmed
+                      const shortName = user.name.split(' ').slice(0, 2).map((n, i2) => i2 === 1 ? n[0] + '.' : n).join(' ')
+                      return (
+                        <div key={user.id} className="flex items-center gap-2.5 rounded-xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${badge.border}` }}>
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0" style={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>{rank}</div>
+                          <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(0,67,187,0.3)', border: `1px solid ${badge.border}` }}>
+                            {user.avatar_url
+                              ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                              : <AvatarPlaceholder size={20} />}
+                          </div>
+                          <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-black text-white truncate max-w-[90px]">{shortName}</p>
+                            {isConfirmedWinner && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#4ade80' }}>DEFINITIVO</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>{badge.label}</span>
+                          <span className="text-[11px] font-black text-white/70 min-w-[56px] text-right flex-shrink-0">{user.xp_total.toLocaleString('pt-BR')} XP</span>
+                        </div>
+                      )
+                    })
+                  }
+                </div>
+
+                <div className="h-px mb-3" style={{ background: 'rgba(255,215,0,0.1)' }} />
+
+                {/* Current user row */}
+                {currentUserRank === null || currentUserRank > 3 ? (
+                  <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.3)' }}>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0" style={{ background: 'rgba(255,215,0,0.15)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.35)' }}>
+                      {currentUserRank ?? '?'}
+                    </div>
+                    <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(0,67,187,0.3)', border: '1px solid rgba(255,215,0,0.3)' }}>
+                      {currentUserData?.avatar_url
+                        ? <img src={currentUserData.avatar_url} alt="Você" className="w-full h-full object-cover" />
+                        : <AvatarPlaceholder size={20} />}
+                    </div>
+                    <p className="flex-1 text-xs font-black text-white">Você</p>
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: '#00D4FF' }}>Nv. {userLevel}</span>
+                    <span className="text-[11px] font-black text-white/70 min-w-[56px] text-right flex-shrink-0">
+                      {(currentUserData?.xp_total ?? 0) > 0 ? `${(currentUserData!.xp_total).toLocaleString('pt-BR')} XP` : '— XP'}
+                    </span>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-black tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                <div className="rounded-xl p-2" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}>
-                  <div className="text-cyan-400">{challengeSnapshot.daily.done}/{challengeSnapshot.daily.total}</div>
-                  <div className="mt-1 text-[8px] text-white/50">DIÁRIO</div>
+              {/* RIGHT: Prize */}
+              <div className="flex flex-col items-center justify-center gap-3 p-5 md:w-44 border-t md:border-t-0 md:border-l" style={{ borderColor: 'rgba(255,215,0,0.12)', background: 'rgba(255,180,0,0.04)' }}>
+                <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>PRÊMIO DO MÊS</p>
+                <div className="relative w-32 h-32">
+                  <Image src="/images/bau-tesouro.png" alt="Baú do Tesouro" fill className="object-contain" style={{ filter: 'drop-shadow(0 4px 16px rgba(255,180,0,0.35))' }} />
                 </div>
-                <div className="rounded-xl p-2" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.15)' }}>
-                  <div className="text-violet-400">{challengeSnapshot.weekly.done}/{challengeSnapshot.weekly.total}</div>
-                  <div className="mt-1 text-[8px] text-white/50">SEMANAL</div>
-                </div>
-                <div className="rounded-xl p-2" style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.15)' }}>
-                  <div className="text-orange-400">{challengeSnapshot.monthly.done}/{challengeSnapshot.monthly.total}</div>
-                  <div className="mt-1 text-[8px] text-white/50">MENSAL</div>
-                </div>
+                {prizeSet
+                  ? <p className="text-sm font-black text-white text-center leading-snug">{challengeConfig!.monthly_reward}</p>
+                  : <p className="text-xl font-black text-center tracking-[0.2em]" style={{ color: '#FFD700', textShadow: '0 0 16px rgba(255,215,0,0.5)' }}>??????</p>
+                }
+                <button
+                  type="button"
+                  onClick={() => { playClick(); setChallengeOpen(true) }}
+                  className="text-[11px] font-black tracking-wide transition-opacity hover:opacity-75"
+                  style={{ color: '#00D4FF' }}
+                >
+                  Ver detalhes →
+                </button>
               </div>
-            </button>
+            </div>
           </section>
 
           {/* ── SUA JORNADA — env tabs ── */}
