@@ -85,3 +85,9 @@ export async function deleteComment(request: NextRequest, commentId: string) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
+
+export async function getRecentActivity() {
+  const { data, error } = await communityService.getRecentActivity(5)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ posts: data })
+}
