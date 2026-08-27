@@ -505,6 +505,7 @@ export default function DashboardPage() {
   const [verifyStep, setVerifyStep] = useState<'send' | 'input' | 'done'>('send')
   const [challengeConfig, setChallengeConfig] = useState<{ daily_reward: string; weekly_reward: string; monthly_reward: string; monthly_winner_name: string; monthly_winner_badge: string; monthly_winner_note: string; winner_confirmed: boolean } | null>(null)
   const [monthlyRanking, setMonthlyRanking] = useState<RankingUser[]>([])
+  const [monthlyRankingLoaded, setMonthlyRankingLoaded] = useState(false)
   const [verifyError, setVerifyError] = useState<string | null>(null)
   const [verifyLoading, setVerifyLoading] = useState(false)
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -616,8 +617,8 @@ export default function DashboardPage() {
       .catch(() => {})
     fetch('/api/community/rankings?period=monthly')
       .then(r => r.ok ? r.json() : { xpRanking: [] })
-      .then(d => setMonthlyRanking(d.xpRanking ?? []))
-      .catch(() => {})
+      .then(d => { setMonthlyRanking(d.xpRanking ?? []); setMonthlyRankingLoaded(true) })
+      .catch(() => { setMonthlyRankingLoaded(true) })
     refreshDailyAccess()
     fetch('/api/journey/completed')
       .then(r => r.ok ? r.json() : { completedPhaseIds: [] })
@@ -951,7 +952,7 @@ export default function DashboardPage() {
 
                 {/* Top 3 rows */}
                 <div className="space-y-2 mb-3">
-                  {top3.length === 0
+                  {!monthlyRankingLoaded
                     ? [1, 2, 3].map(i => (
                       <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2 animate-pulse" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                         <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }} />
@@ -959,6 +960,14 @@ export default function DashboardPage() {
                         <div className="flex-1 h-3 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
                       </div>
                     ))
+                    : top3.length === 0
+                    ? (
+                      <div className="rounded-xl px-4 py-5 text-center" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <p className="text-2xl mb-1">🏁</p>
+                        <p className="text-xs font-black text-white/50">Nenhum XP registrado este mês ainda</p>
+                        <p className="text-[10px] text-white/30 mt-1">Complete missões para aparecer no ranking!</p>
+                      </div>
+                    )
                     : top3.map((user, idx) => {
                       const rank = idx + 1
                       const badge = RANK_BADGES[rank]
@@ -973,7 +982,7 @@ export default function DashboardPage() {
                               : <AvatarPlaceholder size={20} />}
                           </div>
                           <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
-                            <p className="text-xs font-black text-white truncate max-w-[90px]">{shortName}</p>
+                            <Link href={`/profile/${user.id}`} onClick={() => playClick()} className="text-xs font-black text-white truncate max-w-[90px] hover:text-cyan-300 transition-colors">{shortName}</Link>
                             {isConfirmedWinner && (
                               <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#4ade80' }}>DEFINITIVO</span>
                             )}
@@ -999,7 +1008,12 @@ export default function DashboardPage() {
                         ? <img src={currentUserData.avatar_url} alt="Você" className="w-full h-full object-cover" />
                         : <AvatarPlaceholder size={20} />}
                     </div>
-                    <p className="flex-1 text-xs font-black text-white">Você</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-black text-white">Você</p>
+                      {currentUserRank === null && monthlyRankingLoaded && (
+                        <p className="text-[9px] text-white/35">Complete missões para entrar!</p>
+                      )}
+                    </div>
                     <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: '#00D4FF' }}>Nv. {userLevel}</span>
                     <span className="text-[11px] font-black text-white/70 min-w-[56px] text-right flex-shrink-0">
                       {(currentUserData?.xp_total ?? 0) > 0 ? `${(currentUserData!.xp_total).toLocaleString('pt-BR')} XP` : '— XP'}
