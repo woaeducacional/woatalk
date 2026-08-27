@@ -15,6 +15,7 @@ const DEFAULT_CONFIG = {
   monthly_winner_user_id: null,
   monthly_winner_badge: 'Vencedor mensal',
   monthly_winner_note: 'Conquista do melhor desempenho do mês',
+  winner_confirmed: false,
 }
 
 async function requireAdmin() {
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
       monthly_winner_user_id: body.monthly_winner_user_id ?? null,
       monthly_winner_badge: String(body.monthly_winner_badge ?? DEFAULT_CONFIG.monthly_winner_badge),
       monthly_winner_note: String(body.monthly_winner_note ?? DEFAULT_CONFIG.monthly_winner_note),
+      winner_confirmed: Boolean(body.winner_confirmed ?? false),
     }
 
     const { data: existing } = await supabase
