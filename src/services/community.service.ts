@@ -52,15 +52,96 @@ class CommunityService {
   }
 
   async addReaction(postId: string, userId: string, reaction: Reaction) {
-    return this.db().from('community_reactions').upsert({ post_id: postId, user_id: userId, reaction }, { onConflict: 'post_id,user_id,reaction' })
+    // Check if reaction already exists
+    const { data: existing } = await this.db()
+      .from('community_reactions')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .eq('reaction', reaction)
+      .single()
+    
+    const isNewReaction = !existing
+    
+    // Upsert reaction
+    const reactionResult = await this.db()
+      .from('community_reactions')
+      .upsert({ post_id: postId, user_id: userId, reaction }, { onConflict: 'post_id,user_id,reaction' })
+    
+    if (reactionResult.error) return reactionResult
+    
+    // If new reaction, increment user's likes_made counter
+    if (isNewReaction) {
+      const { data: user } = await this.db()
+        .from('users')
+        .select('likes_made')
+        .eq('id', userId)
+        .single()
+      
+      if (user) {
+        await this.db()
+          .from('users')
+          .update({ likes_made: (user.likes_made || 0) + 1 })
+          .eq('id', userId)
+      }
+    }
+    
+    return reactionResult
   }
 
   async removeReaction(postId: string, userId: string, reaction: Reaction) {
+    // Decrement likes_made when removing a reaction
+    const { data: user } = await this.db()
+      .from('users')
+      .select('likes_made')
+      .eq('id', userId)
+      .single()
+    
+    if (user && user.likes_made > 0) {
+      await this.db()
+        .from('users')
+        .update({ likes_made: user.likes_made - 1 })
+        .eq('id', userId)
+    }
+    
     return this.db().from('community_reactions').delete().match({ post_id: postId, user_id: userId, reaction })
   }
 
   async addComment(postId: string, userId: string, content: string) {
-    return this.db().from('community_comments').upsert({ post_id: postId, user_id: userId, content }, { onConflict: 'post_id,user_id' })
+    // Check if comment already exists
+    const { data: existing } = await this.db()
+      .from('community_comments')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .single()
+    
+    const isNewComment = !existing
+    
+    // Upsert comment
+    const commentResult = await this.db()
+      .from('community_comments')
+      .upsert({ post_id: postId, user_id: userId, content }, { onConflict: 'post_id,user_id' })
+    
+    if (commentResult.error) return commentResult
+    
+    // If new comment, increment user's comments_made counter
+    if (isNewComment) {
+      const { data: user } = await this.db()
+        .from('users')
+        .select('comments_made')
+        .eq('id', userId)
+        .single()
+      
+      if (user) {
+        await this.db()
+          .from('users')
+          .update({ comments_made: (user.comments_made || 0) + 1 })
+          .eq('id', userId)
+      }
+    }
+    
+    return commentResult
   }
 
   async removeComment(postId: string, userId: string) {
