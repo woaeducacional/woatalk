@@ -2,7 +2,7 @@
 import { AzureSTTProvider } from '@/lib/speech/azure'
 
 export async function POST(request: NextRequest) {
-  let body: { audio?: string; mimeType?: string }
+  let body: { audio?: string; mimeType?: string; language?: string }
   try {
     body = await request.json()
   } catch {
@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
   try {
     const audioBuf = Buffer.from(body.audio, 'base64')
     const provider = new AzureSTTProvider(key, region)
-    const transcript = await provider.transcribe(audioBuf, { language: 'en-US' })
+    const language = body.language || 'en-US'
+    const transcript = await provider.transcribe(audioBuf, { language })
     return NextResponse.json({ transcript: transcript || '' })
   } catch (error) {
     console.error('Transcription error:', error)

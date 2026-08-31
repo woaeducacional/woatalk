@@ -48,6 +48,9 @@ coverage/
 *.pem
 .env.test
 .env.production.local
+
+# Database migrations (local)
+db/migrations/
 .env.development.local
 
 # Vercel
