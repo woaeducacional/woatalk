@@ -12,6 +12,8 @@ import { BadgesModal } from '@/src/components/BadgesModal'
 import { NotificationBell } from '@/src/components/NotificationBell'
 import { calcLevel } from '@/lib/level'
 import { resolveAvatarUrl } from '@/lib/avatarStorage'
+import { TUTOR_THEMES, searchTutorThemes, getTutorThemeById } from '@/lib/tutorThemes'
+import { useVoiceRecorder } from '@/src/hooks/useVoiceRecorder'
 
 interface TickerPost {
   id: string
@@ -521,6 +523,30 @@ export default function DashboardPage() {
   const [conversationMessages, setConversationMessages] = useState<Array<{ role: 'assistant' | 'user'; content: string }>>([])
   const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'assistant' | 'user'; content: string }>>([])
   const [conversationStep, setConversationStep] = useState(0)
+  // Voice chat states
+  const [conversationVoiceEnabled, setConversationVoiceEnabled] = useState(true)
+  const [conversationVoiceError, setConversationVoiceError] = useState<string | null>(null)
+  const [themeSearchQuery, setThemeSearchQuery] = useState('')
+  const [themeSearchResults, setThemeSearchResults] = useState(TUTOR_THEMES)
+  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
+
+  // Voice recording hook
+  const voiceRecorder = useVoiceRecorder({
+    onTranscriptionComplete: (text) => {
+      setConversationInput(text)
+      setConversationVoiceError(null)
+    },
+    onError: (error) => {
+      setConversationVoiceError(error)
+    },
+  })
+
+  // Busca de temas
+  const handleThemeSearch = useCallback((query: string) => {
+    setThemeSearchQuery(query)
+    const results = searchTutorThemes(query)
+    setThemeSearchResults(results)
+  }, [])
 
   const refreshDailyAccess = useCallback(() => {
     fetch('/api/journey/daily-access')
@@ -715,7 +741,7 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: conversationTheme,
+          topic: selectedThemeId || 'general',
           history: newHistory,
           userSpeech: trimmed,
           questionNumber: conversationStep,
@@ -739,7 +765,7 @@ export default function DashboardPage() {
     } finally {
       setConversationLoading(false)
     }
-  }, [conversationHistory, conversationInput, conversationLoading, conversationStep, conversationTheme, conversationMessages])
+  }, [conversationHistory, conversationInput, conversationLoading, conversationStep, selectedThemeId, conversationMessages])
 
   const challengeSnapshot = useMemo(() => {
     const missions = completedPhaseIds.length
@@ -1240,48 +1266,132 @@ export default function DashboardPage() {
               <Link href="/community" onClick={() => playClick()} className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]" style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)' }}>VER FEED →</Link>
             </div>
 
-            {/* CONVERSAÇÃO COM IA */}
+            {/* SIMULAÇÕES PREMIUM */}
             <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.8), rgba(59,7,100,0.9))', border: '1px solid rgba(168,85,247,0.35)' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">🗣️</span>
-                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>CONVERSA COM IA</p>
+                  <span className="text-base">🎭</span>
+                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>SIMULAÇÕES PREMIUM</p>
                 </div>
                 {!isPremium && <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#F3E8FF' }}>PREMIUM</span>}
               </div>
 
               <p className="text-xs text-white/70">
-                {isPremium ? 'Pratique inglês em contexto real.' : 'Converse com o tutor de IA e simule situações reais do dia a dia'}
+                {isPremium ? 'Escolha um tema e pratique conversação com a IA.' : 'Simule situações reais e pratique inglês em contexto.'}
               </p>
 
               {isPremium ? (
                 <>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'viagens', emoji: '✈️', label: 'Viagens' },
-                      { id: 'trabalho', emoji: '💼', label: 'Trabalho' },
-                      { id: 'entrevistas', emoji: '🎤', label: 'Entrevistas' },
-                    ].map((theme) => (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        onClick={() => startConversationPractice(theme.id as 'viagens' | 'trabalho' | 'entrevistas')}
-                        className="rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.02]"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
-                      >
-                        <span className="text-xl">{theme.emoji}</span>
-                        <span className="text-[10px] font-bold text-white/80">{theme.label}</span>
-                      </button>
-                    ))}
+                  {/* Busca de temas com autocomplete */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Buscar tema (ex: 'restaurante', 'entrevista')..."
+                      value={themeSearchQuery}
+                      onChange={(e) => handleThemeSearch(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                    />
+                    {themeSearchQuery && themeSearchResults.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md z-20 max-h-60 overflow-y-auto">
+                        {themeSearchResults.slice(0, 8).map((theme) => (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedThemeId(theme.id)
+                              setThemeSearchQuery('')
+                              setThemeSearchResults(TUTOR_THEMES)
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-white/80 hover:bg-white/10 border-b border-white/5 last:border-b-0 transition-colors flex items-center gap-2"
+                          >
+                            <span className="text-lg">{theme.emoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-white truncate">{theme.label}</p>
+                              <p className="text-[10px] text-white/50 truncate">{theme.description}</p>
+                            </div>
+                          </button>
+                        ))}
+                        {themeSearchResults.length > 8 && (
+                          <div className="px-3 py-2 text-center text-[10px] text-white/40 border-t border-white/5">
+                            +{themeSearchResults.length - 8} mais temas...
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Tema selecionado */}
+                  {selectedThemeId && getTutorThemeById(selectedThemeId) && (
+                    <div className="rounded-xl p-3" style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)' }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xl">{getTutorThemeById(selectedThemeId)!.emoji}</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-white truncate">{getTutorThemeById(selectedThemeId)!.label}</p>
+                            <p className="text-[9px] text-white/60 truncate">{getTutorThemeById(selectedThemeId)!.description}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedThemeId(null)}
+                          className="text-white/40 hover:text-white/70 transition-colors flex-shrink-0"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     type="button"
-                    onClick={() => startConversationPractice(conversationTheme || 'viagens')}
-                    className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                    onClick={() => {
+                      if (selectedThemeId) {
+                        setConversationOpen(true)
+                        setConversationLoading(true)
+                        setConversationInput('')
+                        setConversationMessages([])
+                        setConversationHistory([])
+                        setConversationStep(0)
+                        setConversationVoiceError(null)
+
+                        // Iniciar conversa com tema selecionado
+                        fetch('/api/pronunciation/topic-chat', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ topic: selectedThemeId, history: [], userSpeech: '', questionNumber: 0 }),
+                        })
+                          .then(r => r.ok ? r.json() : { question: 'Let\'s start this conversation.' })
+                          .then(data => {
+                            const initialQuestion = data.question || 'Let\'s start this conversation.'
+                            setConversationHistory([{ role: 'assistant', content: initialQuestion }])
+                            setConversationMessages([{ role: 'assistant', content: initialQuestion }])
+                            setConversationStep(data.questionNumber ?? 1)
+                          })
+                          .catch(() => {
+                            setConversationMessages([{ role: 'assistant', content: 'Hi! Let\'s practice this topic in English. Go ahead and start.' }])
+                            setConversationHistory([{ role: 'assistant', content: 'Hi! Let\'s practice this topic in English. Go ahead and start.' }])
+                            setConversationStep(1)
+                          })
+                          .finally(() => setConversationLoading(false))
+                      }
+                    }}
+                    disabled={!selectedThemeId}
+                    className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
                   >
-                    ABRIR MODAL
+                    COMEÇAR SIMULAÇÃO
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedThemeId(null)
+                      setThemeSearchQuery('')
+                      setThemeSearchResults(TUTOR_THEMES)
+                    }}
+                    className="text-[10px] text-white/60 hover:text-white/80 transition-colors py-1 font-bold tracking-wide"
+                  >
+                    💡 Sugerir um tema diferente?
                   </button>
                 </>
               ) : (
@@ -1480,14 +1590,42 @@ export default function DashboardPage() {
             >✕</button>
 
             <div className="mb-5 pr-10">
-              <p className="text-[12px] sm:text-[14px] font-black tracking-[0.28em] mb-2" style={{ color: 'rgba(216,180,254,0.7)' }}>CONVERSATION PRACTICE</p>
+              <p className="text-[12px] sm:text-[14px] font-black tracking-[0.28em] mb-2" style={{ color: 'rgba(216,180,254,0.7)' }}>SIMULAÇÃO PREMIUM</p>
               <h3 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-                {conversationTheme === 'viagens' ? '✈️ Viagens' : conversationTheme === 'trabalho' ? '💼 Trabalho' : '🎤 Entrevistas'}
+                {selectedThemeId && getTutorThemeById(selectedThemeId) 
+                  ? `${getTutorThemeById(selectedThemeId)!.emoji} ${getTutorThemeById(selectedThemeId)!.label}`
+                  : 'Conversa com IA'
+                }
               </h3>
-              <p className="text-base sm:text-lg text-white/70 mt-2 leading-relaxed">The conversation stays in English. If you answer in Portuguese, the coach will gently guide you back to English.</p>
+              <p className="text-base sm:text-lg text-white/70 mt-2 leading-relaxed">The conversation stays in English. Practice speaking and listening in a real scenario.</p>
             </div>
 
-            <div className="space-y-4 max-h-[46vh] overflow-y-auto pr-1">
+            {/* Voice toggle */}
+            <div className="mb-4 flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🎤</span>
+                <span className="text-sm font-bold text-white">Chat por voz</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConversationVoiceEnabled(!conversationVoiceEnabled)}
+                className="w-10 h-6 rounded-full transition-colors flex items-center px-1"
+                style={{ background: conversationVoiceEnabled ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)' }}
+              >
+                <div
+                  className="w-4 h-4 rounded-full bg-white transition-transform"
+                  style={{ transform: conversationVoiceEnabled ? 'translateX(16px)' : 'translateX(0)' }}
+                />
+              </button>
+            </div>
+
+            {conversationVoiceError && (
+              <div className="mb-3 px-3 py-2 rounded-lg text-xs text-red-300" style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid rgba(255,0,0,0.2)' }}>
+                {conversationVoiceError}
+              </div>
+            )}
+
+            <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
               {conversationMessages.length === 0 && !conversationLoading && (
                 <div className="rounded-2xl p-4 text-base sm:text-lg text-white/60" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   Preparing your practice conversation...
@@ -1513,16 +1651,47 @@ export default function DashboardPage() {
                   The coach is preparing the next question...
                 </div>
               )}
+
+              {voiceRecorder.isTranscribing && (
+                <div className="rounded-2xl p-4 text-base sm:text-lg text-white/60 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="inline-block animate-spin">⏳</span>
+                  Transcribing your audio...
+                </div>
+              )}
             </div>
 
             <div className="mt-5 flex gap-3">
-              <textarea
-                value={conversationInput}
-                onChange={(e) => setConversationInput(e.target.value)}
-                rows={3}
-                placeholder="Type your answer in English..."
-                className="flex-1 rounded-2xl border border-white/10 bg-white/5 p-4 text-base sm:text-lg text-white placeholder-white/30 resize-none"
-              />
+              <div className="flex-1 relative">
+                <textarea
+                  value={conversationInput}
+                  onChange={(e) => setConversationInput(e.target.value)}
+                  rows={3}
+                  placeholder={conversationVoiceEnabled ? "Fale ou digite sua resposta em inglês..." : "Type your answer in English..."}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-base sm:text-lg text-white placeholder-white/30 resize-none"
+                />
+                {conversationVoiceEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (voiceRecorder.isRecording) {
+                        voiceRecorder.stopRecording()
+                      } else {
+                        voiceRecorder.startRecording()
+                      }
+                    }}
+                    disabled={voiceRecorder.isTranscribing}
+                    className="absolute bottom-3 right-3 text-2xl transition-transform hover:scale-110 disabled:opacity-50"
+                    title={voiceRecorder.isRecording ? 'Stop recording' : 'Start recording'}
+                  >
+                    {voiceRecorder.isRecording 
+                      ? '🛑' 
+                      : voiceRecorder.isTranscribing 
+                      ? '⏳' 
+                      : '🎤'
+                    }
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleSendConversationMessage}
