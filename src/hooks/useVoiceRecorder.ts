@@ -129,20 +129,22 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
     async (audioBlob: Blob) => {
       setIsTranscribing(true)
       try {
-        console.log('🎤 Converting audio to WAV format...')
+        console.log('🎤 [PASSO 10] Convertendo WebM → WAV...')
         // Converter WebM para WAV
         const wavBuffer = await convertWebMToWav(audioBlob)
         const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' })
 
-        console.log('🎤 WAV size:', wavBlob.size, 'bytes')
+        console.log('🎤 [PASSO 11] ✅ WAV criado:', wavBlob.size, 'bytes')
 
         // Converter blob para base64
+        console.log('🎤 [PASSO 12] Convertendo WAV para base64...')
         const reader = new FileReader()
         reader.onload = async () => {
           try {
             const base64Audio = (reader.result as string).split(',')[1]
+            console.log('🎤 [PASSO 13] ✅ Base64 pronto! Tamanho:', base64Audio.length)
 
-            console.log('🎤 Sending to transcription API...')
+            console.log('🎤 [PASSO 14] 📤 Enviando para /api/transcribe...')
             // Enviar para API
             const response = await fetch('/api/transcribe', {
               method: 'POST',
@@ -158,14 +160,14 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
 
             if (!response.ok) {
               const errorMsg = data.error || response.statusText
-              console.error('🎤 API Error:', errorMsg)
+              console.error('🎤 ❌ ERRO DA API:', errorMsg, '| Status:', response.status)
               onError?.(`Erro na transcrição: ${errorMsg}`)
               setIsTranscribing(false)
               return
             }
 
             const transcript = data.transcript || ''
-            console.log('🎤 Transcript received:', transcript)
+            console.log('🎤 [PASSO 15] 📥 Resposta recebida! Transcript:', transcript.substring(0, 50))
 
             if (transcript) {
               onTranscriptionComplete?.(transcript)
@@ -184,7 +186,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
 
         reader.onerror = () => {
           const error = 'Erro ao ler áudio'
-          console.error('🎤 Reader error:', error)
+          console.error('🎤 ❌ ERRO FileReader:', error)
           onError?.(error)
           setIsTranscribing(false)
         }
@@ -192,7 +194,8 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
         reader.readAsDataURL(wavBlob)
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro na transcrição'
-        console.error('🎤 Conversion error:', error)
+        console.error('🎤 ❌ ERRO CONVERSÃO:', message)
+        console.error('🎤 ❌ Error stack:', error)
         onError?.(message)
         setIsTranscribing(false)
       }
@@ -205,16 +208,18 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
    */
   const startRecording = useCallback(async () => {
     try {
-      console.log('🎤 Starting recording...')
+      console.log('🎤 [PASSO 1] Iniciando gravação...')
+      
       // Limpar estado anterior
       audioChunksRef.current = []
       setRecordingTime(0)
 
       // Solicitar permissão de microfone
+      console.log('🎤 [PASSO 2] Solicitando acesso ao microfone...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
 
-      console.log('🎤 Microphone access granted')
+      console.log('🎤 [PASSO 3] ✅ Permissão concedida!')
 
       // Criar MediaRecorder
       const mediaRecorder = new MediaRecorder(stream)
@@ -223,28 +228,32 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
       // Coletar chunks de áudio
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log('🎤 [PASSO 5] Chunk recebido:', event.data.size, 'bytes')
           audioChunksRef.current.push(event.data)
         }
       }
 
       // Quando a gravação termina
       mediaRecorder.onstop = async () => {
-        console.log('🎤 Recording stopped, processing audio...')
+        console.log('🎤 [PASSO 6] ✅ Gravação parada! Total de chunks:', audioChunksRef.current.length)
+        
         // Parar todos os tracks do stream
         stream.getTracks().forEach(track => track.stop())
         streamRef.current = null
+        console.log('🎤 [PASSO 7] ✅ Stream parado')
 
         // Criar blob de áudio
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        console.log('🎤 Audio blob created:', audioBlob.size, 'bytes')
+        console.log('🎤 [PASSO 8] ✅ WebM Blob criado:', audioBlob.size, 'bytes')
 
         // Transcrever
+        console.log('🎤 [PASSO 9] Iniciando transcrição...')
         await transcribeAudio(audioBlob)
       }
 
       mediaRecorder.start()
       setIsRecording(true)
-      console.log('🎤 MediaRecorder started')
+      console.log('🎤 [PASSO 4] ✅ MediaRecorder iniciado!')
 
       // Timer para máxima duração
       setRecordingTime(0)
