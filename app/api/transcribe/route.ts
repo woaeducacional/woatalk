@@ -16,14 +16,32 @@ export async function POST(request: NextRequest) {
   const key = process.env.AZURE_SPEECH_KEY
   const region = process.env.AZURE_SPEECH_REGION
   if (!key || !region) {
+    console.error('Azure Speech Services credentials not configured:', {
+      key: !!key,
+      region: !!region,
+    })
     return NextResponse.json({ error: 'Azure credentials not configured' }, { status: 503 })
   }
 
   try {
+    // Decodificar base64 para buffer
     const audioBuf = Buffer.from(body.audio, 'base64')
+    
+    // Log para debug
+    console.log('Transcription request:', {
+      audioSize: audioBuf.length,
+      mimeType: body.mimeType,
+      language: body.language,
+      keyLength: key.length,
+      region,
+    })
+
     const provider = new AzureSTTProvider(key, region)
     const language = body.language || 'en-US'
     const transcript = await provider.transcribe(audioBuf, { language })
+    
+    console.log('Transcription result:', { transcript, language })
+    
     return NextResponse.json({ transcript: transcript || '' })
   } catch (error) {
     console.error('Transcription error:', error)
