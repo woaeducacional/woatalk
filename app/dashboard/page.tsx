@@ -530,6 +530,9 @@ export default function DashboardPage() {
   const [themeSearchResults, setThemeSearchResults] = useState(TUTOR_THEMES)
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
 
+  // Audio ref para TTS
+  const audioRef = useRef<HTMLAudioElement>(null)
+
   // Voice recording hook
   const voiceRecorder = useVoiceRecorder({
     onTranscriptionComplete: (text) => {
@@ -537,9 +540,38 @@ export default function DashboardPage() {
       setConversationVoiceError(null)
     },
     onError: (error) => {
-      setConversationVoiceError(error)
+      // Feedback melhor de erro
+      const friendlyError = error.includes('NotAllowedError') 
+        ? '🎤 Permissão de microfone negada. Verifique as configurações do navegador.'
+        : error.includes('NotFoundError')
+        ? '🎤 Nenhum microfone encontrado. Verifique seu equipamento.'
+        : `🎤 Erro: ${error}`
+      setConversationVoiceError(friendlyError)
     },
+    language: 'en-US',
   })
+
+  // Função para reproduzir áudio TTS
+  const playTutorResponse = useCallback(async (text: string) => {
+    if (!text) return
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'en-US-AvaNeural', rate: 1.0 }),
+      })
+      if (!response.ok) throw new Error('TTS failed')
+      const audioData = await response.arrayBuffer()
+      const blob = new Blob([audioData], { type: 'audio/mpeg' })
+      const url = URL.createObjectURL(blob)
+      if (audioRef.current) {
+        audioRef.current.src = url
+        audioRef.current.play().catch(() => {}) // Silenciar erro se autoplay falhar
+      }
+    } catch (error) {
+      console.error('TTS error:', error)
+    }
+  }, [])
 
   // Busca de temas
   const handleThemeSearch = useCallback((query: string) => {
@@ -757,15 +789,25 @@ export default function DashboardPage() {
       setConversationHistory(updatedHistory)
       setConversationMessages([...nextMessages, assistantTurn])
       setConversationStep(data.questionNumber ?? conversationStep + 1)
+      
+      // Reproduzir voz do tutor se voice chat está ativado
+      if (conversationVoiceEnabled && assistantReply) {
+        playTutorResponse(assistantReply)
+      }
     } catch {
       const fallbackAssistantTurn = { role: 'assistant' as const, content: 'Good try! Please answer in English and keep the conversation focused on this topic.' }
       const updatedHistory = [...newHistory, fallbackAssistantTurn]
       setConversationHistory(updatedHistory)
       setConversationMessages([...nextMessages, fallbackAssistantTurn])
+      
+      // Reproduzir fallback message também
+      if (conversationVoiceEnabled) {
+        playTutorResponse(fallbackAssistantTurn.content)
+      }
     } finally {
       setConversationLoading(false)
     }
-  }, [conversationHistory, conversationInput, conversationLoading, conversationStep, selectedThemeId, conversationMessages])
+  }, [conversationHistory, conversationInput, conversationLoading, conversationStep, selectedThemeId, conversationMessages, conversationVoiceEnabled, playTutorResponse])
 
   const challengeSnapshot = useMemo(() => {
     const missions = completedPhaseIds.length
@@ -2137,6 +2179,9 @@ export default function DashboardPage() {
         ]}
         buttonLabel="VAMOS COMEÇAR"
       />
+      
+      {/* Audio element for TTS playback */}
+      <audio ref={audioRef} style={{ display: 'none' }} crossOrigin="anonymous" />
     </main>
   )
 }
