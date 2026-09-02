@@ -14,6 +14,8 @@ import { calcLevel } from '@/lib/level'
 import { resolveAvatarUrl } from '@/lib/avatarStorage'
 import { TUTOR_THEMES, searchTutorThemes, getTutorThemeById } from '@/lib/tutorThemes'
 import { useVoiceRecorder } from '@/src/hooks/useVoiceRecorder'
+import { blobToWavBase64 } from '@/src/lib/audioUtils'
+import { transcribeBlob, transcribeFreeBlob, isIOS } from '@/src/lib/transcriptionService'
 
 interface TickerPost {
   id: string
@@ -541,21 +543,25 @@ export default function DashboardPage() {
   const startVoiceRecording = useCallback(async () => {
     try {
       console.log('🎤 [DASHBOARD] [1] Iniciando gravação de voz...')
+      console.log('🎤 [DASHBOARD] [1.5] iOS detectado:', isIOS())
       voiceChunksRef.current = []
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       voiceStreamRef.current = stream
       console.log('🎤 [DASHBOARD] [2] ✅ Microfone acessado')
 
+      // Firefox suporta audio/ogg;codecs=opus, Chrome/Edge suporta audio/webm
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-          ? 'audio/mp4'
-          : ''
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+          ? 'audio/ogg;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : ''
       
       const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       voiceMediaRecorderRef.current = mr
-      console.log('🎤 [DASHBOARD] [3] MediaRecorder criado, mimeType:', mimeType)
+      console.log('🎤 [DASHBOARD] [3] MediaRecorder criado, mimeType:', mimeType || 'default')
 
       mr.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -574,61 +580,72 @@ export default function DashboardPage() {
 
         try {
           setVoiceTranscribing(true)
-          console.log('🎤 [DASHBOARD] [7] Enviando para transcrição...')
+          console.log('🎤 [DASHBOARD] [7] Convertendo áudio para WAV...')
           
-          // Converter para base64
-          const reader = new FileReader()
-          reader.onload = async () => {
-            try {
-              const base64Audio = (reader.result as string).split(',')[1]
-              console.log('🎤 [DASHBOARD] [8] Base64 pronto, tamanho:', base64Audio.length)
+          // Converter qualquer formato (WebM, OGG, MP4) para WAV PCM 16000Hz
+          const base64Audio = await blobToWavBase64(blob)
+          console.log('🎤 [DASHBOARD] [8] ✅ Base64 WAV pronto, tamanho:', base64Audio.length)
 
+          // iOS: tentar transcribeFreeBlob primeiro (Whisper.js ou fallback)
+          // Outros: usar transcribeBlob (Azure direto)
+          let transcript = ''
+          if (isIOS()) {
+            console.log('🎤 [DASHBOARD] [8.5] iOS detectado - tentando transcribeFreeBlob...')
+            try {
+              transcript = await transcribeFreeBlob(blob, 'en-US')
+              console.log('🎤 [DASHBOARD] [9] ✅ Transcrição iOS OK')
+            } catch (iOSError) {
+              console.warn('🎤 [DASHBOARD] iOS transcribeFreeBlob falhou, tentando Azure...', iOSError)
+              // Fallback para Azure
               const response = await fetch('/api/transcribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   audio: base64Audio,
-                  mimeType: mr.mimeType,
                   language: 'en-US',
                 }),
               })
-
-              console.log('🎤 [DASHBOARD] [9] Resposta da API, status:', response.status)
               const data = await response.json()
-
-              if (!response.ok) {
-                console.error('🎤 [DASHBOARD] ❌ Erro API:', data.error)
-                setConversationVoiceError(`Erro: ${data.error}`)
-                setVoiceTranscribing(false)
-                return
-              }
-
-              const transcript = data.transcript || ''
-              console.log('🎤 [DASHBOARD] [10] ✅ Transcrição recebida:', transcript.substring(0, 50))
-              
-              if (transcript) {
-                setConversationInput(transcript)
-                setConversationVoiceError(null)
-              } else {
-                setConversationVoiceError('Nenhuma fala detectada. Tente novamente.')
-              }
-              
-              setVoiceTranscribing(false)
-            } catch (error) {
-              const msg = error instanceof Error ? error.message : 'Erro ao processar áudio'
-              console.error('🎤 [DASHBOARD] ❌ Erro:', msg)
-              setConversationVoiceError(msg)
-              setVoiceTranscribing(false)
+              if (!response.ok) throw new Error(data.error || 'Erro no transcribe')
+              transcript = data.transcript || ''
             }
+          } else {
+            // Desktop/Android: usar Azure direto via /api/transcribe
+            console.log('🎤 [DASHBOARD] [8.5] Desktop detectado - usando Azure')
+            const response = await fetch('/api/transcribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                audio: base64Audio,
+                language: 'en-US',
+              }),
+            })
+            console.log('🎤 [DASHBOARD] [9] Resposta da API, status:', response.status)
+            const data = await response.json()
+
+            if (!response.ok) {
+              console.error('🎤 [DASHBOARD] ❌ Erro API:', data.error)
+              setConversationVoiceError(`Erro: ${data.error}`)
+              setVoiceTranscribing(false)
+              return
+            }
+
+            transcript = data.transcript || ''
+            console.log('🎤 [DASHBOARD] [9] ✅ Transcrição recebida')
           }
-          reader.onerror = () => {
-            console.error('🎤 [DASHBOARD] ❌ FileReader error')
-            setConversationVoiceError('Erro ao ler áudio')
-            setVoiceTranscribing(false)
+
+          console.log('🎤 [DASHBOARD] [10] ✅ Transcrição:', transcript.substring(0, 50))
+          
+          if (transcript) {
+            setConversationInput(transcript)
+            setConversationVoiceError(null)
+          } else {
+            setConversationVoiceError('Nenhuma fala detectada. Tente novamente.')
           }
-          reader.readAsDataURL(blob)
+          
+          setVoiceTranscribing(false)
         } catch (error) {
-          const msg = error instanceof Error ? error.message : 'Erro na transcrição'
+          const msg = error instanceof Error ? error.message : 'Erro ao processar áudio'
           console.error('🎤 [DASHBOARD] ❌ Erro:', msg)
           setConversationVoiceError(msg)
           setVoiceTranscribing(false)
