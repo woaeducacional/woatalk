@@ -1521,11 +1521,20 @@ export default function DashboardPage() {
                             setConversationHistory([{ role: 'assistant', content: initialQuestion }])
                             setConversationMessages([{ role: 'assistant', content: initialQuestion }])
                             setConversationStep(data.questionNumber ?? 1)
+                            // ✅ Reproduzir a primeira frase!
+                            if (conversationVoiceEnabled) {
+                              playTutorResponse(initialQuestion)
+                            }
                           })
                           .catch(() => {
-                            setConversationMessages([{ role: 'assistant', content: 'Hi! Let\'s practice this topic in English. Go ahead and start.' }])
-                            setConversationHistory([{ role: 'assistant', content: 'Hi! Let\'s practice this topic in English. Go ahead and start.' }])
+                            const fallbackMessage = 'Hi! Let\'s practice this topic in English. Go ahead and start.'
+                            setConversationMessages([{ role: 'assistant', content: fallbackMessage }])
+                            setConversationHistory([{ role: 'assistant', content: fallbackMessage }])
                             setConversationStep(1)
+                            // ✅ Reproduzir a mensagem de fallback se voz ativada!
+                            if (conversationVoiceEnabled) {
+                              playTutorResponse(fallbackMessage)
+                            }
                           })
                           .finally(() => setConversationLoading(false))
                       }
