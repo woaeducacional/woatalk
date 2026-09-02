@@ -530,26 +530,139 @@ export default function DashboardPage() {
   const [themeSearchResults, setThemeSearchResults] = useState(TUTOR_THEMES)
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
 
+  // Voice recording refs (implementação simples sem useVoiceRecorder)
+  const voiceMediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const voiceChunksRef = useRef<Blob[]>([])
+  const voiceStreamRef = useRef<MediaStream | null>(null)
+  const [voiceRecording, setVoiceRecording] = useState(false)
+  const [voiceTranscribing, setVoiceTranscribing] = useState(false)
+
+  // Simplified voice recording - same as ListenRepeatQuestion
+  const startVoiceRecording = useCallback(async () => {
+    try {
+      console.log('🎤 [DASHBOARD] [1] Iniciando gravação de voz...')
+      voiceChunksRef.current = []
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      voiceStreamRef.current = stream
+      console.log('🎤 [DASHBOARD] [2] ✅ Microfone acessado')
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : ''
+      
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      voiceMediaRecorderRef.current = mr
+      console.log('🎤 [DASHBOARD] [3] MediaRecorder criado, mimeType:', mimeType)
+
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          console.log('🎤 [DASHBOARD] [4] Chunk recebido:', e.data.size, 'bytes')
+          voiceChunksRef.current.push(e.data)
+        }
+      }
+
+      mr.onstop = async () => {
+        console.log('🎤 [DASHBOARD] [5] ✅ Gravação parada! Chunks:', voiceChunksRef.current.length)
+        voiceStreamRef.current?.getTracks().forEach(t => t.stop())
+        voiceStreamRef.current = null
+
+        const blob = new Blob(voiceChunksRef.current, { type: mr.mimeType })
+        console.log('🎤 [DASHBOARD] [6] Blob criado:', blob.size, 'bytes')
+
+        try {
+          setVoiceTranscribing(true)
+          console.log('🎤 [DASHBOARD] [7] Enviando para transcrição...')
+          
+          // Converter para base64
+          const reader = new FileReader()
+          reader.onload = async () => {
+            try {
+              const base64Audio = (reader.result as string).split(',')[1]
+              console.log('🎤 [DASHBOARD] [8] Base64 pronto, tamanho:', base64Audio.length)
+
+              const response = await fetch('/api/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  audio: base64Audio,
+                  mimeType: mr.mimeType,
+                  language: 'en-US',
+                }),
+              })
+
+              console.log('🎤 [DASHBOARD] [9] Resposta da API, status:', response.status)
+              const data = await response.json()
+
+              if (!response.ok) {
+                console.error('🎤 [DASHBOARD] ❌ Erro API:', data.error)
+                setConversationVoiceError(`Erro: ${data.error}`)
+                setVoiceTranscribing(false)
+                return
+              }
+
+              const transcript = data.transcript || ''
+              console.log('🎤 [DASHBOARD] [10] ✅ Transcrição recebida:', transcript.substring(0, 50))
+              
+              if (transcript) {
+                setConversationInput(transcript)
+                setConversationVoiceError(null)
+              } else {
+                setConversationVoiceError('Nenhuma fala detectada. Tente novamente.')
+              }
+              
+              setVoiceTranscribing(false)
+            } catch (error) {
+              const msg = error instanceof Error ? error.message : 'Erro ao processar áudio'
+              console.error('🎤 [DASHBOARD] ❌ Erro:', msg)
+              setConversationVoiceError(msg)
+              setVoiceTranscribing(false)
+            }
+          }
+          reader.onerror = () => {
+            console.error('🎤 [DASHBOARD] ❌ FileReader error')
+            setConversationVoiceError('Erro ao ler áudio')
+            setVoiceTranscribing(false)
+          }
+          reader.readAsDataURL(blob)
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Erro na transcrição'
+          console.error('🎤 [DASHBOARD] ❌ Erro:', msg)
+          setConversationVoiceError(msg)
+          setVoiceTranscribing(false)
+        }
+      }
+
+      mr.start()
+      setVoiceRecording(true)
+      console.log('🎤 [DASHBOARD] [3.5] ✅ Gravação iniciada!')
+    } catch (error) {
+      let msg = 'Erro ao acessar microfone'
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          msg = '🎤 Permissão de microfone negada. Verifique as configurações do navegador.'
+        } else if (error.name === 'NotFoundError') {
+          msg = '🎤 Nenhum microfone encontrado. Verifique seu equipamento.'
+        }
+      }
+      console.error('🎤 [DASHBOARD] ❌ Erro ao iniciar:', msg)
+      setConversationVoiceError(msg)
+    }
+  }, [])
+
+  const stopVoiceRecording = useCallback(() => {
+    const mr = voiceMediaRecorderRef.current
+    if (mr && mr.state === 'recording') {
+      console.log('🎤 [DASHBOARD] Parando gravação...')
+      mr.stop()
+      setVoiceRecording(false)
+    }
+  }, [])
+
   // Audio ref para TTS
   const audioRef = useRef<HTMLAudioElement>(null)
-
-  // Voice recording hook
-  const voiceRecorder = useVoiceRecorder({
-    onTranscriptionComplete: (text) => {
-      setConversationInput(text)
-      setConversationVoiceError(null)
-    },
-    onError: (error) => {
-      // Feedback melhor de erro
-      const friendlyError = error.includes('NotAllowedError') 
-        ? '🎤 Permissão de microfone negada. Verifique as configurações do navegador.'
-        : error.includes('NotFoundError')
-        ? '🎤 Nenhum microfone encontrado. Verifique seu equipamento.'
-        : `🎤 Erro: ${error}`
-      setConversationVoiceError(friendlyError)
-    },
-    language: 'en-US',
-  })
 
   // Função para reproduzir áudio TTS
   const playTutorResponse = useCallback(async (text: string) => {
@@ -1694,7 +1807,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {voiceRecorder.isTranscribing && (
+              {voiceTranscribing && (
                 <div className="rounded-2xl p-4 text-base sm:text-lg text-white/60 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <span className="inline-block animate-spin">⏳</span>
                   Transcribing your audio...
@@ -1715,19 +1828,19 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (voiceRecorder.isRecording) {
-                        voiceRecorder.stopRecording()
+                      if (voiceRecording) {
+                        stopVoiceRecording()
                       } else {
-                        voiceRecorder.startRecording()
+                        startVoiceRecording()
                       }
                     }}
-                    disabled={voiceRecorder.isTranscribing}
+                    disabled={voiceTranscribing}
                     className="absolute bottom-3 right-3 text-2xl transition-transform hover:scale-110 disabled:opacity-50"
-                    title={voiceRecorder.isRecording ? 'Stop recording' : 'Start recording'}
+                    title={voiceRecording ? 'Stop recording' : 'Start recording'}
                   >
-                    {voiceRecorder.isRecording 
+                    {voiceRecording 
                       ? '🛑' 
-                      : voiceRecorder.isTranscribing 
+                      : voiceTranscribing 
                       ? '⏳' 
                       : '🎤'
                     }
