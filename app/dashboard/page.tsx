@@ -952,29 +952,37 @@ export default function DashboardPage() {
         ...getChallengeSummary('daily', allGoals.daily),
         goals: allGoals.daily,
         label: 'Diário',
-        meta: CHALLENGE_DEFINITIONS.daily,
+        meta: {
+          ...CHALLENGE_DEFINITIONS.daily,
+          reward: challengeConfig?.daily_reward || CHALLENGE_DEFINITIONS.daily.reward,
+        },
       },
       weekly: {
         ...getChallengeSummary('weekly', allGoals.weekly),
         goals: allGoals.weekly,
         label: 'Semanal',
-        meta: CHALLENGE_DEFINITIONS.weekly,
+        meta: {
+          ...CHALLENGE_DEFINITIONS.weekly,
+          reward: challengeConfig?.weekly_reward || CHALLENGE_DEFINITIONS.weekly.reward,
+        },
       },
       monthly: {
         ...getChallengeSummary('monthly', allGoals.monthly),
         goals: allGoals.monthly,
         label: 'Mensal',
-        meta: CHALLENGE_DEFINITIONS.monthly,
+        meta: {
+          ...CHALLENGE_DEFINITIONS.monthly,
+          reward: challengeConfig?.monthly_reward || CHALLENGE_DEFINITIONS.monthly.reward,
+        },
       },
     }
-  }, [completedPhaseIds.length, streakCount, commentsMade, likesMade])
+  }, [completedPhaseIds.length, streakCount, commentsMade, likesMade, challengeConfig])
 
   const overallChallengePercent = Math.round(
     ((challengeSnapshot.daily.percent + challengeSnapshot.weekly.percent + challengeSnapshot.monthly.percent) / 3)
   )
 
-  const PRIZE_DEFAULT = 'XP + WOA Coins + Badge mensal'
-  const prizeSet = !!(challengeConfig?.monthly_reward && challengeConfig.monthly_reward !== PRIZE_DEFAULT)
+  const prizeSet = !!(challengeConfig?.monthly_reward && challengeConfig.monthly_reward?.trim())
   const top3 = monthlyRanking.slice(0, 3)
   const currentUserRankIdx = monthlyRanking.findIndex(u => u.id === (session?.user as { id?: string })?.id)
   const currentUserRank = currentUserRankIdx >= 0 ? currentUserRankIdx + 1 : null
@@ -1226,7 +1234,7 @@ export default function DashboardPage() {
               </div>
 
               {/* RIGHT: Prize */}
-              <div className="flex flex-col items-center justify-center gap-3 p-5 md:w-44 border-t md:border-t-0 md:border-l" style={{ borderColor: 'rgba(255,215,0,0.12)', background: 'rgba(255,180,0,0.04)' }}>
+              <div className="flex flex-col items-center justify-center gap-3 p-5 md:w-64 border-t md:border-t-0 md:border-l" style={{ borderColor: 'rgba(255,215,0,0.12)', background: 'rgba(255,180,0,0.04)' }}>
                 <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>PRÊMIO DO MÊS</p>
                 <div className="relative w-32 h-32">
                   <Image src="/images/bau-tesouro.png" alt="Baú do Tesouro" fill className="object-contain" style={{ filter: 'drop-shadow(0 4px 16px rgba(255,180,0,0.35))' }} />
@@ -1235,6 +1243,21 @@ export default function DashboardPage() {
                   ? <p className="text-sm font-black text-white text-center leading-snug">{challengeConfig!.monthly_reward}</p>
                   : <p className="text-xl font-black text-center tracking-[0.2em]" style={{ color: '#FFD700', textShadow: '0 0 16px rgba(255,215,0,0.5)' }}>??????</p>
                 }
+
+                {/* Vencedor mensal */}
+                {challengeConfig?.monthly_winner_name && challengeConfig.monthly_winner_name !== 'A definir' && (
+                  <div className="w-full rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.25)' }}>
+                    <p className="text-[9px] font-black tracking-widest" style={{ color: '#FFD700' }}>🏆 VENCEDOR DO MÊS</p>
+                    <p className="text-xs font-black text-white">{challengeConfig.monthly_winner_name}</p>
+                    {challengeConfig.monthly_winner_badge && (
+                      <p className="text-[10px] font-bold text-white/70">Badge: {challengeConfig.monthly_winner_badge}</p>
+                    )}
+                    {challengeConfig.monthly_winner_note && (
+                      <p className="text-[9px] text-white/60 italic">{challengeConfig.monthly_winner_note}</p>
+                    )}
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={() => { playClick(); setChallengeOpen(true) }}
@@ -1761,52 +1784,56 @@ export default function DashboardPage() {
           onClick={() => setConversationOpen(false)}
         >
           <div
-            className="relative w-full max-w-2xl max-h-[82vh] overflow-hidden rounded-[28px] p-5 sm:p-6"
+            className="relative w-full max-w-2xl max-h-[82vh] rounded-[28px] flex flex-col"
             style={{ background: 'linear-gradient(180deg, rgba(21,16,42,0.98), rgba(8,15,30,0.98))', border: '1px solid rgba(168,85,247,0.3)', boxShadow: '0 0 80px rgba(168,85,247,0.2)' }}
             onClick={e => e.stopPropagation()}
           >
             <button
               onClick={() => setConversationOpen(false)}
-              className="absolute top-5 right-5 text-white/30 hover:text-white/70 transition-colors text-2xl leading-none"
+              className="absolute top-5 right-5 text-white/30 hover:text-white/70 transition-colors text-2xl leading-none z-10"
             >✕</button>
 
-            <div className="mb-5 pr-10">
-              <p className="text-[12px] sm:text-[14px] font-black tracking-[0.28em] mb-2" style={{ color: 'rgba(216,180,254,0.7)' }}>SIMULAÇÃO PREMIUM</p>
-              <h3 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-                {selectedThemeId && getTutorThemeById(selectedThemeId) 
-                  ? `${getTutorThemeById(selectedThemeId)!.emoji} ${getTutorThemeById(selectedThemeId)!.label}`
-                  : 'Conversa com IA'
-                }
-              </h3>
-              <p className="text-base sm:text-lg text-white/70 mt-2 leading-relaxed">The conversation stays in English. Practice speaking and listening in a real scenario.</p>
+            {/* Header - não scrolla */}
+            <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-0 flex-shrink-0">
+              <div className="pr-10">
+                <p className="text-[12px] sm:text-[14px] font-black tracking-[0.28em] mb-2" style={{ color: 'rgba(216,180,254,0.7)' }}>SIMULAÇÃO PREMIUM</p>
+                <h3 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+                  {selectedThemeId && getTutorThemeById(selectedThemeId) 
+                    ? `${getTutorThemeById(selectedThemeId)!.emoji} ${getTutorThemeById(selectedThemeId)!.label}`
+                    : 'Conversa com IA'
+                  }
+                </h3>
+                <p className="text-base sm:text-lg text-white/70 mt-2 leading-relaxed">The conversation stays in English. Practice speaking and listening in a real scenario.</p>
+              </div>
+
+              {/* Voice toggle */}
+              <div className="mt-4 flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🎤</span>
+                  <span className="text-sm font-bold text-white">Chat por voz</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConversationVoiceEnabled(!conversationVoiceEnabled)}
+                  className="w-10 h-6 rounded-full transition-colors flex items-center px-1"
+                  style={{ background: conversationVoiceEnabled ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)' }}
+                >
+                  <div
+                    className="w-4 h-4 rounded-full bg-white transition-transform"
+                    style={{ transform: conversationVoiceEnabled ? 'translateX(16px)' : 'translateX(0)' }}
+                  />
+                </button>
+              </div>
+
+              {conversationVoiceError && (
+                <div className="mt-3 px-3 py-2 rounded-lg text-xs text-red-300" style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid rgba(255,0,0,0.2)' }}>
+                  {conversationVoiceError}
+                </div>
+              )}
             </div>
 
-            {/* Voice toggle */}
-            <div className="mb-4 flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">🎤</span>
-                <span className="text-sm font-bold text-white">Chat por voz</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConversationVoiceEnabled(!conversationVoiceEnabled)}
-                className="w-10 h-6 rounded-full transition-colors flex items-center px-1"
-                style={{ background: conversationVoiceEnabled ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)' }}
-              >
-                <div
-                  className="w-4 h-4 rounded-full bg-white transition-transform"
-                  style={{ transform: conversationVoiceEnabled ? 'translateX(16px)' : 'translateX(0)' }}
-                />
-              </button>
-            </div>
-
-            {conversationVoiceError && (
-              <div className="mb-3 px-3 py-2 rounded-lg text-xs text-red-300" style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid rgba(255,0,0,0.2)' }}>
-                {conversationVoiceError}
-              </div>
-            )}
-
-            <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
+            {/* Mensagens - scrolla */}
+            <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4 pr-2">
               {conversationMessages.length === 0 && !conversationLoading && (
                 <div className="rounded-2xl p-4 text-base sm:text-lg text-white/60" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   Preparing your practice conversation...
@@ -1841,47 +1868,50 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="mt-5 flex gap-3">
-              <div className="flex-1 relative">
-                <textarea
-                  value={conversationInput}
-                  onChange={(e) => setConversationInput(e.target.value)}
-                  rows={3}
-                  placeholder={conversationVoiceEnabled ? "Fale ou digite sua resposta em inglês..." : "Type your answer in English..."}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-base sm:text-lg text-white placeholder-white/30 resize-none"
-                />
-                {conversationVoiceEnabled && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (voiceRecording) {
-                        stopVoiceRecording()
-                      } else {
-                        startVoiceRecording()
+            {/* Input + Botão - sempre visível no fundo */}
+            <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-3 flex-shrink-0 border-t" style={{ borderTopColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <textarea
+                    value={conversationInput}
+                    onChange={(e) => setConversationInput(e.target.value)}
+                    rows={3}
+                    placeholder={conversationVoiceEnabled ? "Fale ou digite sua resposta em inglês..." : "Type your answer in English..."}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-base sm:text-lg text-white placeholder-white/30 resize-none"
+                  />
+                  {conversationVoiceEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (voiceRecording) {
+                          stopVoiceRecording()
+                        } else {
+                          startVoiceRecording()
+                        }
+                      }}
+                      disabled={voiceTranscribing}
+                      className="absolute bottom-3 right-3 text-2xl transition-transform hover:scale-110 disabled:opacity-50"
+                      title={voiceRecording ? 'Stop recording' : 'Start recording'}
+                    >
+                      {voiceRecording 
+                        ? '🛑' 
+                        : voiceTranscribing 
+                        ? '⏳' 
+                        : '🎤'
                       }
-                    }}
-                    disabled={voiceTranscribing}
-                    className="absolute bottom-3 right-3 text-2xl transition-transform hover:scale-110 disabled:opacity-50"
-                    title={voiceRecording ? 'Stop recording' : 'Start recording'}
-                  >
-                    {voiceRecording 
-                      ? '🛑' 
-                      : voiceTranscribing 
-                      ? '⏳' 
-                      : '🎤'
-                    }
-                  </button>
-                )}
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSendConversationMessage}
+                  disabled={conversationLoading || !conversationInput.trim()}
+                  className="self-end rounded-2xl px-5 py-4 text-sm sm:text-base font-black tracking-widest text-white disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
+                >
+                  SEND
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleSendConversationMessage}
-                disabled={conversationLoading || !conversationInput.trim()}
-                className="self-end rounded-2xl px-5 py-4 text-sm sm:text-base font-black tracking-widest text-white disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
-              >
-                SEND
-              </button>
             </div>
           </div>
         </div>
@@ -2040,6 +2070,20 @@ export default function DashboardPage() {
           <p className="text-[9px] sm:text-[10px] mt-1 tracking-widest" style={{ color: 'rgba(0,212,255,0.55)' }}>
             {session?.user?.email ?? ''}
           </p>
+          
+          {/* Plan Label */}
+          <div className="mt-2 flex justify-center">
+            <span 
+              className="text-[10px] font-black px-3 py-1 rounded-full tracking-widest"
+              style={{
+                background: isPremium ? 'rgba(255,215,0,0.15)' : 'rgba(0,212,255,0.1)',
+                border: isPremium ? '1px solid rgba(255,215,0,0.4)' : '1px solid rgba(0,212,255,0.3)',
+                color: isPremium ? '#FFD700' : '#00D4FF',
+              }}
+            >
+              {isPremium ? '👑 PREMIUM' : '⭐ FREE'}
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 px-4 sm:px-6 space-y-4 sm:space-y-6 overflow-y-auto">
