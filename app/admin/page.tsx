@@ -552,6 +552,33 @@ export default function AdminDashboard() {
 
           {/* Form de upload */}
           <div className="space-y-3">
+            {/* Especificações */}
+            <div className="rounded-lg p-3" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+              <p className="text-[10px] font-bold text-cyan-300 uppercase tracking-widest mb-2">📐 Especificações do Banner</p>
+              <div className="text-[11px] text-white/70 space-y-1">
+                <div className="flex justify-between">
+                  <span>Proporção:</span>
+                  <span className="text-cyan-300 font-bold">4:1 (Largura : Altura)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tamanho recomendado:</span>
+                  <span className="text-cyan-300 font-bold">1920 × 480px</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tamanho mínimo:</span>
+                  <span className="text-cyan-300 font-bold">800 × 200px</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Formatos:</span>
+                  <span className="text-cyan-300 font-bold">PNG, JPEG, WebP, GIF</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tamanho máximo:</span>
+                  <span className="text-cyan-300 font-bold">5 MB</span>
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-3 items-center">
               <input
                 ref={bannerInputRef}
