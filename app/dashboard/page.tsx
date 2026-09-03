@@ -1105,6 +1105,19 @@ export default function DashboardPage() {
                 ⚙️ ADMIN
               </Link>
             )}
+            {/* Plan label */}
+            <Link
+              href="/premium"
+              onClick={() => playClick()}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all hover:scale-105"
+              style={{
+                background: isPremium ? 'rgba(255,215,0,0.12)' : 'rgba(0,212,255,0.1)',
+                border: isPremium ? '1px solid rgba(255,215,0,0.3)' : '1px solid rgba(0,212,255,0.3)',
+                color: isPremium ? '#FFD700' : '#00D4FF',
+              }}
+            >
+              {isPremium ? '👑 PREMIUM' : '⭐ FREE'}
+            </Link>
             <NotificationBell />
             {/* Coins */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)' }}>
@@ -2070,20 +2083,6 @@ export default function DashboardPage() {
           <p className="text-[9px] sm:text-[10px] mt-1 tracking-widest" style={{ color: 'rgba(0,212,255,0.55)' }}>
             {session?.user?.email ?? ''}
           </p>
-          
-          {/* Plan Label */}
-          <div className="mt-2 flex justify-center">
-            <span 
-              className="text-[10px] font-black px-3 py-1 rounded-full tracking-widest"
-              style={{
-                background: isPremium ? 'rgba(255,215,0,0.15)' : 'rgba(0,212,255,0.1)',
-                border: isPremium ? '1px solid rgba(255,215,0,0.4)' : '1px solid rgba(0,212,255,0.3)',
-                color: isPremium ? '#FFD700' : '#00D4FF',
-              }}
-            >
-              {isPremium ? '👑 PREMIUM' : '⭐ FREE'}
-            </span>
-          </div>
         </div>
 
         <div className="flex-1 px-4 sm:px-6 space-y-4 sm:space-y-6 overflow-y-auto">
