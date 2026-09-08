@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/authOptions'
 import openai from '@/src/lib/openaiClient'
-import { supabase } from '@/src/lib/supabaseClient'
 
 // Remove pontuação/espaços para comparação
 function stripForCompare(s: string) {
@@ -76,23 +73,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No text provided' }, { status: 400 })
   }
 
-  const session = await getServerSession(authOptions).catch(() => null)
-  let model: string | null = null
-  if (session?.user?.email && supabase) {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('subscription_plan, subscription_status')
-      .eq('email', session.user.email)
-      .single()
-    const plan: string | null = userData?.subscription_status === 'active' ? (userData?.subscription_plan ?? null) : null
-    if (plan) model = plan.includes('premium') ? 'gpt-4o' : 'gpt-4o-mini'
-  }
-
-  // Primary: GPT (apenas para assinantes) — usa o texto original direto
-  if (model) try {
+  // Primary: Always use ChatGPT Mini (gpt-4o-mini) for all users in all plans
+  try {
     const targetLabel = targetLang === 'en' ? 'English' : 'Brazilian Portuguese'
     const completion = await openai.chat.completions.create({
-      model,
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -108,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ translation: translated })
     }
   } catch (e) {
-    console.error('GPT-mini translate error:', e)
+    console.error('GPT-4o-mini translate error:', e)
   }
 
   // Fallbacks usam proteção de nomes próprios (para evitar que o Google/MyMemory os altere)
