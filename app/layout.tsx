@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { Providers } from './providers'
 import { BottomNav } from '@/src/components/BottomNav'
 import './globals.css'
@@ -24,6 +25,8 @@ export default function RootLayout({
           <BottomNav />
         </Providers>
       </body>
+
+      <GoogleAnalytics gaId="G-R61NM6CLNH" />
     </html>
   )
 }
