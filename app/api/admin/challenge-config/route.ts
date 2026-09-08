@@ -16,6 +16,11 @@ const DEFAULT_CONFIG = {
   monthly_winner_badge: 'Vencedor mensal',
   monthly_winner_note: 'Conquista do melhor desempenho do mês',
   winner_confirmed: false,
+  first_place_prize: 'Prêmio 1º lugar - A definir',
+  second_place_prize: 'Prêmio 2º lugar - A definir',
+  third_place_prize: 'Prêmio 3º lugar - A definir',
+  campaign_start_date: new Date().toISOString(),
+  campaign_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
 }
 
 async function requireAdmin() {
@@ -63,6 +68,11 @@ export async function POST(request: NextRequest) {
       monthly_winner_badge: String(body.monthly_winner_badge ?? DEFAULT_CONFIG.monthly_winner_badge),
       monthly_winner_note: String(body.monthly_winner_note ?? DEFAULT_CONFIG.monthly_winner_note),
       winner_confirmed: Boolean(body.winner_confirmed ?? false),
+      first_place_prize: String(body.first_place_prize ?? DEFAULT_CONFIG.first_place_prize),
+      second_place_prize: String(body.second_place_prize ?? DEFAULT_CONFIG.second_place_prize),
+      third_place_prize: String(body.third_place_prize ?? DEFAULT_CONFIG.third_place_prize),
+      campaign_start_date: body.campaign_start_date ?? DEFAULT_CONFIG.campaign_start_date,
+      campaign_end_date: body.campaign_end_date ?? DEFAULT_CONFIG.campaign_end_date,
     }
 
     const { data: existing } = await supabase

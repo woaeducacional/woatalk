@@ -14,6 +14,11 @@ const DEFAULT_CONFIG = {
   monthly_winner_badge: 'Vencedor mensal',
   monthly_winner_note: 'Conquista do melhor desempenho do mês',
   winner_confirmed: false,
+  first_place_prize: 'Prêmio 1º lugar - A definir',
+  second_place_prize: 'Prêmio 2º lugar - A definir',
+  third_place_prize: 'Prêmio 3º lugar - A definir',
+  campaign_start_date: new Date().toISOString(),
+  campaign_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
 }
 
 export async function GET() {
