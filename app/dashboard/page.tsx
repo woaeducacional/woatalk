@@ -510,7 +510,7 @@ export default function DashboardPage() {
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [verifyCode, setVerifyCode] = useState(['', '', '', '', '', ''])
   const [verifyStep, setVerifyStep] = useState<'send' | 'input' | 'done'>('send')
-  const [challengeConfig, setChallengeConfig] = useState<{ daily_reward: string; weekly_reward: string; monthly_reward: string; monthly_winner_name: string; monthly_winner_badge: string; monthly_winner_note: string; winner_confirmed: boolean } | null>(null)
+  const [challengeConfig, setChallengeConfig] = useState<{ daily_reward: string; weekly_reward: string; monthly_reward: string; monthly_winner_name: string; monthly_winner_badge: string; monthly_winner_note: string; winner_confirmed: boolean; first_place_prize?: string; second_place_prize?: string; third_place_prize?: string; campaign_start_date?: string; campaign_end_date?: string } | null>(null)
   const [monthlyRanking, setMonthlyRanking] = useState<RankingUser[]>([])
   const [monthlyRankingLoaded, setMonthlyRankingLoaded] = useState(false)
   const [verifyError, setVerifyError] = useState<string | null>(null)
@@ -1282,6 +1282,99 @@ export default function DashboardPage() {
               </div>
             </div>
           </section>
+
+          {/* ── PREMIAÇÕES DA CAMPANHA ── */}
+          {challengeConfig && (
+            <section className="rounded-2xl overflow-hidden" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255, 100, 0, 0.25)' }}>
+              <div className="p-5 space-y-4">
+                {/* Header */}
+                <div>
+                  <p className="text-[10px] font-black tracking-[0.25em] mb-2" style={{ color: 'rgba(255, 100, 0, 0.85)' }}>🏆 CAMPANHA ATIVA</p>
+                  <h3 className="text-xl font-black text-white">Premiações em Destaque</h3>
+                  <p className="text-[11px] text-white/60 mt-1">Compita e ganhe prêmios incríveis!</p>
+                </div>
+
+                {/* Campaign Period */}
+                {challengeConfig.campaign_start_date && challengeConfig.campaign_end_date && (
+                  <div style={{ background: 'rgba(255, 100, 0, 0.08)', border: '1px solid rgba(255, 100, 0, 0.2)', borderRadius: '8px', padding: '12px' }}>
+                    <p className="text-[9px] font-black tracking-widest mb-1" style={{ color: 'rgba(255, 100, 0, 0.85)' }}>⏰ PERÍODO DA CAMPANHA</p>
+                    <p className="text-sm font-bold text-white">
+                      {(() => {
+                        const start = new Date(challengeConfig.campaign_start_date);
+                        const end = new Date(challengeConfig.campaign_end_date);
+                        const now = new Date();
+                        const daysRemaining = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                        return `${start.toLocaleDateString('pt-BR')} até ${end.toLocaleDateString('pt-BR')} (${daysRemaining > 0 ? `${daysRemaining} dias restantes` : 'Encerrada'})`;
+                      })()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Prizes Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                  {/* First Place */}
+                  <div
+                    style={{
+                      background: 'rgba(255, 215, 0, 0.1)',
+                      border: '2px solid rgba(255, 215, 0, 0.3)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p style={{ fontSize: '32px', margin: '0 0 8px 0' }}>🥇</p>
+                    <p style={{ color: '#FFD700', fontSize: '12px', fontWeight: 'bold', margin: '0 0 6px 0' }}>1º LUGAR</p>
+                    <p style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: 'bold', margin: 0, lineHeight: '1.4', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {challengeConfig.first_place_prize || 'Prêmio a definir'}
+                    </p>
+                  </div>
+
+                  {/* Second Place */}
+                  <div
+                    style={{
+                      background: 'rgba(192, 192, 192, 0.1)',
+                      border: '2px solid rgba(192, 192, 192, 0.3)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p style={{ fontSize: '32px', margin: '0 0 8px 0' }}>🥈</p>
+                    <p style={{ color: '#C0C0C0', fontSize: '12px', fontWeight: 'bold', margin: '0 0 6px 0' }}>2º LUGAR</p>
+                    <p style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: 'bold', margin: 0, lineHeight: '1.4', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {challengeConfig.second_place_prize || 'Prêmio a definir'}
+                    </p>
+                  </div>
+
+                  {/* Third Place */}
+                  <div
+                    style={{
+                      background: 'rgba(205, 127, 50, 0.1)',
+                      border: '2px solid rgba(205, 127, 50, 0.3)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p style={{ fontSize: '32px', margin: '0 0 8px 0' }}>🥉</p>
+                    <p style={{ color: '#CD7F32', fontSize: '12px', fontWeight: 'bold', margin: '0 0 6px 0' }}>3º LUGAR</p>
+                    <p style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: 'bold', margin: 0, lineHeight: '1.4', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {challengeConfig.third_place_prize || 'Prêmio a definir'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <button
+                  onClick={() => { playClick(); setChallengeOpen(true) }}
+                  className="w-full py-2.5 text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                  style={{ background: 'rgba(255, 100, 0, 0.15)', border: '1px solid rgba(255, 100, 0, 0.35)', color: '#FF6400' }}
+                >
+                  Ver Detalhes do Ranking →
+                </button>
+              </div>
+            </section>
+          )}
 
           {/* ── SUA JORNADA — env tabs ── */}
           <section className="rounded-2xl overflow-hidden" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(0,212,255,0.15)' }}>

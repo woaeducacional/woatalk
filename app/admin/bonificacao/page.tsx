@@ -277,12 +277,20 @@ export default function AdminBonificacao() {
             <h1 className="text-2xl font-black text-white tracking-wide">🎁 Bonificação</h1>
             <p className="text-blue-200/50 text-sm mt-0.5">Conceda 1 mês de acesso gratuito a usuários</p>
           </div>
-          <Link
-            href="/admin"
-            className="px-4 py-2 rounded-lg text-sm text-white/60 border border-white/20 hover:bg-white/5 transition-all"
-          >
-            ← Admin
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/admin/premiacoes"
+              className="px-4 py-2 rounded-lg text-sm text-white/60 border border-white/20 hover:bg-white/5 transition-all"
+            >
+              🏆 Premiações
+            </Link>
+            <Link
+              href="/admin"
+              className="px-4 py-2 rounded-lg text-sm text-white/60 border border-white/20 hover:bg-white/5 transition-all"
+            >
+              ← Admin
+            </Link>
+          </div>
         </div>
 
         {/* Tabs */}
