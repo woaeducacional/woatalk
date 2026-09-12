@@ -1816,6 +1816,14 @@ export default function DashboardPage() {
               <h3 className="text-2xl font-black text-white">Seu progresso na rotina</h3>
             </div>
 
+            {challengeConfig?.monthly_winner_note && (
+              <div className="mb-4 p-4 rounded-2xl" style={{ background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.2)' }}>
+                <p className="text-sm text-white leading-relaxed italic">
+                  💡 {challengeConfig.monthly_winner_note}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
               {(Object.keys(challengeSnapshot) as ChallengePeriod[]).map((period) => {
                 const summary = challengeSnapshot[period]

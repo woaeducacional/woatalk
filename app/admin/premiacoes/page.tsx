@@ -98,6 +98,16 @@ export default function AdminPremiacoes() {
       if (res.ok) {
         const data = await res.json()
         setConfig(data.config)
+        setFirstPrize(data.config.first_place_prize || '')
+        setSecondPrize(data.config.second_place_prize || '')
+        setThirdPrize(data.config.third_place_prize || '')
+        
+        // Update dates in preview
+        const startDate = new Date(data.config.campaign_start_date)
+        const endDate = new Date(data.config.campaign_end_date)
+        setCampaignStart(startDate.toISOString().split('T')[0])
+        setCampaignEnd(endDate.toISOString().split('T')[0])
+        
         setMessageType('success')
         setMessage('✅ Premiações atualizadas com sucesso!')
       } else {
