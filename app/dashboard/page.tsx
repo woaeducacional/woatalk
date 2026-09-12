@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -531,13 +531,11 @@ export default function DashboardPage() {
   const [themeSearchQuery, setThemeSearchQuery] = useState('')
   const [themeSearchResults, setThemeSearchResults] = useState(TUTOR_THEMES)
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
-  
-  // Conversation mode states
-  const [conversationMode, setConversationMode] = useState<'select' | 'themes' | 'woa' | null>(null)
-  const [availableJourneys, setAvailableJourneys] = useState<Array<{ id: number; title: string; description: string }>>([])
+  const [conversationMode, setConversationMode] = useState<'temas-livres' | 'woa' | null>(null)
   const [selectedJourneyPhaseId, setSelectedJourneyPhaseId] = useState<number | null>(null)
+  const [availableJourneys, setAvailableJourneys] = useState<Array<{ id: number; title: string; description: string }>>([])
 
-  // Voice recording refs (implementação simples sem useVoiceRecorder)
+  // Voice recording refs (implementacao simples sem useVoiceRecorder)
   const voiceMediaRecorderRef = useRef<MediaRecorder | null>(null)
   const voiceChunksRef = useRef<Blob[]>([])
   const voiceStreamRef = useRef<MediaStream | null>(null)
@@ -858,7 +856,7 @@ export default function DashboardPage() {
 
   // Fetch available journeys for WOA conversation mode
   useEffect(() => {
-    if (conversationMode === 'woa' || conversationMode === 'select') {
+    if (conversationMode === 'woa') {
       fetch('/api/journey')
         .then(r => r.ok ? r.json() : { journeys: [] })
         .then(d => {
@@ -1591,24 +1589,25 @@ export default function DashboardPage() {
               <Link href="/community" onClick={() => playClick()} className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]" style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)' }}>VER FEED →</Link>
             </div>
 
-            {/* SIMULAÇÕES PREMIUM */}
+            {/* SIMULACOES PREMIUM */}
             {isPremium && (
             <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.8), rgba(59,7,100,0.9))', border: '1px solid rgba(168,85,247,0.35)' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">🎭</span>
-                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>SIMULAÇÕES PREMIUM</p>
+                  <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>SIMULACOES PREMIUM</p>
                 </div>
               </div>
 
-              {/* Modo de seleção inicial */}
+              <p className="text-xs text-white/70">
+                Escolha como deseja praticar conversacao em ingles:
+              </p>
+
+              {/* Modo de selecao inicial */}
               {!conversationMode && (
                 <>
-                  <p className="text-xs text-white/70">
-                    Escolha como deseja praticar conversação em inglês:
-                  </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {/* Método WOA */}
+                    {/* Metodo WOA */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1618,53 +1617,53 @@ export default function DashboardPage() {
                       className="p-4 rounded-xl border transition-all hover:border-purple-400 hover:bg-purple-500/10"
                       style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)' }}
                     >
-                      <p className="text-2xl mb-2">🗺️</p>
-                      <p className="text-xs font-bold text-white">Método WOA</p>
-                      <p className="text-[9px] text-white/60 mt-1">Baseado nas jornadas</p>
+                      <div className="text-2xl mb-2">🗺️</div>
+                      <p className="text-xs font-black text-white">Metodo WOA</p>
+                      <p className="text-[10px] text-white/60 mt-1">Use uma jornada</p>
                     </button>
-
+                    
                     {/* Temas Livres */}
                     <button
                       type="button"
                       onClick={() => {
-                        setConversationMode('themes')
+                        setConversationMode('temas-livres')
                         setSelectedThemeId(null)
                       }}
                       className="p-4 rounded-xl border transition-all hover:border-purple-400 hover:bg-purple-500/10"
                       style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)' }}
                     >
-                      <p className="text-2xl mb-2">💬</p>
-                      <p className="text-xs font-bold text-white">Temas Livres</p>
-                      <p className="text-[9px] text-white/60 mt-1">Seus tópicos</p>
+                      <div className="text-2xl mb-2">🌟</div>
+                      <p className="text-xs font-black text-white">Temas Livres</p>
+                      <p className="text-[10px] text-white/60 mt-1">Escolha um tema</p>
                     </button>
                   </div>
                 </>
               )}
 
-              {/* Modo Temas Livres */}
-              {conversationMode === 'themes' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setConversationMode(null)}
-                    className="text-[10px] text-white/60 hover:text-white/80 transition-colors self-start font-bold"
-                  >
-                    ← Voltar
-                  </button>
+              {/* Modo: Temas Livres */}
+              {conversationMode === 'temas-livres' && (
+                    <>
+                      {/* Busca de temas com autocomplete */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConversationMode(null)
+                          setSelectedThemeId(null)
+                          setThemeSearchQuery('')
+                        }}
+                        className="text-[10px] text-white/60 hover:text-white/80 transition-colors py-1 font-bold tracking-wide"
+                      >
+                        ← Voltar
+                      </button>
 
-                  <p className="text-xs text-white/70">
-                    Escolha um tema e pratique conversação com a IA.
-                  </p>
-
-                  {/* Busca de temas com autocomplete */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Buscar tema (ex: 'restaurante', 'entrevista')..."
-                      value={themeSearchQuery}
-                      onChange={(e) => handleThemeSearch(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
-                    />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Buscar tema (ex: 'restaurante', 'entrevista')..."
+                          value={themeSearchQuery}
+                          onChange={(e) => handleThemeSearch(e.target.value)}
+                          className="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                        />
                     {themeSearchQuery && themeSearchResults.length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md z-20 max-h-60 overflow-y-auto">
                         {themeSearchResults.slice(0, 8).map((theme) => (
@@ -1774,10 +1773,96 @@ export default function DashboardPage() {
                   >
                     💡 Sugerir um tema diferente?
                   </button>
-                </>
-              )}
+                    </>
+                  )}
 
-              {/* Modo Método WOA */}
+              {/* Modo: Metodo WOA */}
+              {conversationMode === 'woa' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConversationMode(null)
+                          setSelectedJourneyPhaseId(null)
+                        }}
+                        className="text-[10px] text-white/60 hover:text-white/80 transition-colors py-1 font-bold tracking-wide"
+                      >
+                        ← Voltar
+                      </button>
+
+                      <p className="text-xs text-white/70">
+                        Selecione uma jornada para praticar:
+                      </p>
+
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {journeys
+                          .filter(j => !j.blocked && j.phase_id > 0)
+                          .map(journey => (
+                            <button
+                              key={journey.phase_id}
+                              type="button"
+                              onClick={() => setSelectedJourneyPhaseId(journey.phase_id)}
+                              className={`w-full p-3 rounded-xl border transition-all text-left ${
+                                selectedJourneyPhaseId === journey.phase_id
+                                  ? 'border-purple-400 bg-purple-500/20'
+                                  : 'border-purple-300/30 hover:border-purple-400 hover:bg-purple-500/10'
+                              }`}
+                            >
+                              <p className="text-sm font-black text-white">{journey.title}</p>
+                              <p className="text-[10px] text-white/60">{journey.description}</p>
+                            </button>
+                          ))}
+                      </div>
+
+                      {selectedJourneyPhaseId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConversationOpen(true)
+                            setConversationLoading(true)
+                            setConversationInput('')
+                            setConversationMessages([])
+                            setConversationHistory([])
+                            setConversationStep(0)
+                            setConversationVoiceError(null)
+
+                            // Iniciar conversa com jornada selecionada
+                            fetch('/api/pronunciation/journey-chat', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ phaseId: selectedJourneyPhaseId, history: [], userSpeech: '', questionNumber: 0 }),
+                            })
+                              .then(r => r.ok ? r.json() : { question: 'Let\'s start this lesson.' })
+                              .then(data => {
+                                const initialQuestion = data.question || 'Let\'s start this lesson.'
+                                setConversationHistory([{ role: 'assistant', content: initialQuestion }])
+                                setConversationMessages([{ role: 'assistant', content: initialQuestion }])
+                                setConversationStep(data.questionNumber ?? 1)
+                                if (conversationVoiceEnabled) {
+                                  playTutorResponse(initialQuestion)
+                                }
+                              })
+                              .catch(() => {
+                                const fallbackMessage = 'Ready to practice? Let\'s begin!'
+                                setConversationMessages([{ role: 'assistant', content: fallbackMessage }])
+                                setConversationHistory([{ role: 'assistant', content: fallbackMessage }])
+                                setConversationStep(1)
+                                if (conversationVoiceEnabled) {
+                                  playTutorResponse(fallbackMessage)
+                                }
+                              })
+                              .finally(() => setConversationLoading(false))
+                          }}
+                          className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                          style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
+                        >
+                          COMEAR SIMULACAO
+                        </button>
+                      )}
+                    </>
+                  )}
+
+              {/* Modo Metodo WOA */}
               {conversationMode === 'woa' && (
                 <>
                   <button
