@@ -86,6 +86,7 @@ export async function PUT(
   if (body.block3 !== undefined) updateData.block3 = body.block3
   if (body.block4 !== undefined) updateData.block4 = body.block4
   if (body.block5 !== undefined) updateData.block5 = body.block5
+  if ((body as any).environment !== undefined) updateData.environment = (body as any).environment
 
   // Upsert: create if doesn't exist, update if it does
   const { data, error } = await supabase
@@ -100,6 +101,7 @@ export async function PUT(
       block3: body.block3 ?? {},
       block4: body.block4 ?? {},
       block5: body.block5 ?? {},
+      environment: (body as any).environment ?? 'oceanos',
       ...updateData,
     }, { onConflict: 'phase_id' })
     .select()

@@ -37,9 +37,27 @@ type ChallengeGoal = {
   note?: string
 }
 
-type JourneyItem = { phase_id: number; title: string; description: string; blocked: boolean; is_pro: boolean; icon_url?: string | null }
+type JourneyItem = { phase_id: number; title: string; description: string; blocked: boolean; is_pro: boolean; icon_url?: string | null; environment?: string }
 
 type RankingUser = { id: string; name: string; xp_total: number; avatar_url: string | null }
+
+type EnvironmentType = 'oceanos' | 'terra' | 'galaxias'
+
+// Função para categorizar jornada por fase
+function getJourneyEnvironment(phaseId: number, title: string): EnvironmentType {
+  // Categorizar por range de phase_id ou by nome
+  if (phaseId >= 1 && phaseId <= 2) return 'oceanos'
+  if (phaseId >= 3 && phaseId <= 4) return 'terra'
+  if (phaseId >= 5) return 'galaxias'
+  
+  // Fallback: tentar inferir pelo title
+  const lowerTitle = title.toLowerCase()
+  if (lowerTitle.includes('ocean') || lowerTitle.includes('oceano')) return 'oceanos'
+  if (lowerTitle.includes('terra') || lowerTitle.includes('earth') || lowerTitle.includes('land')) return 'terra'
+  if (lowerTitle.includes('galáxia') || lowerTitle.includes('galaxy')) return 'galaxias'
+  
+  return 'oceanos' // default
+}
 
 const OCEAN_ICONS_DEFAULT = '/images/jornada-secreta.png'
 
@@ -518,6 +536,7 @@ export default function DashboardPage() {
   const verifyInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [isPremium, setIsPremium] = useState(false)
   const [dailyAccessedPhaseIds,  setDailyAccessedPhaseIds]  = useState<number[]>([])
+  const [selectedEnvironment, setSelectedEnvironment] = useState<EnvironmentType>('oceanos')
   const [conversationTheme, setConversationTheme] = useState<'viagens' | 'trabalho' | 'entrevistas'>('viagens')
   const [conversationOpen, setConversationOpen] = useState(false)
   const [conversationLoading, setConversationLoading] = useState(false)
@@ -1018,6 +1037,19 @@ export default function DashboardPage() {
     }
   }, [completedPhaseIds.length, streakCount, commentsMade, likesMade, challengeConfig])
 
+  // Filtrar jornadas por ambiente
+  const filteredJourneys = useMemo(() => {
+    return journeys.filter(j => {
+      const env = j.environment || getJourneyEnvironment(j.phase_id, j.title)
+      return env === selectedEnvironment
+    })
+  }, [journeys, selectedEnvironment])
+
+  // Contar jornadas disponíveis por ambiente
+  const countJourneysByEnvironment = (env: EnvironmentType) => {
+    return journeys.filter(j => (j.environment || getJourneyEnvironment(j.phase_id, j.title)) === env).length
+  }
+
   const overallChallengePercent = Math.round(
     ((challengeSnapshot.daily.percent + challengeSnapshot.weekly.percent + challengeSnapshot.monthly.percent) / 3)
   )
@@ -1420,23 +1452,50 @@ export default function DashboardPage() {
           <section className="rounded-2xl overflow-hidden" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(0,212,255,0.15)' }}>
             <p className="text-center text-xs font-black tracking-[0.25em] text-white pt-4 pb-3">SUA JORNADA</p>
             <div className="grid grid-cols-3 gap-0 border-t border-white/5">
-              {/* OCEANOS — active */}
-              <button className="flex flex-col items-center gap-1 py-3 px-2 transition-all" style={{ background: 'rgba(0,212,255,0.12)', borderBottom: '2px solid #00D4FF' }}>
+              {/* OCEANOS — active or clickable */}
+              <button
+                onClick={() => { playClick(); setSelectedEnvironment('oceanos') }}
+                className="flex flex-col items-center gap-1 py-3 px-2 transition-all hover:scale-105"
+                style={{
+                  background: selectedEnvironment === 'oceanos' ? 'rgba(0,212,255,0.12)' : 'rgba(0,212,255,0.04)',
+                  borderBottom: selectedEnvironment === 'oceanos' ? '2px solid #00D4FF' : '2px solid transparent'
+                }}
+              >
                 <span className="text-lg">🌊</span>
-                <span className="text-[10px] font-black tracking-widest" style={{ color: '#00D4FF' }}>OCEANOS</span>
-                <span className="text-[9px] font-bold" style={{ color: 'rgba(0,212,255,0.6)' }}>Ativo</span>
+                <span className="text-[10px] font-black tracking-widest" style={{ color: selectedEnvironment === 'oceanos' ? '#00D4FF' : 'rgba(0,212,255,0.5)' }}>OCEANOS</span>
+                <span className="text-[9px] font-bold" style={{ color: selectedEnvironment === 'oceanos' ? 'rgba(0,212,255,0.6)' : 'rgba(0,212,255,0.3)' }}>Ativo</span>
               </button>
-              {/* TERRA — locked */}
-              <button className="flex flex-col items-center gap-1 py-3 px-2 border-x border-white/5 opacity-50 cursor-not-allowed">
+              {/* TERRA — clickable */}
+              <button
+                onClick={() => { playClick(); setSelectedEnvironment('terra') }}
+                className="flex flex-col items-center gap-1 py-3 px-2 border-x border-white/5 transition-all hover:scale-105"
+                style={{
+                  background: selectedEnvironment === 'terra' ? 'rgba(52, 152, 0, 0.12)' : 'rgba(52, 152, 0, 0.04)',
+                  borderBottom: selectedEnvironment === 'terra' ? '2px solid #34A800' : '2px solid transparent',
+                  opacity: selectedEnvironment === 'terra' ? 1 : 0.65
+                }}
+              >
                 <span className="text-lg">🌿</span>
-                <span className="text-[10px] font-black tracking-widest text-white/60">TERRA</span>
-                <span className="text-[9px] font-bold text-white/35">Bloqueado</span>
+                <span className="text-[10px] font-black tracking-widest" style={{ color: selectedEnvironment === 'terra' ? '#34A800' : 'rgba(52, 152, 0, 0.5)' }}>TERRA</span>
+                <span className="text-[9px] font-bold" style={{ color: selectedEnvironment === 'terra' ? 'rgba(52, 152, 0, 0.6)' : 'rgba(52, 152, 0, 0.3)' }}>
+                  {countJourneysByEnvironment('terra') > 0 ? 'Disponível' : 'Em breve'}
+                </span>
               </button>
-              {/* GALÁXIAS — locked */}
-              <button className="flex flex-col items-center gap-1 py-3 px-2 opacity-50 cursor-not-allowed">
+              {/* GALÁXIAS — clickable */}
+              <button
+                onClick={() => { playClick(); setSelectedEnvironment('galaxias') }}
+                className="flex flex-col items-center gap-1 py-3 px-2 transition-all hover:scale-105"
+                style={{
+                  background: selectedEnvironment === 'galaxias' ? 'rgba(148, 0, 211, 0.12)' : 'rgba(148, 0, 211, 0.04)',
+                  borderBottom: selectedEnvironment === 'galaxias' ? '2px solid #9400D3' : '2px solid transparent',
+                  opacity: selectedEnvironment === 'galaxias' ? 1 : 0.65
+                }}
+              >
                 <span className="text-lg">✨</span>
-                <span className="text-[10px] font-black tracking-widest text-white/60">GALÁXIAS</span>
-                <span className="text-[9px] font-bold text-white/35">Bloqueado</span>
+                <span className="text-[10px] font-black tracking-widest" style={{ color: selectedEnvironment === 'galaxias' ? '#9400D3' : 'rgba(148, 0, 211, 0.5)' }}>GALÁXIAS</span>
+                <span className="text-[9px] font-bold" style={{ color: selectedEnvironment === 'galaxias' ? 'rgba(148, 0, 211, 0.6)' : 'rgba(148, 0, 211, 0.3)' }}>
+                  {countJourneysByEnvironment('galaxias') > 0 ? 'Disponível' : 'Em breve'}
+                </span>
               </button>
             </div>
             {/* Progress bar */}
@@ -1445,14 +1504,14 @@ export default function DashboardPage() {
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{
-                    width: `${journeys.length > 0 ? Math.round((completedPhaseIds.length / Math.max(journeys.filter(j => j.phase_id > 0).length, 1)) * 100) : 0}%`,
+                    width: `${filteredJourneys.length > 0 ? Math.round((completedPhaseIds.filter(id => filteredJourneys.some(j => j.phase_id === id)).length / Math.max(filteredJourneys.filter(j => j.phase_id > 0).length, 1)) * 100) : 0}%`,
                     background: 'linear-gradient(90deg, #0043BB, #00D4FF)'
                   }}
                 />
               </div>
               <p className="text-center text-sm font-black tracking-widest">
                 <span style={{ color: '#00D4FF', textShadow: '0 0 10px rgba(0,212,255,0.7)' }}>
-                  {journeys.length > 0 ? Math.round((completedPhaseIds.length / Math.max(journeys.filter(j => j.phase_id > 0).length, 1)) * 100) : 0}%
+                  {filteredJourneys.length > 0 ? Math.round((completedPhaseIds.filter(id => filteredJourneys.some(j => j.phase_id === id)).length / Math.max(filteredJourneys.filter(j => j.phase_id > 0).length, 1)) * 100) : 0}%
                 </span>
                 <span className="text-white/40 font-bold"> CONCLUÍDO</span>
               </p>
@@ -1479,16 +1538,25 @@ export default function DashboardPage() {
                 <Link href="/admin/journey-content/new" onClick={() => playClick()} className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,102,255,0.15)', border: '1px solid rgba(0,212,255,0.3)', color: '#00D4FF' }}>+ CRIAR JORNADA</Link>
               )}
             </div>
-            <JourneyGlobeCarousel
-              journeys={journeys}
-              lastPhaseId={lastPhaseId}
-              isAdmin={isAdmin}
-              isPremium={isPremium}
-              dailyAccessedPhaseIds={dailyAccessedPhaseIds}
-              completedPhaseIds={completedPhaseIds}
-              onToggleBlocked={handleToggleBlocked}
-              onDailyLimitClick={handleDailyLimitClick}
-            />
+            {filteredJourneys.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-[12px] font-black tracking-widest text-white/50">
+                  🔜 NENHUMA JORNADA DISPONÍVEL EM {selectedEnvironment.toUpperCase()}
+                </p>
+                <p className="text-[10px] text-white/30 mt-2">Volte em breve para novas jornadas!</p>
+              </div>
+            ) : (
+              <JourneyGlobeCarousel
+                journeys={filteredJourneys}
+                lastPhaseId={lastPhaseId}
+                isAdmin={isAdmin}
+                isPremium={isPremium}
+                dailyAccessedPhaseIds={dailyAccessedPhaseIds}
+                completedPhaseIds={completedPhaseIds}
+                onToggleBlocked={handleToggleBlocked}
+                onDailyLimitClick={handleDailyLimitClick}
+              />
+            )}
           </section>
 
           {/* ── STATS — 3 cards ── */}

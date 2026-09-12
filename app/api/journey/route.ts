@@ -17,13 +17,13 @@ function resolveJourneyIconUrl(rawValue: unknown): string | null {
 export async function GET() {
   if (!supabase) return NextResponse.json({ journeys: [] })
 
-  // Try to select with icon_url first, fallback if column doesn't exist
+  // Try to select with icon_url and environment first, fallback if column doesn't exist
   let { data, error } = await supabase
     .from('journey_content')
-    .select('phase_id, title, description, blocked, is_pro, icon_url')
+    .select('phase_id, title, description, blocked, is_pro, icon_url, environment')
     .order('phase_id', { ascending: true })
 
-  // If error (likely column doesn't exist), try without icon_url
+  // If error (likely columns don't exist), try without them
   if (error) {
     const { data: fallbackData } = await supabase
       .from('journey_content')
@@ -38,6 +38,7 @@ export async function GET() {
         blocked: row.blocked ?? false,
         is_pro: row.is_pro ?? false,
         icon_url: null,
+        environment: 'oceanos',
       })),
     })
   }
@@ -50,6 +51,7 @@ export async function GET() {
       blocked: row.blocked ?? false,
       is_pro: row.is_pro ?? false,
       icon_url: resolveJourneyIconUrl(row.icon_url),
+      environment: row.environment ?? 'oceanos',
     })),
   })
 }

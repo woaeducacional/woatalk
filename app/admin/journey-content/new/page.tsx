@@ -234,6 +234,7 @@ interface PhaseMeta {
   title: string
   description: string
   icon_url?: string
+  environment: 'oceanos' | 'terra' | 'galaxias'
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -253,6 +254,7 @@ export default function NewJourneyWizard() {
     title: '',
     description: '',
     icon_url: undefined,
+    environment: 'oceanos',
   })
 
   // Content
@@ -312,6 +314,7 @@ export default function NewJourneyWizard() {
         title: phase.title,
         description: phase.description,
         icon_url: phase.icon_url || null,
+        environment: phase.environment,
         mission_groups: missionGroups,
         block1,
         block2,
@@ -373,6 +376,18 @@ export default function NewJourneyWizard() {
         textarea
         placeholder="Nesta jornada você vai aprender a se apresentar em inglês..."
       />
+      <div>
+        <label className={labelCls}>Ambiente</label>
+        <select
+          className={inputCls}
+          value={phase.environment}
+          onChange={(e) => setPhase({ ...phase, environment: e.target.value as 'oceanos' | 'terra' | 'galaxias' })}
+        >
+          <option value="oceanos">🌊 Oceanos</option>
+          <option value="terra">🌿 Terra</option>
+          <option value="galaxias">✨ Galáxias</option>
+        </select>
+      </div>
       <ImageUpload
         label="Ícone de Capa da Jornada 🎨"
         value={phase.icon_url}
