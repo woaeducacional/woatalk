@@ -51,8 +51,8 @@ export function BottomNav() {
       .then((data) => {
         if (data) {
           setUserPlan({
-            subscription_plan: data.subscription_plan,
-            subscription_status: data.subscription_status,
+            subscription_plan: data.plan,
+            subscription_status: data.status,
           })
         }
       })
@@ -69,12 +69,12 @@ export function BottomNav() {
   const getPlanIcon = () => {
     const isActive = userPlan.subscription_status === 'active' || userPlan.subscription_status === 'trial'
     
-    if (userPlan.subscription_plan === 'premium' && isActive) {
-      return { icon: '👑', label: 'Plano' }
-    } else if (userPlan.subscription_plan === 'starter' && isActive) {
-      return { icon: '🚀', label: 'Plano' }
+    if (userPlan.subscription_plan && userPlan.subscription_plan.includes('premium') && isActive) {
+      return { icon: '👑', label: '👑 Premium' }
+    } else if (userPlan.subscription_plan && userPlan.subscription_plan.includes('starter') && isActive) {
+      return { icon: '🚀', label: '🚀 Starter' }
     } else {
-      return { icon: '🆓', label: 'Plano' }
+      return { icon: '🆓', label: '🆓 Free' }
     }
   }
 

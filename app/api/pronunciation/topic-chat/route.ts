@@ -114,11 +114,16 @@ export async function POST(req: NextRequest) {
   const { data: userData } = supabase
     ? await supabase.from('users').select('subscription_plan, subscription_status').eq('email', session.user.email ?? '').single()
     : { data: null }
-  const plan: string | null = userData?.subscription_status === 'active' ? (userData?.subscription_plan ?? null) : null
-  if (!plan) {
+  
+  const isActive = userData?.subscription_status === 'active' || userData?.subscription_status === 'trial'
+  const isPremium = isActive && userData?.subscription_plan && userData.subscription_plan.includes('premium')
+  
+  if (!isPremium) {
     return NextResponse.json({ error: 'subscription_required' }, { status: 402 })
   }
-  const model = plan.includes('premium') ? 'gpt-4o' : 'gpt-4o-mini'
+  
+  const plan = userData?.subscription_plan ?? null
+  const model = plan && plan.includes('premium') ? 'gpt-4o' : 'gpt-4o-mini'
 
   const body = await req.json()
   const { topic, history, userSpeech, questionNumber } = body as {

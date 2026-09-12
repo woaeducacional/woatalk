@@ -330,6 +330,13 @@ export default function AdminDashboard() {
               🏆 Premiações
             </button>
             <button
+              onClick={() => router.push('/admin/woaplay')}
+              className="px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105"
+              style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', color: '#A855F7' }}
+            >
+              🎬 WOA Play
+            </button>
+            <button
               onClick={() => router.push('/admin/atendimento')}
               className="px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105"
               style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.35)', color: '#4ade80' }}
