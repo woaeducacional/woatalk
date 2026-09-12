@@ -854,6 +854,24 @@ export default function DashboardPage() {
     }
   }, [status, router])
 
+  // Poll premium status every 5 seconds to sync plan changes (e.g., when admin grants plan)
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    const pollPremium = () => {
+      fetch('/api/user/subscription')
+        .then(r => r.ok ? r.json() : { isPremium: false })
+        .then(d => {
+          const premium = d.isPremium ?? false
+          setIsPremium(premium)
+        })
+        .catch(() => {})
+    }
+
+    const pollInterval = setInterval(pollPremium, 5000)
+    return () => clearInterval(pollInterval)
+  }, [status])
+
   // Fetch available journeys for WOA conversation mode
   useEffect(() => {
     if (conversationMode === 'woa') {

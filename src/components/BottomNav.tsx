@@ -46,17 +46,27 @@ export function BottomNav() {
   useEffect(() => {
     if (status !== 'authenticated') return
 
-    fetch('/api/user/subscription')
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data) {
-          setUserPlan({
-            subscription_plan: data.plan,
-            subscription_status: data.status,
-          })
-        }
-      })
-      .catch(() => {})
+    const fetchPlan = () => {
+      fetch('/api/user/subscription')
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (data) {
+            setUserPlan({
+              subscription_plan: data.plan,
+              subscription_status: data.status,
+            })
+          }
+        })
+        .catch(() => {})
+    }
+
+    // Fetch immediately on mount
+    fetchPlan()
+
+    // Poll every 5 seconds to sync plan changes (e.g., when admin grants plan)
+    const pollInterval = setInterval(fetchPlan, 5000)
+
+    return () => clearInterval(pollInterval)
   }, [status])
 
   const lastJourneyPath = lastPhaseId
