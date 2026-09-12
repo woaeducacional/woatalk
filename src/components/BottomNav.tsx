@@ -5,11 +5,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
+interface UserSubscription {
+  subscription_plan: string | null
+  subscription_status: string | null
+}
+
 export function BottomNav() {
   const { data: session, status } = useSession()
   const pathname = usePathname()
   const [lastPhaseId, setLastPhaseId] = useState<number | null>(null)
   const [phaseResolved, setPhaseResolved] = useState(false)
+  const [userPlan, setUserPlan] = useState<UserSubscription>({ subscription_plan: null, subscription_status: null })
 
   useEffect(() => {
     if (status !== 'authenticated') return
@@ -36,11 +42,43 @@ export function BottomNav() {
     }
   }, [status])
 
+  // Fetch user's subscription plan
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    fetch('/api/user/subscription')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setUserPlan({
+            subscription_plan: data.subscription_plan,
+            subscription_status: data.subscription_status,
+          })
+        }
+      })
+      .catch(() => {})
+  }, [status])
+
   const lastJourneyPath = lastPhaseId
     ? `/challenge/${lastPhaseId}`
     : phaseResolved
       ? '/challenge/1'
       : '/dashboard'
+
+  // Determinar ícone e label do plano
+  const getPlanIcon = () => {
+    const isActive = userPlan.subscription_status === 'active' || userPlan.subscription_status === 'trial'
+    
+    if (userPlan.subscription_plan === 'premium' && isActive) {
+      return { icon: '👑', label: 'Plano' }
+    } else if (userPlan.subscription_plan === 'starter' && isActive) {
+      return { icon: '🚀', label: 'Plano' }
+    } else {
+      return { icon: '🆓', label: 'Plano' }
+    }
+  }
+
+  const planDisplay = getPlanIcon()
 
   const navItems = useMemo(
     () => [
@@ -48,10 +86,10 @@ export function BottomNav() {
       { label: 'Jornada', href: lastJourneyPath, icon: '🗺️' },
       { label: 'Missões', href: '/dashboard#fases', icon: '⚔️' },
       { label: 'Comunidade', href: '/community', icon: '👥' },
-      { label: 'Loja', href: '/premium', icon: '🛒' },
+      { label: planDisplay.label, href: '/premium', icon: planDisplay.icon },
       { label: 'Perfil', href: '/profile', icon: '👤' },
     ],
-    [lastJourneyPath]
+    [lastJourneyPath, planDisplay]
   )
 
   if (!session) return null
