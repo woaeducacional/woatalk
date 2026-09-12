@@ -531,6 +531,11 @@ export default function DashboardPage() {
   const [themeSearchQuery, setThemeSearchQuery] = useState('')
   const [themeSearchResults, setThemeSearchResults] = useState(TUTOR_THEMES)
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
+  
+  // Conversation mode states
+  const [conversationMode, setConversationMode] = useState<'select' | 'themes' | 'woa' | null>(null)
+  const [availableJourneys, setAvailableJourneys] = useState<Array<{ id: number; title: string; description: string }>>([])
+  const [selectedJourneyPhaseId, setSelectedJourneyPhaseId] = useState<number | null>(null)
 
   // Voice recording refs (implementação simples sem useVoiceRecorder)
   const voiceMediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -850,6 +855,25 @@ export default function DashboardPage() {
       router.push('/auth/signin')
     }
   }, [status, router])
+
+  // Fetch available journeys for WOA conversation mode
+  useEffect(() => {
+    if (conversationMode === 'woa' || conversationMode === 'select') {
+      fetch('/api/journey')
+        .then(r => r.ok ? r.json() : { journeys: [] })
+        .then(d => {
+          const availableJourneys = (d.journeys ?? [])
+            .filter((j: any) => !j.blocked)
+            .map((j: any) => ({
+              id: j.id,
+              title: j.title || j.name,
+              description: j.description || 'Learn through this journey',
+            }))
+          setAvailableJourneys(availableJourneys)
+        })
+        .catch(() => setAvailableJourneys([]))
+    }
+  }, [conversationMode])
 
   const isAdmin = session?.user?.role === 'admin'
   const { level, xpIntoLevel, xpForLevel, xpToNext, progress: xpProgress } = calcLevel(xpTotal)
@@ -1568,21 +1592,70 @@ export default function DashboardPage() {
             </div>
 
             {/* SIMULAÇÕES PREMIUM */}
+            {isPremium && (
             <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.8), rgba(59,7,100,0.9))', border: '1px solid rgba(168,85,247,0.35)' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">🎭</span>
                   <p className="text-[10px] font-black tracking-widest" style={{ color: '#E9D5FF' }}>SIMULAÇÕES PREMIUM</p>
                 </div>
-                {!isPremium && <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#F3E8FF' }}>PREMIUM</span>}
               </div>
 
-              <p className="text-xs text-white/70">
-                {isPremium ? 'Escolha um tema e pratique conversação com a IA.' : 'Simule situações reais e pratique inglês em contexto.'}
-              </p>
-
-              {isPremium ? (
+              {/* Modo de seleção inicial */}
+              {!conversationMode && (
                 <>
+                  <p className="text-xs text-white/70">
+                    Escolha como deseja praticar conversação em inglês:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Método WOA */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConversationMode('woa')
+                        setSelectedJourneyPhaseId(null)
+                      }}
+                      className="p-4 rounded-xl border transition-all hover:border-purple-400 hover:bg-purple-500/10"
+                      style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)' }}
+                    >
+                      <p className="text-2xl mb-2">🗺️</p>
+                      <p className="text-xs font-bold text-white">Método WOA</p>
+                      <p className="text-[9px] text-white/60 mt-1">Baseado nas jornadas</p>
+                    </button>
+
+                    {/* Temas Livres */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConversationMode('themes')
+                        setSelectedThemeId(null)
+                      }}
+                      className="p-4 rounded-xl border transition-all hover:border-purple-400 hover:bg-purple-500/10"
+                      style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)' }}
+                    >
+                      <p className="text-2xl mb-2">💬</p>
+                      <p className="text-xs font-bold text-white">Temas Livres</p>
+                      <p className="text-[9px] text-white/60 mt-1">Seus tópicos</p>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Modo Temas Livres */}
+              {conversationMode === 'themes' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setConversationMode(null)}
+                    className="text-[10px] text-white/60 hover:text-white/80 transition-colors self-start font-bold"
+                  >
+                    ← Voltar
+                  </button>
+
+                  <p className="text-xs text-white/70">
+                    Escolha um tema e pratique conversação com a IA.
+                  </p>
+
                   {/* Busca de temas com autocomplete */}
                   <div className="relative">
                     <input
@@ -1667,7 +1740,6 @@ export default function DashboardPage() {
                             setConversationHistory([{ role: 'assistant', content: initialQuestion }])
                             setConversationMessages([{ role: 'assistant', content: initialQuestion }])
                             setConversationStep(data.questionNumber ?? 1)
-                            // ✅ Reproduzir a primeira frase!
                             if (conversationVoiceEnabled) {
                               playTutorResponse(initialQuestion)
                             }
@@ -1677,7 +1749,6 @@ export default function DashboardPage() {
                             setConversationMessages([{ role: 'assistant', content: fallbackMessage }])
                             setConversationHistory([{ role: 'assistant', content: fallbackMessage }])
                             setConversationStep(1)
-                            // ✅ Reproduzir a mensagem de fallback se voz ativada!
                             if (conversationVoiceEnabled) {
                               playTutorResponse(fallbackMessage)
                             }
@@ -1704,22 +1775,96 @@ export default function DashboardPage() {
                     💡 Sugerir um tema diferente?
                   </button>
                 </>
-              ) : (
+              )}
+
+              {/* Modo Método WOA */}
+              {conversationMode === 'woa' && (
                 <>
-                  <div className="rounded-xl p-3 text-[11px] font-bold text-white/80" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    Disponível somente no plano premium
-                  </div>
                   <button
                     type="button"
-                    onClick={() => router.push('/premium')}
-                    className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
-                    style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
+                    onClick={() => setConversationMode(null)}
+                    className="text-[10px] text-white/60 hover:text-white/80 transition-colors self-start font-bold"
                   >
-                    VER PLANOS
+                    ← Voltar
                   </button>
+
+                  <p className="text-xs text-white/70">
+                    Escolha uma jornada para praticar conversação baseada no conteúdo:
+                  </p>
+
+                  {/* Lista de jornadas */}
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {availableJourneys.length > 0 ? (
+                      availableJourneys.map((journey) => (
+                        <button
+                          key={journey.id}
+                          type="button"
+                          onClick={() => setSelectedJourneyPhaseId(journey.id)}
+                          className={`w-full text-left p-3 rounded-xl border transition-all ${
+                            selectedJourneyPhaseId === journey.id
+                              ? 'border-purple-400 bg-purple-500/20'
+                              : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                          }`}
+                        >
+                          <p className="text-xs font-bold text-white">{journey.title}</p>
+                          <p className="text-[9px] text-white/60 mt-0.5">{journey.description}</p>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-xs text-white/50 text-center py-4">Carregando jornadas...</p>
+                    )}
+                  </div>
+
+                  {/* Jornada selecionada */}
+                  {selectedJourneyPhaseId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConversationOpen(true)
+                        setConversationLoading(true)
+                        setConversationInput('')
+                        setConversationMessages([])
+                        setConversationHistory([])
+                        setConversationStep(0)
+                        setConversationVoiceError(null)
+
+                        // Iniciar conversa com jornada selecionada
+                        fetch('/api/pronunciation/journey-chat', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ phaseId: selectedJourneyPhaseId, history: [], userSpeech: '', questionNumber: 0 }),
+                        })
+                          .then(r => r.ok ? r.json() : { question: 'Let\'s start this journey.' })
+                          .then(data => {
+                            const initialQuestion = data.question || 'Let\'s start this journey.'
+                            setConversationHistory([{ role: 'assistant', content: initialQuestion }])
+                            setConversationMessages([{ role: 'assistant', content: initialQuestion }])
+                            setConversationStep(data.questionNumber ?? 1)
+                            if (conversationVoiceEnabled) {
+                              playTutorResponse(initialQuestion)
+                            }
+                          })
+                          .catch(() => {
+                            const fallbackMessage = 'Hi! Let\'s practice based on this learning journey. Go ahead and start.'
+                            setConversationMessages([{ role: 'assistant', content: fallbackMessage }])
+                            setConversationHistory([{ role: 'assistant', content: fallbackMessage }])
+                            setConversationStep(1)
+                            if (conversationVoiceEnabled) {
+                              playTutorResponse(fallbackMessage)
+                            }
+                          })
+                          .finally(() => setConversationLoading(false))
+                      }}
+                      className="block w-full py-2.5 text-center text-xs font-black tracking-widest rounded-xl text-white transition-all hover:scale-[1.02]"
+                      style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}
+                    >
+                      🎯 COMEÇAR COM ESSA JORNADA
+                    </button>
+                  )}
                 </>
               )}
             </div>
+            )}
 
             {/* WOA PLAY */}
             <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'rgba(5,14,26,0.75)', border: '1px solid rgba(255,215,0,0.2)' }}>
@@ -1989,7 +2134,7 @@ export default function DashboardPage() {
                   <textarea
                     value={conversationInput}
                     onChange={(e) => setConversationInput(e.target.value)}
-                    rows={3}
+                    rows={1}
                     placeholder={conversationVoiceEnabled ? "Fale ou digite sua resposta em inglês..." : "Type your answer in English..."}
                     className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-base sm:text-lg text-white placeholder-white/30 resize-none"
                   />

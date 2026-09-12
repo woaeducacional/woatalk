@@ -23,11 +23,15 @@ export async function GET() {
 
   const plan = user?.subscription_plan ?? null
   const status = user?.subscription_status ?? 'inactive'
+  const isActive = status === 'active' || status === 'trial'
 
   return NextResponse.json({
     plan,
     status,
     currentPeriodEnd: user?.subscription_current_period_end ?? null,
-    isPremium: plan !== null && (status === 'active' || status === 'trial'),
+    subscription_plan: plan,
+    subscription_status: status,
+    // isPremium only for actual premium plans (not starter)
+    isPremium: plan !== null && isActive && (plan.includes('premium') || plan === 'premium'),
   })
 }
