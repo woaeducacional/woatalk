@@ -55,7 +55,7 @@ export default function AdminDashboard() {
   const [monthlyWinnerNote, setMonthlyWinnerNote] = useState('Conquista do melhor desempenho do mês')
   const [monthlyWinnerId, setMonthlyWinnerId] = useState<string | null>(null)
   const [winnerConfirmed, setWinnerConfirmed] = useState(false)
-  const [monthlyLeader, setMonthlyLeader] = useState<{ id: string; name: string; xp_total: number; avatar_url: string | null } | null>(null)
+  const [monthlyLeaders, setMonthlyLeaders] = useState<{ id: string; name: string; xp_total: number; avatar_url: string | null }[]>([])
   const [challengeConfigLoading, setChallengeConfigLoading] = useState(false)
   const [confirmWinnerLoading, setConfirmWinnerLoading] = useState(false)
   const [challengeConfigSaved, setChallengeConfigSaved] = useState<string | null>(null)
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
       .catch(() => {})
     fetch('/api/community/rankings?period=monthly')
       .then(r => r.ok ? r.json() : { xpRanking: [] })
-      .then(d => { if ((d.xpRanking ?? []).length > 0) setMonthlyLeader(d.xpRanking[0]) })
+      .then(d => { if ((d.xpRanking ?? []).length > 0) setMonthlyLeaders((d.xpRanking ?? []).slice(0, 3)) })
       .catch(() => {})
   }, [])
 
@@ -178,7 +178,7 @@ export default function AdminDashboard() {
   }
 
   const handleConfirmWinner = async () => {
-    if (!monthlyLeader) return
+    if (!monthlyLeaders.length) return
     setConfirmWinnerLoading(true)
     setChallengeConfigError(null)
     setChallengeConfigSaved(null)
@@ -190,19 +190,19 @@ export default function AdminDashboard() {
           daily_reward: dailyReward,
           weekly_reward: weeklyReward,
           monthly_reward: monthlyReward,
-          monthly_winner_name: monthlyLeader.name,
-          monthly_winner_user_id: monthlyLeader.id,
+          monthly_winner_name: monthlyLeaders[0].name,
+          monthly_winner_user_id: monthlyLeaders[0].id,
           monthly_winner_badge: 'Vencedor mensal',
           monthly_winner_note: monthlyWinnerNote,
           winner_confirmed: true,
         }),
       })
       const data = await res.json()
-      if (!res.ok) { setChallengeConfigError(data.error ?? 'Erro ao confirmar ganhador'); return }
-      setMonthlyWinnerName(monthlyLeader.name)
-      setMonthlyWinnerId(monthlyLeader.id)
+      if (!res.ok) { setChallengeConfigError(data.error ?? 'Erro ao confirmar ganhadores'); return }
+      setMonthlyWinnerName(monthlyLeaders[0].name)
+      setMonthlyWinnerId(monthlyLeaders[0].id)
       setWinnerConfirmed(true)
-      setChallengeConfigSaved(`${monthlyLeader.name} confirmado como ganhador do mês!`)
+      setChallengeConfigSaved(`${monthlyLeaders[0].name} confirmado como ganhador do mês!`)
     } catch {
       setChallengeConfigError('Erro de conexão')
     } finally {
@@ -386,38 +386,46 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Líder atual do mês */}
+          {/* Ganhadores do mês */}
           <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.2)' }}>
-            <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>🏅 LÍDER ATUAL DO MÊS</p>
-            {monthlyLeader ? (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,67,187,0.3)', border: '1px solid rgba(255,215,0,0.3)' }}>
-                  {monthlyLeader.avatar_url
-                    ? <img src={monthlyLeader.avatar_url} alt={monthlyLeader.name} className="w-full h-full object-cover" />
-                    : <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="rgba(0,212,255,0.55)" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(0,212,255,0.55)" strokeWidth="1.8" strokeLinecap="round" /></svg>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-black text-white">{monthlyLeader.name}</p>
-                    {winnerConfirmed && (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#4ade80' }}>DEFINITIVO</span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-white/50">{monthlyLeader.xp_total.toLocaleString('pt-BR')} XP este mês</p>
-                </div>
-                {!winnerConfirmed && (
-                  <button
-                    onClick={handleConfirmWinner}
-                    disabled={confirmWinnerLoading}
-                    className="px-3 py-2 rounded-xl font-black text-[11px] tracking-wide text-white transition-all hover:scale-[1.02] disabled:opacity-60 flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
-                  >
-                    {confirmWinnerLoading ? 'Confirmando...' : 'Confirmar Ganhador'}
-                  </button>
-                )}
+            <p className="text-[10px] font-black tracking-widest" style={{ color: '#FFD700' }}>🏅 GANHADORES DO MÊS</p>
+            {monthlyLeaders.length > 0 ? (
+              <div className="space-y-2">
+                {monthlyLeaders.map((leader, idx) => {
+                  const medals = ['🥇', '🥈', '🥉']
+                  return (
+                    <div key={leader.id} className="flex items-center gap-3">
+                      <span className="text-xl">{medals[idx] || '🏆'}</span>
+                      <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,67,187,0.3)', border: '1px solid rgba(255,215,0,0.3)' }}>
+                        {leader.avatar_url
+                          ? <img src={leader.avatar_url} alt={leader.name} className="w-full h-full object-cover" />
+                          : <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="rgba(0,212,255,0.55)" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(0,212,255,0.55)" strokeWidth="1.8" strokeLinecap="round" /></svg>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-black text-white">{leader.name}</p>
+                          {idx === 0 && winnerConfirmed && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#4ade80' }}>DEFINITIVO</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-white/50">{leader.xp_total.toLocaleString('pt-BR')} XP este mês</p>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <p className="text-[11px] text-white/40">Nenhum usuário com XP registrado este mês.</p>
+            )}
+            {!winnerConfirmed && monthlyLeaders.length > 0 && (
+              <button
+                onClick={handleConfirmWinner}
+                disabled={confirmWinnerLoading}
+                className="w-full px-3 py-2 rounded-xl font-black text-[11px] tracking-wide text-white transition-all hover:scale-[1.02] disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+              >
+                {confirmWinnerLoading ? 'Confirmando...' : 'Confirmar Ganhadores'}
+              </button>
             )}
           </div>
 
